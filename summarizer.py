@@ -7,8 +7,8 @@ import anthropic
 
 from bs4 import BeautifulSoup
 
-from rss_reader.utils.config import get_env_var
-from rss_reader.cache import SummaryCache
+from utils.config import get_env_var
+from cache import SummaryCache
 
 
 class ArticleSummarizer:
