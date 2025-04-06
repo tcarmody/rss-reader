@@ -14,6 +14,7 @@ from flask import Flask, render_template
 from utils.config import get_env_var
 from utils.http import create_http_session
 from utils.performance import track_performance
+from utils.archive import fetch_article_content, is_paywalled
 from batch import BatchProcessor
 from summarizer import ArticleSummarizer
 from clustering import ArticleClusterer
@@ -211,6 +212,26 @@ class RSSReader:
 
         # Clean content
         content = content.strip()
+        
+        # Check if this is a paywalled article and try to bypass
+        paywall_bypass_enabled = get_env_var('ENABLE_PAYWALL_BYPASS', 'false').lower() == 'true'
+        
+        if paywall_bypass_enabled and hasattr(entry, 'link') and entry.link:
+            article_url = entry.link
+            
+            # Check if content is short (likely just a summary) and the article might be paywalled
+            if len(content) < 1000 or is_paywalled(article_url):
+                logging.info(f"Content appears truncated or paywalled, attempting to fetch full content for: {article_url}")
+                
+                try:
+                    # Try to fetch full content using archive services
+                    full_content = fetch_article_content(article_url, self.session)
+                    
+                    if full_content and len(full_content) > len(content):
+                        logging.info(f"Successfully retrieved full content for: {article_url}")
+                        return full_content
+                except Exception as e:
+                    logging.warning(f"Error fetching full content: {str(e)}")
         
         return content
 
