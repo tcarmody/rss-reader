@@ -22,3 +22,15 @@
 2025-04-06 08:02:23 | process_cluster_summaries | Time: 2.33s | Memory: 1.30MB
 2025-04-06 08:02:23 | generate_html_output | Time: 0.00s | Memory: 0.23MB
 2025-04-06 08:02:23 | process_feeds | Time: 2.69s | Memory: 13.45MB
+2025-04-06 08:17:18 | _process_feed | Time: 0.08s | Memory: 7.41MB
+2025-04-06 08:17:18 | _process_feed | Time: 0.09s | Memory: 7.38MB
+2025-04-06 08:17:18 | _process_feed | Time: 0.30s | Memory: 9.06MB
+2025-04-06 08:17:19 | _process_feed | Time: 0.38s | Memory: 9.62MB
+2025-04-06 08:17:20 | _process_feed | Time: 1.80s | Memory: 15.00MB
+2025-04-06 08:17:23 | _process_feed | Time: 5.14s | Memory: 35.64MB
+2025-04-06 08:17:35 | _process_feed | Time: 16.37s | Memory: 43.05MB
+2025-04-06 08:18:04 | _process_feed | Time: 46.10s | Memory: 43.83MB
+2025-04-06 08:18:04 | cluster_articles | Time: 0.03s | Memory: 0.73MB
+2025-04-06 08:18:08 | process_cluster_summaries | Time: 3.53s | Memory: 0.20MB
+2025-04-06 08:18:08 | generate_html_output | Time: 0.01s | Memory: 0.20MB
+2025-04-06 08:18:08 | process_feeds | Time: 49.66s | Memory: 44.69MB

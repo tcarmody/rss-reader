@@ -1,16 +1,1 @@
-# RSS feeds for the reader
-# One feed URL per line, lines starting with # are ignored
-
-# Tech news
-https://news.google.com/rss/search?q=artificial+intelligence
-https://feeds.feedburner.com/TechCrunch
-https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml
-
-# AI specific
-https://machinelearning.apple.com/rss.xml
-https://openai.com/blog/rss/
-https://feeds.feedburner.com/aiweekly
-
-# Developer news
-https://dev.to/feed
-https://news.ycombinator.com/rss
+https://rss.app/feeds/tia0gUGHHTgNGSA6.xml # AI Omnibus Feed
