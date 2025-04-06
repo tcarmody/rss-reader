@@ -11,12 +11,12 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, render_template
 
-from rss_reader.utils.config import get_env_var
-from rss_reader.utils.http import create_http_session
-from rss_reader.utils.performance import track_performance
-from rss_reader.batch import BatchProcessor
-from rss_reader.summarizer import ArticleSummarizer
-from rss_reader.clustering import ArticleClusterer
+from utils.config import get_env_var
+from utils.http import create_http_session
+from utils.performance import track_performance
+from batch import BatchProcessor
+from summarizer import ArticleSummarizer
+from clustering import ArticleClusterer
 
 
 class RSSReader:
@@ -386,7 +386,7 @@ class RSSReader:
 
             with app.app_context():
                 html_content = render_template(
-                    'feed_summary.html',
+                    'feed-summary.html',
                     clusters=clusters,
                     timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 )

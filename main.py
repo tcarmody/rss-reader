@@ -1,10 +1,11 @@
+# -*- coding: utf-8 -*-
 """Main entry point for the RSS reader."""
 
 import sys
 import logging
 import traceback
 import argparse
-from rss_reader.reader import RSSReader
+from reader import RSSReader
 
 
 def main():
@@ -18,7 +19,7 @@ def main():
         python -m rss_reader.main
         
         # Import and use in another script
-        from rss_reader.reader import RSSReader
+        from reader import RSSReader
         reader = RSSReader()
         output_file = reader.process_feeds()
     """
