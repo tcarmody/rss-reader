@@ -528,5 +528,20 @@
     "headline": "Palantir Stock Surges 274% in 12 Months",
     "summary": "Palantir Technologies, a leading AI software company, has seen its stock price surge by 274% in the past 12 months. This significant increase has raised questions among investors about whether the stock is still a buy.\n\nThe article provides key details for AI developers, including Palantir's recent stock performance and the factors driving its growth. It also explains why this news is important for the AI industry and its followers, as Palantir is a major player in the field of AI software and its stock performance can have broader implications for the industry.",
     "timestamp": 1744027069.529323
+  },
+  "524286751e244137df248790fc5d040b": {
+    "headline": "New AI Liability Rules Proposed by Civil Society Groups",
+    "summary": "Europe's regulatory bodies are facing pressure from civil society groups to develop robust rules for AI liability. These groups argue that the current lack of clear regulations creates a \"free lunch\" for big tech companies, allowing them to operate with limited accountability.\n\nA recent report by Mozilla calls for the European Commission to establish comprehensive AI liability rules. The report emphasizes the need for these rules to address the potential harms and risks associated with AI systems, ensuring that individuals and organizations are held responsible for the impacts of their AI-powered products and services.\n\nThis information is particularly relevant for AI developers, who need to understand the evolving regulatory landscape and prepare for increased scrutiny and accountability measures. The proposed rules could have significant implications for the future of data governance and the development of AI technologies in Europe.",
+    "timestamp": 1744027713.337495
+  },
+  "a35c66c0055a520f152bac322e812724": {
+    "headline": "U.S.'s AI lead over China rapidly shrinking, Stanford report finds",
+    "summary": "A new report from Stanford University's AI Institute (HAI) reveals that the U.S.'s lead in artificial intelligence over China is rapidly diminishing. The report analyzes key metrics like AI capabilities, investment, and regulation, showing record growth in these areas globally.\n\nFor AI developers, the report highlights the rapid advancements in AI technology and the increasing competition between the U.S. and China. It also outlines the growing regulatory landscape surrounding AI, which is crucial for developers to navigate.\n\nThis information is significant for readers who follow AI news, as it underscores the dynamic and rapidly evolving nature of the AI landscape. The report provides valuable insights into the current state of the AI industry and the shifting global dynamics that will shape its future development.",
+    "timestamp": 1744027714.903237
+  },
+  "0994ef5a9f426578e8d8dda9471429cc": {
+    "headline": "AI Therapists Offer Mental Health Advice",
+    "summary": "Generative AI models are now providing mental health advice for various disorders, including those outlined in the Diagnostic and Statistical Manual of Mental Disorders (DSM-5). Researchers have found that these AI-powered chatbots have \"amazing potential\" in providing therapy, but also caution that they could further isolate vulnerable patients instead of easing their suffering. The study, conducted by Dartmouth, put an AI therapy chatbot through a rigorous randomized controlled trial, comparing its effectiveness to playing the game Tetris.",
+    "timestamp": 1744027716.0654988
   }
 }

@@ -79,17 +79,25 @@ class ArticleSummarizer:
             return cached_summary['summary']
 
         try:
-            # Generate summary using Claude
+            # Generate summary using Claude with improved prompt
             prompt = (
-                "Summarize this article in 3-4 sentences using active voice and factual tone. "
-                "Follow this structure:\n"
+                "Summarize the article below following these guidelines:\n\n"
+                "Structure:\n"
                 "1. First line: Create a headline in sentence case\n"
                 "2. Then a blank line\n"
-                "3. Then the summary that:\n"
-                "- Explains what happened in simple language\n"
-                "- Identifies key details for AI developers\n"
-                "- Explains why it matters to AI industry followers\n"
-                "- Spells out numbers and uses U.S./U.K. with periods\n\n"
+                "3. Then a summary of three to five sentences that:\n"
+                "   - First sentence: Explains what has happened in clear, simple language\n"
+                "   - Second and third sentences: Identify important details relevant to AI developers\n"
+                "   - Fourth sentence: Explains why this information matters to readers who follow AI news\n"
+                "   - Fifth sentence (if applicable): Lists details of price and availability for new models/tools\n\n"
+                "Style guidelines:\n"
+                "- Use active voice (e.g., 'Company released product' not 'Product was released by company')\n"
+                "- Use non-compound verbs (e.g., 'banned' instead of 'has banned')\n"
+                "- Avoid the words 'content' and 'creator'\n"
+                "- Spell out numbers (e.g., '8 billion' not '8B', '100 million' not '100M')\n"
+                "- Use 'U.S.' and 'U.K.' with periods; use 'AI' without periods\n"
+                "- Use smart quotes, not straight quotes\n"
+                "- Ensure the headline doesn't repeat too many words from the summary\n\n"
                 f"Article:\n{text}\n\n"
                 f"URL: {url}"
             )
@@ -98,7 +106,7 @@ class ArticleSummarizer:
                 model="claude-3-haiku-20240307",
                 max_tokens=400,
                 temperature=0.3,
-                system="You are an expert AI technology journalist. Be concise and factual.",
+                system="You are an expert at creating summaries of articles. Summaries should be factual, informative, fairly simple in structure, and free from exaggeration, hype, or marketing speak. Double-check summaries to ensure accuracy and remove any exaggerated language.",
                 messages=[{
                     "role": "user",
                     "content": prompt
