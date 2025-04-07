@@ -75,34 +75,36 @@ def refresh_feeds():
             # Get the clusters from the reader
             clusters = reader.last_processed_clusters
             
-            # Very simple fix: Add a summary to the first article in each cluster
+            # Fix: Ensure every cluster has proper summaries attached to the first article
             for cluster in clusters:
                 if cluster and len(cluster) > 0:
-                    # Create a simple summary based on the cluster's first article title
+                    # Get the first article in the cluster
                     first_article = cluster[0]
                     
-                    # Create a summary object with the expected structure if it doesn't exist
-                    if not hasattr(first_article, 'summary') or not first_article.get('summary'):
-                        # Generate a simple summary from the article title
+                    # Check if the article has a summary
+                    if 'summary' not in first_article or first_article['summary'] is None:
+                        # No summary exists, create a default one
+                        logging.warning(f"No summary found for cluster with article: {first_article.get('title')}")
                         first_article['summary'] = {
                             'headline': first_article.get('title', 'News Article'),
                             'summary': f"This is a cluster of {len(cluster)} related articles about {first_article.get('title', 'various topics')}."
                         }
-                    # If summary exists but isn't in the right format, fix it
-                    elif isinstance(first_article.get('summary'), str) or not isinstance(first_article.get('summary'), dict):
-                        summary_text = str(first_article.get('summary', ''))
+                    elif isinstance(first_article['summary'], str):
+                        # Summary is a string, convert to proper dict format
+                        summary_text = first_article['summary']
                         first_article['summary'] = {
                             'headline': first_article.get('title', 'News Article'),
-                            'summary': summary_text if summary_text else f"This is a cluster of {len(cluster)} related articles."
+                            'summary': summary_text
                         }
-                    # If summary is a dict but missing required fields
-                    elif isinstance(first_article.get('summary'), dict):
-                        summary_dict = first_article.get('summary', {})
-                        if 'headline' not in summary_dict:
-                            summary_dict['headline'] = first_article.get('title', 'News Article')
-                        if 'summary' not in summary_dict:
-                            summary_dict['summary'] = f"This is a cluster of {len(cluster)} related articles."
-                        first_article['summary'] = summary_dict
+                    elif isinstance(first_article['summary'], dict):
+                        # Summary is a dict, ensure it has the required fields
+                        if 'headline' not in first_article['summary']:
+                            first_article['summary']['headline'] = first_article.get('title', 'News Article')
+                        if 'summary' not in first_article['summary']:
+                            first_article['summary']['summary'] = f"This is a cluster of {len(cluster)} related articles."
+                    
+                    # Debug log to verify the summary structure
+                    logging.info(f"Cluster summary: {first_article['summary']}")
             
             # Update latest data with the modified clusters
             latest_data['clusters'] = clusters
