@@ -57,6 +57,7 @@ class RSSReader:
         self.batch_processor = BatchProcessor(batch_size=5)  # Process 5 API calls at a time
         self.summarizer = ArticleSummarizer()
         self.clusterer = ArticleClusterer()
+        self.last_processed_clusters = []  # Store the last processed clusters for web server access
 
     def _load_default_feeds(self):
         """
@@ -111,13 +112,35 @@ class RSSReader:
                     continue
 
                 logging.info(f"Processing cluster {i}/{len(clusters)} with {len(cluster)} articles")
+                
+                # First, try to fetch full content for articles that don't have it
+                for article in cluster:
+                    if not article.get('content') or len(article.get('content', '')) < 200:
+                        try:
+                            logging.info(f"Fetching full content for article: {article['title']}")
+                            full_content = fetch_article_content(article['link'], self.session)
+                            if full_content and len(full_content) > 200:
+                                article['content'] = full_content
+                                logging.info(f"Successfully fetched full content for {article['title']}")
+                            else:
+                                logging.warning(f"Could not fetch meaningful content for {article['title']}")
+                        except Exception as e:
+                            logging.warning(f"Error fetching content for {article['title']}: {str(e)}")
 
                 if len(cluster) > 1:
                     # For clusters with multiple articles, generate a combined summary
-                    combined_text = "\n\n".join([
-                        f"Title: {article['title']}\n{article.get('content', '')[:1000]}"
-                        for article in cluster
-                    ])
+                    # Use the article with the most content for summarization
+                    best_article = max(cluster, key=lambda a: len(a.get('content', '')))
+                    
+                    # If the best article still has limited content, combine all articles
+                    if len(best_article.get('content', '')) < 500:
+                        combined_text = "\n\n".join([
+                            f"Title: {article['title']}\n{article.get('content', '')}"
+                            for article in cluster
+                        ])
+                    else:
+                        # Use the best article for summarization
+                        combined_text = f"Title: {best_article['title']}\n{best_article.get('content', '')}"
 
                     logging.info(f"Generating summary for cluster {i} with {len(cluster)} articles")
                     cluster_summary = self._generate_summary(
@@ -141,6 +164,23 @@ class RSSReader:
                             article['link']
                         )
                     article['cluster_size'] = 1
+                    
+                    # Ensure summary has the correct structure
+                    if not isinstance(article['summary'], dict):
+                        article['summary'] = {
+                            'headline': article['title'],
+                            'summary': str(article['summary'])
+                        }
+                    elif 'headline' not in article['summary'] or 'summary' not in article['summary']:
+                        # Fix incomplete summary structure
+                        summary_text = article['summary'].get('summary', '')
+                        if not summary_text and isinstance(article['summary'], str):
+                            summary_text = article['summary']
+                        
+                        article['summary'] = {
+                            'headline': article['summary'].get('headline', article['title']),
+                            'summary': summary_text or 'No summary available.'
+                        }
 
                 processed_clusters.append(cluster)
                 logging.info(f"Successfully processed cluster {i}")
@@ -300,6 +340,9 @@ class RSSReader:
 
             logging.info(f"Successfully processed {len(processed_clusters)} clusters")
 
+            # Store the processed clusters for web server access
+            self.last_processed_clusters = processed_clusters
+            
             # Generate HTML output
             output_file = self.generate_html_output(processed_clusters)
             if output_file:
@@ -355,7 +398,33 @@ class RSSReader:
         Returns:
             dict: Summary with headline and content
         """
-        return self.summarizer.summarize_article(article_text, title, url)
+        try:
+            summary = self.summarizer.summarize_article(article_text, title, url)
+            
+            # Ensure the summary has the correct structure
+            if not isinstance(summary, dict):
+                summary = {
+                    'headline': title,
+                    'summary': str(summary)
+                }
+            elif 'headline' not in summary or 'summary' not in summary:
+                # Fix incomplete summary structure
+                summary_text = summary.get('summary', '')
+                if not summary_text and isinstance(summary, str):
+                    summary_text = summary
+                    
+                summary = {
+                    'headline': summary.get('headline', title),
+                    'summary': summary_text or 'No summary available.'
+                }
+                
+            return summary
+        except Exception as e:
+            logging.error(f"Error generating summary: {str(e)}")
+            return {
+                'headline': title,
+                'summary': "Summary generation failed. Please try again later."
+            }
 
     def _get_feed_batches(self):
         """

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSS Reader - Welcome</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        header {
+            background-color: #0066cc;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.2em;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        input[type="text"], input[type="number"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 150px;
+            resize: vertical;
+        }
+        button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0055aa;
+        }
+        .info-box {
+            background-color: #e0f0ff;
+            border-left: 4px solid #0066cc;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #888;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>RSS Reader & Summarizer</h1>
+    </header>
+
+    <main>
+        <div class="container">
+            <h2>Welcome to RSS Reader</h2>
+            <p>This web application fetches articles from RSS feeds, summarizes them using AI, and clusters related articles together.</p>
+            
+            <div class="info-box">
+                <p><strong>No summaries available yet.</strong> Use the form below to process RSS feeds and generate summaries.</p>
+            </div>
+            
+            <form action="/refresh" method="post">
+                <div class="form-group">
+                    <label for="feeds">RSS Feed URLs (Optional - one per line, leave empty to use default feeds)</label>
+                    <textarea id="feeds" name="feeds" placeholder="https://example.com/rss.xml"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="batch_size">Batch Size</label>
+                    <input type="number" id="batch_size" name="batch_size" value="25" min="1">
+                </div>
+                
+                <div class="form-group">
+                    <label for="batch_delay">Batch Delay (seconds)</label>
+                    <input type="number" id="batch_delay" name="batch_delay" value="15" min="1">
+                </div>
+                
+                <button type="submit">Process Feeds</button>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>Powered by RSS Reader with Anthropic Claude API</p>
+    </footer>
+</body>
+</html>
