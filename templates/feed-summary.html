@@ -4,111 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RSS Feed Summary</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f9f9f9;
-        }
-        header {
-            background-color: #0066cc;
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        h1 {
-            margin: 0;
-            font-size: 2.2em;
-        }
-        .timestamp {
-            font-style: italic;
-            color: #eee;
-            margin-top: 10px;
-        }
-        .cluster {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .cluster-header {
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-        }
-        .cluster-title {
-            font-size: 1.8em;
-            margin: 0;
-            color: #0066cc;
-        }
-        .cluster-info {
-            font-style: italic;
-            color: #888;
-            font-size: 0.9em;
-        }
-        .article {
-            margin-bottom: 25px;
-            padding-bottom: 25px;
-            border-bottom: 1px solid #eee;
-        }
-        .article:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-            margin-bottom: 0;
-        }
-        .article-title {
-            font-size: 1.4em;
-            margin: 0 0 10px 0;
-            color: #444;
-        }
-        .article-title a {
-            color: #0066cc;
-            text-decoration: none;
-        }
-        .article-title a:hover {
-            text-decoration: underline;
-        }
-        .article-meta {
-            font-size: 0.85em;
-            color: #777;
-            margin-bottom: 10px;
-        }
-        .article-summary {
-            line-height: 1.7;
-        }
-        .article-source {
-            display: inline-block;
-            background-color: #e0f0ff;
-            border-radius: 4px;
-            padding: 2px 8px;
-            margin-left: 10px;
-            font-size: 0.85em;
-            color: #0066cc;
-        }
-        footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-            color: #888;
-            font-size: 0.9em;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <header>
-        <h1>AI News Digest</h1>
-        <div class="timestamp">Generated on {{ timestamp }}</div>
+        <div>
+            <h1>AI News Digest</h1>
+            <div class="timestamp">Generated on {{ timestamp }}</div>
+        </div>
+        <div class="actions">
+            <a href="/" class="button">Home</a>
+            <form action="/refresh" method="post" style="display: inline;">
+                <button type="submit" class="button">Refresh Feeds</button>
+            </form>
+        </div>
     </header>
 
     <main>
