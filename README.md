@@ -1,57 +1,83 @@
-# RSS Reader and Summarizer
+# AI News Digest - RSS Reader and Summarizer
 
-A comprehensive RSS feed reader that fetches articles, summarizes them using the Anthropic Claude API, and clusters similar articles together.
+A comprehensive RSS feed reader that fetches articles, summarizes them using the Anthropic Claude API, clusters similar articles together, and provides a clean web interface for browsing summaries.
 
 ## Features
 
-- Fetches articles from multiple RSS feeds
-- Automatically summarizes articles using Anthropic Claude API
-- Clusters similar articles based on semantic similarity
-- Generates a clean HTML report with summaries and links
-- Implements caching to avoid redundant API calls
-- Processes feeds in batches with rate limiting
-- Provides performance tracking and logging
+- **Smart Article Clustering**: Groups similar articles based on semantic similarity
+- **AI-Powered Summaries**: Automatically summarizes articles using Anthropic Claude API
+- **Interactive Web Interface**: Browse summaries and article clusters through a web browser
+- **Responsive Design**: Clean, modern UI that works on desktop and mobile devices
+- **Dark Mode Support**: Automatic theme switching based on system preferences
+- **Caching System**: Implements caching to avoid redundant API calls
+- **Batch Processing**: Processes feeds in batches with rate limiting
+- **Performance Tracking**: Detailed logging and performance metrics
 
 ## Installation
 
 1. Clone the repository:
-   ```
+   ```bash
    git clone <repository-url>
    cd rss-reader
    ```
 
-2. Install dependencies:
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
+
+3. Install dependencies:
+   ```bash
    pip install -r requirements.txt
    ```
 
-3. Create a `.env` file in the project root with your Anthropic API key:
+4. Create a `.env` file in the project root with your Anthropic API key:
    ```
    ANTHROPIC_API_KEY=your_api_key_here
    ```
 
-## Usage
+## Using the Web Interface
 
-### Basic Usage
+The easiest way to use the RSS Reader is through its web interface:
 
-Run the RSS reader with default settings:
+1. Start the web server:
+   ```bash
+   python server.py
+   ```
+
+2. Open your browser and navigate to:
+   ```
+   http://localhost:5004
+   ```
+
+3. Using the web interface:
+   - Click the **Refresh Feeds** button to fetch and process the latest articles
+   - Browse through the clustered articles and their AI-generated summaries
+   - Click on article titles to read the original articles
+   - The timestamp at the top shows when the feeds were last processed
+
+4. Customizing feeds:
+   - You can add custom RSS feed URLs through the web interface
+   - Enter one URL per line in the input field on the home page
+   - Adjust batch size and delay settings if needed
+
+## Command-line Usage
+
+You can also run the RSS reader directly from the command line:
 
 ```bash
-python -m rss_reader.main --feeds https://example.com/rss https://example2.com/rss --batch-size 10 --batch-delay 5
+python reader.py
 ```
 
-### Command-line Arguments
+This will process the default feeds and generate an HTML output file in the `output` directory.
 
-- `--feeds`: List of feed URLs to process (separated by spaces)
-- `--batch-size`: Number of feeds to process in each batch (default: 25)
-- `--batch-delay`: Delay between batches in seconds (default: 15)
+## Using as a Library
 
-### Using as a Library
-
-You can also use the RSS reader as a library in your Python code:
+You can use the RSS reader as a library in your Python code:
 
 ```python
-from rss_reader.reader import RSSReader
+from reader import RSSReader
 
 # Initialize with custom feeds
 feeds = ['https://example.com/rss', 'https://example2.com/rss']
@@ -65,27 +91,32 @@ print(f"Generated summary at: {output_file}")
 ## Project Structure
 
 ```
-rss_reader/
-├── __init__.py                   # Makes the directory a package
-├── main.py                       # Entry point with main function
-├── reader.py                     # Main RSSReader class
-├── summarizer.py                 # ArticleSummarizer class
-├── clustering.py                 # Article clustering functionality
-├── cache.py                      # SummaryCache implementation
-├── batch.py                      # BatchProcessor class
+rss-reader/
+├── server.py                    # Web server implementation
+├── reader.py                    # Main RSSReader class
+├── summarizer.py                # ArticleSummarizer class
+├── clustering.py                # Article clustering functionality
+├── cache.py                     # SummaryCache implementation
+├── batch.py                     # BatchProcessor class
 ├── utils/
 │   ├── __init__.py
-│   ├── http.py                   # HTTP utilities
-│   ├── performance.py            # Performance tracking
-│   ├── config.py                 # Configuration utilities
-│   └── rate_limit.py             # Rate limiting functionality
+│   ├── http.py                  # HTTP utilities
+│   ├── performance.py           # Performance tracking
+│   ├── config.py                # Configuration utilities
+│   └── archive.py               # Article content extraction
 ├── templates/
-│   └── feed_summary.html         # HTML template
+│   ├── feed-summary.html        # Main summary template
+│   ├── welcome.html             # Welcome page template
+│   └── error.html               # Error page template
+├── static/
+│   └── styles.css               # CSS styles for the web interface
+├── output/                      # Generated HTML output files
+└── rss_feeds.txt                # Default RSS feed list
 ```
 
 ## Creating a Feed List
 
-Create a file named `rss_feeds.txt` in the project root with one RSS feed URL per line:
+The application uses a file named `rss_feeds.txt` in the project root with one RSS feed URL per line:
 
 ```
 https://news.google.com/rss/search?q=artificial+intelligence
@@ -94,10 +125,45 @@ https://feeds.feedburner.com/aiweekly
 https://machinelearning.apple.com/rss.xml
 ```
 
+## Configuration Options
+
+### Environment Variables
+
+Create a `.env` file in the project root with the following variables:
+
+```
+ANTHROPIC_API_KEY=your_api_key_here
+```
+
+### Web Server Settings
+
+The web server runs on port 5004 by default. You can modify this in `server.py` if needed.
+
+## Advanced Features
+
+### Article Clustering
+
+The clustering algorithm groups similar articles based on semantic similarity. You can adjust the clustering parameters in `clustering.py`:
+
+- `distance_threshold`: Controls how similar articles must be to be clustered together (lower values create more focused clusters)
+
+### Summary Generation
+
+Summaries are generated using the Anthropic Claude API. The system prompt and style guidelines can be customized in `summarizer.py`.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **API Key Issues**: Ensure your Anthropic API key is correctly set in the `.env` file
+2. **Port Conflicts**: If port 5004 is already in use, change the port number in `server.py`
+3. **Missing Summaries**: Check the logs for any API errors or rate limiting issues
+
 ## Requirements
 
 - Python 3.8+
-- Anthropic API key
+- Anthropic API key (Claude 3 Haiku model)
+- Web browser for accessing the interface
 - Dependencies listed in requirements.txt
 
 ## Performance Notes
