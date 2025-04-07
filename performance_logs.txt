@@ -99,3 +99,8 @@
 2025-04-07 07:42:51 | process_cluster_summaries | Time: 98.42s | Memory: 0.72MB
 2025-04-07 07:42:51 | generate_html_output | Time: 0.00s | Memory: 0.19MB
 2025-04-07 07:42:51 | process_feeds | Time: 173.64s | Memory: 5.06MB
+2025-04-07 07:57:43 | _process_feed | Time: 0.11s | Memory: 4.14MB
+2025-04-07 07:57:43 | cluster_articles | Time: 0.06s | Memory: 1.36MB
+2025-04-07 07:57:49 | process_cluster_summaries | Time: 5.86s | Memory: 0.86MB
+2025-04-07 07:57:49 | generate_html_output | Time: 0.01s | Memory: 0.27MB
+2025-04-07 07:57:49 | process_feeds | Time: 6.05s | Memory: 6.59MB
