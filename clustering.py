@@ -42,7 +42,7 @@ CONFIG = {
     'fallback_model_name': 'distiluse-base-multilingual-cased-v1',
     'cache_dir': os.environ.get('EMBEDDING_CACHE_DIR', '/tmp/article_embeddings'),
     'days_threshold': int(os.environ.get('DAYS_THRESHOLD', 7)),
-    'base_distance_threshold': float(os.environ.get('DISTANCE_THRESHOLD', 0.08)),
+    'base_distance_threshold': float(os.environ.get('DISTANCE_THRESHOLD', 0.05)),
     'batch_size': int(os.environ.get('BATCH_SIZE', 32)),
     'min_text_length': int(os.environ.get('MIN_TEXT_LENGTH', 50)),
     'min_keyword_matches': int(os.environ.get('MIN_KEYWORD_MATCHES', 2)),
@@ -206,13 +206,14 @@ class TopicExtractor:
             'know', 'need', 'see', 'look', 'want', 'going', 'come', 'came', 'back'
         ]
         
-        # Improved vectorizer with better parameters
+        # Enhanced vectorizer with optimized parameters for better topic extraction
         self.vectorizer = CountVectorizer(
-            max_features=200,  # Increased to capture more potential topics
+            max_features=300,  # Increased to capture more potential topics
             stop_words=self.extended_stopwords,
-            min_df=2,  # Term must appear in at least 2 documents
-            max_df=0.85,  # Ignore terms that appear in >85% of documents
-            ngram_range=(1, 2)  # Include bigrams for more meaningful topics
+            min_df=1,  # Allow terms that appear in at least 1 document (important for small clusters)
+            max_df=0.8,  # More strict - ignore terms that appear in >80% of documents
+            ngram_range=(1, 3),  # Include up to trigrams for more meaningful multi-word topics
+            token_pattern=r'(?u)\b[A-Za-z][A-Za-z0-9+\-_\.]*\b'  # Better pattern to capture technical terms
         )
         
     def extract_topics(self, articles, top_n=5):
@@ -504,8 +505,19 @@ class ArticleClusterer:
             title = article.get('title', '')
             content = article.get('content', '')
             
+            # Extract potential entity names and important keywords from the title
+            # These are typically proper nouns, product names, company names, etc.
+            import re
+            
+            # Look for capitalized words and phrases that might be entity names
+            entity_pattern = r'\b[A-Z][a-zA-Z0-9]*(?:\s+[A-Z][a-zA-Z0-9]*)*\b'
+            entities = re.findall(entity_pattern, title)
+            
+            # Repeat entity names multiple times to give them more weight
+            entity_text = ' '.join([entity for entity in entities for _ in range(3)])
+            
             # Weight the title more heavily by repeating it
-            combined_text = f"{title} {title} {content}".strip()
+            combined_text = f"{title} {title} {entity_text} {content}".strip()
             
             # Ensure we have enough text to cluster properly
             if len(combined_text) < CONFIG['min_text_length'] and title:
@@ -612,10 +624,10 @@ class ArticleClusterer:
                     
                     clusterer = hdbscan.HDBSCAN(
                         min_cluster_size=2,  # Allow clusters as small as 2 articles
-                        min_samples=1,       # More sensitive to noise points
+                        min_samples=2,       # More conservative to avoid false positives
                         metric='euclidean',  # Use euclidean on normalized vectors (equivalent to cosine)
-                        cluster_selection_epsilon=threshold * 2,  # Adjust threshold for euclidean
-                        cluster_selection_method='eom',  # Excess of mass (better for varying density)
+                        cluster_selection_epsilon=threshold * 1.5,  # More precise threshold
+                        cluster_selection_method='leaf',  # More conservative cluster extraction
                         prediction_data=True  # Keep prediction data for possible soft clustering
                     )
                     
@@ -743,44 +755,55 @@ class ArticleClusterer:
                 if current_indices.intersection(candidate_indices):
                     continue
                 
-                # Check if they have the same cluster label 
-                # AND are from different sources (avoid duplicate articles)
-                # OR they have significant topic overlap
+                # Check if the articles are from the same source
+                same_source = source1 == source2
+                
+                # For articles from the same source, require very strong topic overlap
+                # For articles from different sources, use normal topic overlap criteria
                 common_topics = len(cluster_topics[key1].intersection(cluster_topics[key2]))
-                if (label1 == label2 and source1 != source2) or (
-                    common_topics >= CONFIG['min_keyword_matches']
-                ):
-                    # Check publication time proximity
-                    time_matches = 0
-                    for article in clusters[key2]:
-                        try:
-                            article_time = self._parse_date(article.get('published', ''))
-                            # Check if this article was published close to any article in the first cluster
-                            for curr_time in current_times:
-                                time_diff = abs((article_time - curr_time).total_seconds() / 3600)  # hours
-                                if time_diff < 48:  # Within 48 hours
-                                    time_matches += 1
-                                    break
-                        except:
-                            pass
-                    
-                    # Merge if topics match AND timing is close
-                    matches = len(cluster_topics[key1].intersection(cluster_topics[key2]))
-                    if matches >= CONFIG['min_keyword_matches'] and (
-                        time_matches >= len(clusters[key2]) * CONFIG['cluster_match_threshold']
-                    ):
-                        current_cluster.extend(clusters[key2])
-                        processed_keys.add(key2)
-                        logging.info(f"Merged clusters with topic overlap: {cluster_topics[key1].intersection(cluster_topics[key2])}")
-                        
-                        # Update indices and times
-                        current_indices.update(candidate_indices)
+                
+                # Adjust required topic match based on source
+                if same_source:
+                    # Same source - require very strong topic match to avoid grouping unrelated articles
+                    significant_overlap = common_topics >= CONFIG['min_keyword_matches'] + 2
+                else:
+                    # Different sources - use normal criteria to group related articles across publications
+                    significant_overlap = common_topics >= CONFIG['min_keyword_matches']
+                
+                # Only proceed if there's significant topic overlap or same algorithm cluster (for different sources)
+                if significant_overlap or (label1 == label2 and label1 != -1 and not same_source):
+                        # Check publication time proximity
+                        time_matches = 0
                         for article in clusters[key2]:
                             try:
-                                pub_time = self._parse_date(article.get('published', ''))
-                                current_times.append(pub_time)
+                                article_time = self._parse_date(article.get('published', ''))
+                                # Check if this article was published close to any article in the first cluster
+                                for curr_time in current_times:
+                                    time_diff = abs((article_time - curr_time).total_seconds() / 3600)  # hours
+                                    if time_diff < 48:  # Within 48 hours
+                                        time_matches += 1
+                                        break
                             except:
                                 pass
+                        
+                        # Merge if topics match AND timing is close
+                        # Require stronger topic match for articles from different sources
+                        matches = len(cluster_topics[key1].intersection(cluster_topics[key2]))
+                        if matches >= CONFIG['min_keyword_matches'] + 1 and (
+                            time_matches >= len(clusters[key2]) * 0.7  # Require 70% of articles to match in time
+                        ):
+                            current_cluster.extend(clusters[key2])
+                            processed_keys.add(key2)
+                            logging.info(f"Merged clusters with topic overlap: {cluster_topics[key1].intersection(cluster_topics[key2])}")
+                            
+                            # Update indices and times
+                            current_indices.update(candidate_indices)
+                            for article in clusters[key2]:
+                                try:
+                                    pub_time = self._parse_date(article.get('published', ''))
+                                    current_times.append(pub_time)
+                                except:
+                                    pass
 
             # Only add clusters with at least one article
             if len(current_cluster) > 0:
