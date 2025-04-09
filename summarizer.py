@@ -79,6 +79,10 @@ class ArticleSummarizer:
             return cached_summary['summary']
 
         try:
+            # Extract source from URL for attribution
+            source_name = url.split('//')[1].split('/')[0] if '//' in url else url
+            source_name = source_name.replace('www.', '')
+            
             # Generate summary using Claude with improved prompt
             prompt = (
                 "Summarize the article below following these guidelines:\n\n"
@@ -89,7 +93,9 @@ class ArticleSummarizer:
                 "   - First sentence: Explains what has happened in clear, simple language\n"
                 "   - Second and third sentences: Identify important details relevant to AI developers\n"
                 "   - Fourth sentence: Explains why this information matters to readers who follow AI news\n"
-                "   - Fifth sentence (if applicable): Lists details of price and availability for new models/tools\n\n"
+                "   - Fifth sentence (if applicable): Lists details of price and availability for new models/tools\n"
+                "4. Then a blank line\n"
+                "5. Then add 'Source: [publication name]' followed by the URL\n\n"
                 "Style guidelines:\n"
                 "- Use active voice (e.g., 'Company released product' not 'Product was released by company')\n"
                 "- Use non-compound verbs (e.g., 'banned' instead of 'has banned')\n"
@@ -99,7 +105,8 @@ class ArticleSummarizer:
                 "- Use smart quotes, not straight quotes\n"
                 "- Ensure the headline doesn't repeat too many words from the summary\n\n"
                 f"Article:\n{text}\n\n"
-                f"URL: {url}"
+                f"URL: {url}\n"
+                f"Publication: {source_name}"
             )
 
             response = self.client.messages.create(
@@ -115,14 +122,31 @@ class ArticleSummarizer:
 
             summary_text = response.content[0].text
 
-            # Split into headline and summary
-            lines = summary_text.split('\n', 1)
-            if len(lines) == 2:
-                headline = lines[0].strip()
-                summary = lines[1].strip()
-            else:
-                headline = title
-                summary = summary_text
+            # Split into headline and summary with source attribution
+            parts = summary_text.split('\n\n')
+            
+            # Handle different possible formats
+            if len(parts) >= 3:  # Proper format with headline, summary, and source
+                headline = parts[0].strip()
+                summary = parts[1].strip()
+                source_info = parts[2].strip()
+            elif len(parts) == 2:  # Missing source or other format issue
+                headline = parts[0].strip()
+                summary = parts[1].strip()
+                source_info = f"Source: {source_name}\n{url}"
+            else:  # Fallback if formatting is completely off
+                lines = summary_text.split('\n', 1)
+                if len(lines) == 2:
+                    headline = lines[0].strip()
+                    summary = lines[1].strip()
+                else:
+                    headline = title
+                    summary = summary_text
+                source_info = f"Source: {source_name}\n{url}"
+                
+            # Ensure the summary has the source information
+            if not summary.endswith(url):
+                summary = f"{summary}\n\n{source_info}"
 
             result = {
                 'headline': headline,
