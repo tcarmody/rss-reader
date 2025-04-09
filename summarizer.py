@@ -103,6 +103,7 @@ class ArticleSummarizer:
                 "- Present information directly without meta-commentary\n"
                 "- Avoid the words 'content' and 'creator'\n"
                 "- Spell out numbers (e.g., '8 billion' not '8B', '100 million' not '100M')\n"
+                "- Spell out 'percent' instead of using the '%' symbol\n"
                 "- Use 'U.S.' and 'U.K.' with periods; use 'AI' without periods\n"
                 "- Use smart quotes, not straight quotes\n"
                 "- Ensure the headline doesn't repeat too many words from the summary\n\n"
