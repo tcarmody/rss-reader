@@ -41,7 +41,7 @@ CONFIG = {
     'model_name': 'all-mpnet-base-v2',
     'fallback_model_name': 'distiluse-base-multilingual-cased-v1',
     'cache_dir': os.environ.get('EMBEDDING_CACHE_DIR', '/tmp/article_embeddings'),
-    'days_threshold': int(os.environ.get('DAYS_THRESHOLD', 14)),
+    'days_threshold': int(os.environ.get('DAYS_THRESHOLD', 7)),
     'base_distance_threshold': float(os.environ.get('DISTANCE_THRESHOLD', 0.08)),
     'batch_size': int(os.environ.get('BATCH_SIZE', 32)),
     'min_text_length': int(os.environ.get('MIN_TEXT_LENGTH', 50)),
