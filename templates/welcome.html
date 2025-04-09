@@ -149,8 +149,9 @@
             
             {% if has_default_feeds %}
             <div class="default-feeds-section">
-                <h3>Quick Start with Default Feeds</h3>
+                <h3>Start with Default Feeds</h3>
                 <p>Process articles from the default feed list in <code>rss_feeds.txt</code>.</p>
+                <p><strong>Warning:</strong> This will process all feeds in the list.</p>
                 <form action="/refresh" method="post">
                     <input type="hidden" name="use_default" value="true">
                     <button type="submit" class="primary-button">Process Default Feeds</button>
