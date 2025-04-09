@@ -42,16 +42,25 @@ def index():
         )
     else:
         return render_template(
-            'welcome.html'
+            'welcome.html',
+            has_default_feeds=os.path.exists(os.path.join(os.path.dirname(__file__), 'rss_feeds.txt'))
         )
 
 @app.route('/refresh', methods=['POST'])
 def refresh_feeds():
     """Process RSS feeds and update the latest data."""
     try:
+        # Check if we should use default feeds
+        use_default = request.form.get('use_default', 'false').lower() == 'true'
+        
         # Get optional parameters from the form
         feeds = request.form.get('feeds', '').strip()
-        feeds_list = [url.strip() for url in feeds.split('\n') if url.strip()] if feeds else None
+        feeds_list = None
+        
+        # If use_default is true, leave feeds_list as None to use default feeds
+        # Otherwise, parse the feeds from the textarea
+        if not use_default and feeds:
+            feeds_list = [url.strip() for url in feeds.split('\n') if url.strip()]
         
         batch_size = request.form.get('batch_size', 25)
         try:
@@ -64,6 +73,14 @@ def refresh_feeds():
             batch_delay = int(batch_delay)
         except ValueError:
             batch_delay = 15
+        
+        # Log what we're doing
+        if use_default:
+            logging.info("Processing default feeds from rss_feeds.txt")
+        elif feeds_list:
+            logging.info(f"Processing {len(feeds_list)} custom feeds")
+        else:
+            logging.info("No feeds specified, will use default feeds")
         
         # Initialize and run RSS reader with paywall bypass enabled
         # Environment variable ENABLE_PAYWALL_BYPASS is already set at the top of the file
@@ -230,8 +247,6 @@ def initialize_data():
         logging.error(f"Error initializing RSS reader: {str(e)}", exc_info=True)
 
 if __name__ == '__main__':
-    # Initialize data at startup
-    initialize_data()
-    
-    # Run the Flask app
-    app.run(debug=True, host='0.0.0.0', port=5004)
+    # Run the Flask app immediately without initializing data
+    # Data will be processed only when the user requests it
+    app.run(debug=True, host='0.0.0.0', port=5005)
