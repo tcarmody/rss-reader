@@ -16,6 +16,7 @@ import numpy as np
 import os
 import pickle
 import hashlib
+import re
 from datetime import datetime, timedelta
 from collections import defaultdict
 from functools import lru_cache
@@ -41,12 +42,12 @@ CONFIG = {
     'fallback_model_name': 'distiluse-base-multilingual-cased-v1',
     'cache_dir': os.environ.get('EMBEDDING_CACHE_DIR', '/tmp/article_embeddings'),
     'days_threshold': int(os.environ.get('DAYS_THRESHOLD', 14)),
-    'base_distance_threshold': float(os.environ.get('DISTANCE_THRESHOLD', 0.15)),
+    'base_distance_threshold': float(os.environ.get('DISTANCE_THRESHOLD', 0.08)),
     'batch_size': int(os.environ.get('BATCH_SIZE', 32)),
     'min_text_length': int(os.environ.get('MIN_TEXT_LENGTH', 50)),
     'min_keyword_matches': int(os.environ.get('MIN_KEYWORD_MATCHES', 2)),
     'cluster_match_threshold': float(os.environ.get('CLUSTER_MATCH_THRESHOLD', 0.5)),
-    'use_hdbscan': os.environ.get('USE_HDBSCAN', 'False').lower() == 'true',
+    'use_hdbscan': True,
     'circuit_breaker_attempts': int(os.environ.get('CIRCUIT_BREAKER_ATTEMPTS', 3)),
     'stopwords': set(['this', 'that', 'with', 'from', 'what', 'when', 'where', 'which', 'about', 'have', 'will', 'your', 'their', 'there', 'they', 'these', 'those', 'some', 'were', 'after', 'before', 'could', 'should', 'would']),
 }
@@ -193,51 +194,179 @@ class TopicExtractor:
     """Extract keywords and topics from article clusters."""
     
     def __init__(self):
+        # Enhanced stopwords list with common web terms and non-informative words
+        self.extended_stopwords = list(CONFIG['stopwords']) + [
+            'com', 'www', 'http', 'https', 'html', 'jpg', 'png', 'pdf',
+            'says', 'said', 'according', 'reported', 'report', 'reports',
+            'year', 'years', 'month', 'months', 'week', 'weeks', 'day', 'days',
+            'time', 'times', 'new', 'news', 'latest', 'update', 'updates',
+            'first', 'last', 'next', 'previous', 'one', 'two', 'three', 'four', 'five',
+            'article', 'story', 'post', 'read', 'view', 'click', 'find', 'get',
+            'just', 'like', 'make', 'made', 'take', 'took', 'way', 'use', 'used',
+            'know', 'need', 'see', 'look', 'want', 'going', 'come', 'came', 'back'
+        ]
+        
+        # Improved vectorizer with better parameters
         self.vectorizer = CountVectorizer(
-            max_features=100, 
-            stop_words='english',
-            min_df=2,
-            max_df=0.9
+            max_features=200,  # Increased to capture more potential topics
+            stop_words=self.extended_stopwords,
+            min_df=2,  # Term must appear in at least 2 documents
+            max_df=0.85,  # Ignore terms that appear in >85% of documents
+            ngram_range=(1, 2)  # Include bigrams for more meaningful topics
         )
         
     def extract_topics(self, articles, top_n=5):
-        """Extract top keywords from a group of articles."""
+        """Extract top keywords and meaningful topics from a group of articles."""
         if not articles:
             return []
             
-        texts = []
-        for article in articles:
-            title = article.get('title', '')
-            content = article.get('content', '')
-            texts.append(f"{title} {content}")
+        # For single article clusters, use a simplified approach
+        if len(articles) == 1:
+            return self._extract_topics_from_single_article(articles[0], top_n)
             
-        try:
-            X = self.vectorizer.fit_transform(texts)
-            # Sum up word counts across all articles
-            word_counts = X.sum(axis=0)
-            word_counts = np.asarray(word_counts).flatten()
-            # Get top words
-            top_indices = word_counts.argsort()[-top_n:][::-1]
-            top_keywords = [self.vectorizer.get_feature_names_out()[i] for i in top_indices]
-            return top_keywords
-        except Exception as e:
-            logging.warning(f"Topic extraction failed: {e}")
-            # Fallback to basic keyword extraction from titles
-            all_words = []
-            for article in articles:
-                title = article.get('title', '')
-                words = [w.lower() for w in title.split() 
-                         if len(w) > 3 and w.lower() not in CONFIG['stopwords']]
-                all_words.extend(words)
-                
-            # Count word frequencies
+        # For very small clusters, adjust vectorizer parameters
+        if len(articles) < 3:
+            return self._extract_topics_from_small_cluster(articles, top_n)
+            
+        # Standard approach for larger clusters
+        return self._extract_topics_from_cluster(articles, top_n)
+    
+    def _extract_topics_from_single_article(self, article, top_n=5):
+        """Extract topics from a single article, focusing on the title."""
+        title = self._clean_text(article.get('title', ''))
+        content = self._clean_text(article.get('content', ''))
+        
+        # Extract significant words from title
+        title_words = [w.lower() for w in title.split() 
+                     if len(w) > 3 and w.lower() not in self.extended_stopwords]
+        
+        # If we have enough words from the title, prioritize those
+        if len(title_words) >= top_n:
+            # Count frequencies
             word_freq = defaultdict(int)
-            for word in all_words:
+            for word in title_words:
                 word_freq[word] += 1
                 
-            # Get top keywords
+            # Get top keywords from title
             sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
-            return [word for word, freq in sorted_words[:top_n]]
+            topics = [word for word, freq in sorted_words[:top_n]]
+            
+            # If we have enough topics, return them
+            if len(topics) >= min(3, top_n):
+                return topics
+        
+        # If title doesn't provide enough keywords, include content
+        all_text = f"{title} {content}"
+        words = [w.lower() for w in all_text.split() 
+                if len(w) > 3 and w.lower() not in self.extended_stopwords]
+        
+        # Count word frequencies
+        word_freq = defaultdict(int)
+        for word in words:
+            word_freq[word] += 1
+            
+        # Get top keywords
+        sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
+        return [word for word, freq in sorted_words[:top_n]]
+    
+    def _extract_topics_from_small_cluster(self, articles, top_n=5):
+        """Extract topics from a small cluster (2-3 articles)."""
+        # Collect all text
+        all_text = ""
+        for article in articles:
+            title = self._clean_text(article.get('title', ''))
+            content = self._clean_text(article.get('content', ''))
+            # Weight title more heavily
+            all_text += f"{title} {title} {content} "
+        
+        # Extract words and filter
+        words = [w.lower() for w in all_text.split() 
+                if len(w) > 3 and w.lower() not in self.extended_stopwords]
+        
+        # Count word frequencies
+        word_freq = defaultdict(int)
+        for word in words:
+            word_freq[word] += 1
+            
+        # Get top keywords
+        sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
+        return [word for word, freq in sorted_words[:top_n]]
+    
+    def _extract_topics_from_cluster(self, articles, top_n=5):
+        """Extract topics from a larger cluster using CountVectorizer."""
+        # Weight titles more heavily than content
+        texts = []
+        titles = []
+        for article in articles:
+            title = self._clean_text(article.get('title', ''))
+            content = self._clean_text(article.get('content', ''))
+            
+            # Add title and content to their respective lists
+            titles.append(title)
+            texts.append(f"{title} {title} {content}")  # Weight title 2x
+            
+        try:
+            # Create a custom vectorizer with parameters adjusted for cluster size
+            cluster_vectorizer = CountVectorizer(
+                max_features=200,
+                stop_words=self.extended_stopwords,
+                min_df=1,  # Accept terms that appear in at least 1 document
+                max_df=1.0,  # Accept terms that appear in all documents
+                ngram_range=(1, 2)  # Include bigrams
+            )
+            
+            # Extract topics from full text (titles + content)
+            X = cluster_vectorizer.fit_transform(texts)
+            word_counts = X.sum(axis=0)
+            word_counts = np.asarray(word_counts).flatten()
+            
+            # Get feature names and their counts
+            feature_names = cluster_vectorizer.get_feature_names_out()
+            word_count_pairs = [(feature_names[i], word_counts[i]) for i in range(len(feature_names))]
+            
+            # Filter out low-information terms
+            filtered_pairs = []
+            for term, count in word_count_pairs:
+                # Skip terms that are just numbers or very short
+                if term.isdigit() or len(term) < 3:
+                    continue
+                    
+                # Skip terms that are years (e.g., 2025)
+                if len(term) == 4 and term.isdigit() and 1900 <= int(term) <= 2100:
+                    continue
+                    
+                filtered_pairs.append((term, count))
+            
+            # Sort by count and get top terms
+            sorted_pairs = sorted(filtered_pairs, key=lambda x: x[1], reverse=True)
+            top_keywords = [term for term, count in sorted_pairs[:top_n]]
+            
+            # If we got meaningful topics, return them
+            if top_keywords:
+                return top_keywords
+                
+            # Fallback to title-only analysis if the above didn't work well
+            raise Exception("Primary topic extraction yielded poor results, falling back")
+            
+        except Exception as e:
+            logging.warning(f"Primary topic extraction failed: {e}. Using fallback method.")
+            return self._extract_topics_from_small_cluster(articles, top_n)
+    
+    def _clean_text(self, text):
+        """Clean text by removing URLs, special characters, etc."""
+        if not text:
+            return ""
+            
+        # Remove URLs
+        text = re.sub(r'https?://\S+|www\.\S+', '', text)
+        
+        # Remove special characters but keep spaces and alphanumerics
+        text = re.sub(r'[^\w\s]', ' ', text)
+        
+        # Remove extra whitespace
+        text = re.sub(r'\s+', ' ', text).strip()
+        
+        return text
 
 
 class ArticleClusterer:
@@ -329,12 +458,16 @@ class ArticleClusterer:
                 sim_mean = np.mean(similarities)
                 sim_std = np.std(similarities)
                 
-                # Adjust threshold based on distribution (higher mean similarity = higher threshold)
-                adjustment = (sim_mean - 0.5) * 0.1
-                adjusted_threshold = threshold + adjustment
+                # Adjust threshold based on distribution (higher mean similarity = lower threshold)
+                # This will create more distinct clusters when articles are more similar
+                adjustment = (sim_mean - 0.5) * 0.2
                 
-                # Ensure threshold stays in reasonable bounds
-                final_threshold = max(0.05, min(0.3, adjusted_threshold))
+                # For more distinct clusters, we lower the threshold when similarity is high
+                adjusted_threshold = threshold - adjustment
+                
+                # Ensure threshold stays in reasonable bounds, but allow for lower values
+                # to create more distinct clusters
+                final_threshold = max(0.05, min(0.25, adjusted_threshold))
                 
                 logging.info(f"Adaptive threshold calculation: base={threshold}, adjusted={final_threshold}")
                 return final_threshold
@@ -461,21 +594,61 @@ class ArticleClusterer:
         """
         Apply the appropriate clustering algorithm based on configuration.
         """
-        if CONFIG['use_hdbscan'] and len(embeddings) > 10:
+        if CONFIG['use_hdbscan']:
             try:
                 import hdbscan
-                # HDBSCAN is good for finding clusters of varying densities
-                clusterer = hdbscan.HDBSCAN(
-                    min_cluster_size=2,
-                    min_samples=1,
-                    metric='cosine',
-                    cluster_selection_epsilon=threshold,
-                    prediction_data=True
-                )
-                labels = clusterer.fit_predict(embeddings)
-                return labels
-            except (ImportError, Exception) as e:
-                logging.warning(f"HDBSCAN failed: {e}. Falling back to AgglomerativeClustering.")
+                # Install HDBSCAN if not already installed
+                try:
+                    # HDBSCAN is good for finding clusters of varying densities
+                    # Improved parameters for better clustering:
+                    # - Lower min_cluster_size to allow smaller clusters
+                    # - Adjusted min_samples for better noise handling
+                    # - Using 'euclidean' metric since 'cosine' isn't directly supported
+                    # - Added cluster_selection_method for better cluster extraction
+                    
+                    # First normalize the embeddings to unit length for cosine similarity
+                    # This allows us to use euclidean distance as a proxy for cosine distance
+                    normalized_embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
+                    
+                    clusterer = hdbscan.HDBSCAN(
+                        min_cluster_size=2,  # Allow clusters as small as 2 articles
+                        min_samples=1,       # More sensitive to noise points
+                        metric='euclidean',  # Use euclidean on normalized vectors (equivalent to cosine)
+                        cluster_selection_epsilon=threshold * 2,  # Adjust threshold for euclidean
+                        cluster_selection_method='eom',  # Excess of mass (better for varying density)
+                        prediction_data=True  # Keep prediction data for possible soft clustering
+                    )
+                    
+                    # Fit the model and get cluster labels
+                    labels = clusterer.fit_predict(embeddings)
+                    
+                    # If we got only noise points (label -1), try with more permissive settings
+                    if np.all(labels == -1) and len(embeddings) > 3:
+                        logging.info("All points classified as noise, trying more permissive clustering")
+                        clusterer = hdbscan.HDBSCAN(
+                            min_cluster_size=2,
+                            min_samples=1,
+                            metric='cosine',
+                            cluster_selection_epsilon=threshold * 1.5,  # More permissive threshold
+                            prediction_data=True
+                        )
+                        labels = clusterer.fit_predict(embeddings)
+                    
+                    # If we still have all noise, fall back to agglomerative clustering
+                    if np.all(labels == -1) and len(embeddings) > 3:
+                        logging.info("HDBSCAN still classified all points as noise, falling back to AgglomerativeClustering")
+                        raise Exception("HDBSCAN produced all noise points")
+                        
+                    unique_labels = set(labels)
+                    if -1 in unique_labels:
+                        unique_labels.remove(-1)
+                    logging.info(f"HDBSCAN created {len(unique_labels)} clusters")
+                    return labels
+                    
+                except Exception as e:
+                    logging.warning(f"HDBSCAN clustering failed: {e}. Falling back to AgglomerativeClustering.")
+            except ImportError:
+                logging.warning("HDBSCAN not installed. Falling back to AgglomerativeClustering.")
         
         # Time-weighted similarity matrix if we have publication times
         if publication_times and len(publication_times) == len(embeddings):
@@ -573,8 +746,9 @@ class ArticleClusterer:
                 # Check if they have the same cluster label 
                 # AND are from different sources (avoid duplicate articles)
                 # OR they have significant topic overlap
+                common_topics = len(cluster_topics[key1].intersection(cluster_topics[key2]))
                 if (label1 == label2 and source1 != source2) or (
-                    cluster_topics[key1].intersection(cluster_topics[key2]) >= CONFIG['min_keyword_matches']
+                    common_topics >= CONFIG['min_keyword_matches']
                 ):
                     # Check publication time proximity
                     time_matches = 0
