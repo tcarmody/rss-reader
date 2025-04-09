@@ -90,15 +90,17 @@ class ArticleSummarizer:
                 "1. First line: Create a headline in sentence case\n"
                 "2. Then a blank line\n"
                 "3. Then a summary of three to five sentences that:\n"
-                "   - First sentence: Explains what has happened in clear, simple language\n"
-                "   - Second and third sentences: Identify important details relevant to AI developers\n"
-                "   - Fourth sentence: Explains why this information matters to readers who follow AI news\n"
-                "   - Fifth sentence (if applicable): Lists details of price and availability for new models/tools\n"
+                "   - Presents key information directly and factually\n"
+                "   - Includes technical details relevant to AI developers\n"
+                "   - Covers implications for the AI industry or technology landscape\n"
+                "   - Mentions price and availability details for new models/tools (if applicable)\n"
                 "4. Then a blank line\n"
                 "5. Then add 'Source: [publication name]' followed by the URL\n\n"
                 "Style guidelines:\n"
                 "- Use active voice (e.g., 'Company released product' not 'Product was released by company')\n"
                 "- Use non-compound verbs (e.g., 'banned' instead of 'has banned')\n"
+                "- Avoid self-explanatory phrases like 'This article explains...', 'This is important because...', or 'The author discusses...'\n"
+                "- Present information directly without meta-commentary\n"
                 "- Avoid the words 'content' and 'creator'\n"
                 "- Spell out numbers (e.g., '8 billion' not '8B', '100 million' not '100M')\n"
                 "- Use 'U.S.' and 'U.K.' with periods; use 'AI' without periods\n"
@@ -113,7 +115,7 @@ class ArticleSummarizer:
                 model="claude-3-haiku-20240307",
                 max_tokens=400,
                 temperature=0.3,
-                system="You are an expert at creating summaries of articles. Summaries should be factual, informative, fairly simple in structure, and free from exaggeration, hype, or marketing speak. Double-check summaries to ensure accuracy and remove any exaggerated language.",
+                system="You are an expert at creating summaries of articles. Your summaries should be factual, informative, concise, and written in a direct journalistic style. Avoid meta-language or self-explanatory phrases like 'This article explains...', 'This is important for AI developers because...', or 'The author discusses...'. Instead, present information directly and factually. Write in a clear, straightforward manner without exaggeration, hype, or marketing speak. Focus on conveying the key points and implications without explicitly stating that you're doing so.",
                 messages=[{
                     "role": "user",
                     "content": prompt
