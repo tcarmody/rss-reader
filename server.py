@@ -4,9 +4,13 @@ Web server for RSS Reader that displays summarized articles in a browser.
 
 import os
 import logging
+import sys
 from datetime import datetime
 from flask import Flask, render_template, redirect, url_for, request, jsonify
 from reader import RSSReader
+
+# Set environment variable to enable paywall bypass
+os.environ['ENABLE_PAYWALL_BYPASS'] = 'true'
 
 # Configure logging
 logging.basicConfig(
@@ -61,7 +65,8 @@ def refresh_feeds():
         except ValueError:
             batch_delay = 15
         
-        # Initialize and run RSS reader
+        # Initialize and run RSS reader with paywall bypass enabled
+        # Environment variable ENABLE_PAYWALL_BYPASS is already set at the top of the file
         reader = RSSReader(
             feeds=feeds_list,
             batch_size=batch_size,
@@ -173,5 +178,60 @@ def debug():
     
     return jsonify(debug_info)
 
+def initialize_data():
+    """Initialize the latest data by running the RSS reader once at startup."""
+    try:
+        logging.info("Initializing RSS reader with paywall bypass enabled...")
+        reader = RSSReader()
+        output_file = reader.process_feeds()
+        
+        if output_file:
+            # Get the clusters from the reader
+            clusters = reader.last_processed_clusters
+            
+            # Fix: Ensure every cluster has proper summaries
+            for cluster in clusters:
+                if cluster and len(cluster) > 0:
+                    # Get the first article in the cluster
+                    first_article = cluster[0]
+                    
+                    # Check if the article has a summary
+                    if 'summary' not in first_article or first_article['summary'] is None:
+                        # No summary exists, create a default one
+                        logging.warning(f"No summary found for cluster with article: {first_article.get('title')}")
+                        first_article['summary'] = {
+                            'headline': first_article.get('title', 'News Article'),
+                            'summary': f"This is a cluster of {len(cluster)} related articles about {first_article.get('title', 'various topics')}."
+                        }
+                    elif isinstance(first_article['summary'], str):
+                        # Summary is a string, convert to proper dict format
+                        summary_text = first_article['summary']
+                        first_article['summary'] = {
+                            'headline': first_article.get('title', 'News Article'),
+                            'summary': summary_text
+                        }
+                    elif isinstance(first_article['summary'], dict):
+                        # Summary is a dict, ensure it has the required fields
+                        if 'headline' not in first_article['summary']:
+                            first_article['summary']['headline'] = first_article.get('title', 'News Article')
+                        if 'summary' not in first_article['summary']:
+                            first_article['summary']['summary'] = f"This is a cluster of {len(cluster)} related articles."
+            
+            # Update latest data with the modified clusters
+            latest_data['clusters'] = clusters
+            latest_data['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            latest_data['output_file'] = output_file
+            
+            logging.info(f"Successfully initialized RSS reader with data: {output_file}")
+        else:
+            logging.warning("No articles found or processed during initialization")
+    
+    except Exception as e:
+        logging.error(f"Error initializing RSS reader: {str(e)}", exc_info=True)
+
 if __name__ == '__main__':
+    # Initialize data at startup
+    initialize_data()
+    
+    # Run the Flask app
     app.run(debug=True, host='0.0.0.0', port=5004)

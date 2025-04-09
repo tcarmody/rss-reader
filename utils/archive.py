@@ -8,6 +8,9 @@ from urllib.parse import urlparse, quote
 import requests
 from bs4 import BeautifulSoup
 
+# Import source extractor utilities
+from utils.source_extractor import is_aggregator_link, extract_original_source_url
+
 # List of known paywall domains
 PAYWALL_DOMAINS = [
     'nytimes.com',
@@ -276,27 +279,41 @@ def fetch_article_content(url, session=None):
         })
     
     content = ""
+    original_url = url
+    source_extracted = False
+    
+    # Check if this is a news aggregator link (Techmeme or Google News)
+    if is_aggregator_link(url):
+        logging.info(f"Detected aggregator link: {url}, extracting original source")
+        source_url = extract_original_source_url(url, session)
+        
+        if source_url:
+            logging.info(f"Successfully extracted original source URL: {source_url} from aggregator: {url}")
+            original_url = source_url
+            source_extracted = True
+        else:
+            logging.warning(f"Failed to extract original source URL from aggregator: {url}")
     
     # Check if the URL is paywalled
-    if is_paywalled(url):
-        logging.info(f"Detected paywall for {url}, trying archive services")
+    if is_paywalled(original_url):
+        logging.info(f"Detected paywall for {original_url}, trying archive services")
         
         # Try to get an archive URL
-        archive_url = get_archive_url(url, session)
+        archive_url = get_archive_url(original_url, session)
         
         if archive_url:
             # Extract content from the archive
             content = get_content_from_archive(archive_url, session)
             
             if content:
-                logging.info(f"Successfully extracted content from archive for {url}")
+                logging.info(f"Successfully extracted content from archive for {original_url}")
                 return content
             else:
-                logging.warning(f"Failed to extract content from archive for {url}")
+                logging.warning(f"Failed to extract content from archive for {original_url}")
     
     # If not paywalled or archive failed, try direct access
     try:
-        response = session.get(url, timeout=10)
+        response = session.get(original_url, timeout=10)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
             
@@ -318,7 +335,10 @@ def fetch_article_content(url, session=None):
                     content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
                     
                     if content:
-                        logging.info(f"Successfully extracted content directly from {url}")
+                        if source_extracted:
+                            logging.info(f"Successfully extracted content from original source: {original_url} (via aggregator: {url})")
+                        else:
+                            logging.info(f"Successfully extracted content directly from {original_url}")
                         return content
             
             # If no content found with selectors, use readability as fallback
@@ -328,11 +348,14 @@ def fetch_article_content(url, session=None):
                 content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
                 
                 if content:
-                    logging.info(f"Extracted content using fallback method from {url}")
+                    if source_extracted:
+                        logging.info(f"Extracted content using fallback method from original source: {original_url} (via aggregator: {url})")
+                    else:
+                        logging.info(f"Extracted content using fallback method from {original_url}")
                     return content
     
     except Exception as e:
         logging.warning(f"Error fetching content directly: {str(e)}")
     
-    logging.warning(f"Failed to extract content from {url}")
+    logging.warning(f"Failed to extract content from {original_url}")
     return content

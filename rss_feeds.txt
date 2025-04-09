@@ -24,3 +24,5 @@ https://www.euractiv.com/sections/digital/feed/  # Euractiv Digital
 https://www.theinformation.com/feed  # The Information
 https://www.theverge.com/rss/index.xml  # The Verge
 https://rss.app/feeds/VSCybNbHxc5Dm2Ig.xml # Techmeme AI
+https://news.google.com/rss/search?q=artificial+intelligence&hl=en-US&gl=US&ceid=US:en  # Google News AI
+https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGRqTVhZU0FtVnVHZ0pWVXlnQVAB/sections/CAQiQ0NCQVNMQW9JTDIwdk1EZGpNWFlTQW1WdUdnSlZVeUlOQ0FRYUNRb0hMMjB2TUcxcmVpb0pFZ2N2YlM4d2JXdDZLQUEqKggAKiYICiIgQ0JBU0Vnb0lMMjB2TURkak1YWVNBbVZ1R2dKVlV5Z0FQAVAB?hl=en-US&gl=US&ceid=US:en&oc=11  # Google News Tech
