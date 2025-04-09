@@ -501,7 +501,7 @@ class ArticleClusterer:
                 clustering = AgglomerativeClustering(
                     n_clusters=None,
                     distance_threshold=threshold,
-                    affinity='precomputed',
+                    metric='precomputed',
                     linkage='complete'
                 ).fit(distances)
                 

@@ -543,5 +543,10 @@
     "headline": "AI Therapists Offer Mental Health Advice",
     "summary": "Generative AI models are now providing mental health advice for various disorders, including those outlined in the Diagnostic and Statistical Manual of Mental Disorders (DSM-5). Researchers have found that these AI-powered chatbots have \"amazing potential\" in providing therapy, but also caution that they could further isolate vulnerable patients instead of easing their suffering. The study, conducted by Dartmouth, put an AI therapy chatbot through a rigorous randomized controlled trial, comparing its effectiveness to playing the game Tetris.",
     "timestamp": 1744027716.0654988
+  },
+  "bbe4eb9502be7425f4c1f945913ffb18": {
+    "headline": "AI-Powered 'Wizard of Oz' Reimagining Announced",
+    "summary": "Google and Sphere Entertainment have announced a new AI technology partnership to help bring the upcoming 'The Wizard of Oz at Sphere' project to life. The partnership will leverage Google Cloud's AI and advanced computing capabilities to 'reimagine' the classic 1939 film. This collaboration aims to push the boundaries of what's possible with AI in entertainment, showcasing its potential to enhance and transform beloved stories. The news is significant for AI developers, as it demonstrates how the technology is being applied in innovative ways within the media and entertainment industry.",
+    "timestamp": 1744191410.4508622
   }
 }
