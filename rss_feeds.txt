@@ -1,1 +1,26 @@
 https://rss.app/feeds/tia0gUGHHTgNGSA6.xml # AI Omnibus Feed
+https://rss.app/feeds/6851Bh8P3Z7zwBor.xml  # Meta AI Blog
+https://deepmind.com/blog/rss.xml  # Google DeepMind Blog
+https://huggingface.co/blog/feed.xml  # Hugging Face Blog
+https://about.fb.com/feed/  # Facebook Newsroom
+https://news.microsoft.com/source/feed/  # Microsoft News
+https://developer.nvidia.com/blog/feed/  # NVIDIA Developer Blog
+https://jamesg.blog/openai.xml  # OpenAI Blog (Unofficial)
+https://github.blog/feed/  # GitHub Blog
+https://apnews.com/hub/artificial-intelligence.rss  # Associated Press AI News
+https://www.ft.com/artificial-intelligence?format=rss  # Financial Times AI Coverage
+https://www.theguardian.com/technology/artificialintelligenceai/rss  # The Guardian AI Tech
+https://www.technologyreview.com/feed/  # MIT Technology Review
+https://www.nytimes.com/svc/collections/v1/publish/https://www.nytimes.com/spotlight/artificial-intelligence/rss.xml  # NYT AI Coverage
+https://the-decoder.com/feed/  # The Decoder AI News
+https://feeds.feedburner.com/venturebeat/SZYF  # VentureBeat
+https://www.wired.com/feed/tag/ai/latest/rss  # Wired AI Tag
+https://blog.research.google/atom.xml  # Google Research Blog
+https://www.deepmind.com/blog/rss.xml  # DeepMind Blog
+https://a16z.com/feed  # Andreessen Horowitz Blog
+https://techcrunch.com/feed/  # TechCrunch
+https://www.techmeme.com/feed.xml  # Techmeme
+https://www.euractiv.com/sections/digital/feed/  # Euractiv Digital
+https://www.theinformation.com/feed  # The Information
+https://www.theverge.com/rss/index.xml  # The Verge
+https://rss.app/feeds/VSCybNbHxc5Dm2Ig.xml # Techmeme AI
