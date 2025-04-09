@@ -34,7 +34,7 @@
 
                 {% if cluster[0].summary.summary %}
                     <div class="article-summary">
-                        {{ cluster[0].summary.summary }}
+                        {{ cluster[0].summary.summary|replace('\n\n', '<br><br>')|replace('\n', '<br>')|safe }}
                     </div>
                 {% endif %}
 

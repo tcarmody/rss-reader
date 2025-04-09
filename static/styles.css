@@ -205,6 +205,16 @@ header h1 {
     border-left: 4px solid var(--primary-color);
 }
 
+.article-summary br {
+    display: block;
+    content: "";
+    margin-top: 0.5rem;
+}
+
+.article-summary br + br {
+    margin-top: 1rem;
+}
+
 /* Articles */
 .article {
     margin-bottom: 1.5rem;
