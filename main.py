@@ -25,7 +25,7 @@ def main():
     """
     parser = argparse.ArgumentParser(description="RSS Reader and Summarizer")
     parser.add_argument("--feeds", nargs="+", help="List of feed URLs to process")
-    parser.add_argument("--batch-size", type=int, default=100, help="Number of feeds to process in a batch")
+    parser.add_argument("--batch-size", type=int, default=25, help="Number of feeds to process in a batch")
     parser.add_argument("--batch-delay", type=int, default=15, help="Delay between batches in seconds")
     
     args = parser.parse_args()
