@@ -5,6 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RSS Feed Summary</title>
     <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .paywall-toggle {
+            margin-left: 15px;
+        }
+        .paywall-toggle button {
+            padding: 8px 12px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+        }
+        .paywall-toggle .enabled {
+            background-color: #dc3545;
+        }
+        .paywall-toggle .disabled {
+            background-color: #6c757d;
+        }
+        .paywall-toggle small {
+            display: block;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .paywall-toggle .warning {
+            color: #dc3545;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -16,6 +43,14 @@
             <a href="/" class="button">Home</a>
             <form action="/refresh" method="post" style="display: inline;">
                 <button type="submit" class="button">Refresh Feeds</button>
+            </form>
+            <form action="/toggle_paywall_bypass" method="post" class="paywall-toggle" style="display: inline-block;">
+                <button type="submit" class="{{ 'enabled' if paywall_bypass_enabled else 'disabled' }}">
+                    {{ 'Disable' if paywall_bypass_enabled else 'Enable' }} Paywall Bypass
+                </button>
+                {% if paywall_bypass_enabled %}
+                <small class="warning">Warning: Bypassing paywalls may violate some sites' terms of service</small>
+                {% endif %}
             </form>
         </div>
     </header>
