@@ -6,7 +6,7 @@ import os
 import logging
 import sys
 from datetime import datetime
-from flask import Flask, render_template, redirect, url_for, request, jsonify
+from flask import Flask, render_template, redirect, url_for, request, jsonify, session
 
 # Import in a try/except block to provide better error messages
 try:
@@ -14,9 +14,6 @@ try:
 except ImportError:
     print("Error: Could not import RSSReader. Make sure reader.py is in the same directory.")
     sys.exit(1)
-
-# Set environment variable to enable paywall bypass
-os.environ['ENABLE_PAYWALL_BYPASS'] = 'true'
 
 # Configure logging
 logging.basicConfig(
@@ -29,6 +26,9 @@ app = Flask(__name__,
             template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
             static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
+# Set a secret key for session management
+app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
+
 # Store the latest processed data
 latest_data = {
     'clusters': [],
@@ -40,17 +40,37 @@ latest_data = {
 @app.route('/')
 def index():
     """Render the main page with the latest summaries or a welcome page if none exist."""
+    # Initialize paywall_bypass status in session if not already set
+    if 'paywall_bypass_enabled' not in session:
+        session['paywall_bypass_enabled'] = False
+    
     if latest_data['clusters']:
         return render_template(
             'feed-summary.html',
             clusters=latest_data['clusters'],
-            timestamp=latest_data['timestamp']
+            timestamp=latest_data['timestamp'],
+            paywall_bypass_enabled=session.get('paywall_bypass_enabled', False)
         )
     else:
         return render_template(
             'welcome.html',
-            has_default_feeds=os.path.exists(os.path.join(os.path.dirname(__file__), 'rss_feeds.txt'))
+            has_default_feeds=os.path.exists(os.path.join(os.path.dirname(__file__), 'rss_feeds.txt')),
+            paywall_bypass_enabled=session.get('paywall_bypass_enabled', False)
         )
+
+@app.route('/toggle_paywall_bypass', methods=['POST'])
+def toggle_paywall_bypass():
+    """Toggle the paywall bypass setting."""
+    current_status = session.get('paywall_bypass_enabled', False)
+    session['paywall_bypass_enabled'] = not current_status
+    
+    # Log the change
+    if session['paywall_bypass_enabled']:
+        logging.info("Paywall bypass enabled by user")
+    else:
+        logging.info("Paywall bypass disabled by user")
+    
+    return redirect(request.referrer or url_for('index'))
 
 @app.route('/refresh', methods=['POST'])
 def refresh_feeds():
@@ -88,8 +108,15 @@ def refresh_feeds():
         else:
             logging.info("No feeds specified, will use default feeds")
         
-        # Initialize and run RSS reader with paywall bypass enabled
-        # Environment variable ENABLE_PAYWALL_BYPASS is already set at the top of the file
+        # Set the environment variable for paywall bypass based on user preference
+        if session.get('paywall_bypass_enabled', False):
+            os.environ['ENABLE_PAYWALL_BYPASS'] = 'true'
+            logging.info("Using paywall bypass as per user setting")
+        else:
+            os.environ['ENABLE_PAYWALL_BYPASS'] = 'false'
+            logging.info("Paywall bypass disabled as per user setting")
+        
+        # Initialize and run RSS reader with paywall bypass setting from user preference
         reader = RSSReader(
             feeds=feeds_list,
             batch_size=batch_size,
@@ -143,11 +170,15 @@ def refresh_feeds():
             return redirect(url_for('index'))
         else:
             logging.warning("No articles found or processed")
-            return render_template('error.html', message="No articles found or processed. Check the logs for details.")
+            return render_template('error.html', 
+                                  message="No articles found or processed. Check the logs for details.",
+                                  paywall_bypass_enabled=session.get('paywall_bypass_enabled', False))
     
     except Exception as e:
         logging.error(f"Error refreshing feeds: {str(e)}", exc_info=True)
-        return render_template('error.html', message=f"Error: {str(e)}")
+        return render_template('error.html', 
+                              message=f"Error: {str(e)}",
+                              paywall_bypass_enabled=session.get('paywall_bypass_enabled', False))
 
 @app.route('/status')
 def status():
@@ -156,7 +187,8 @@ def status():
         'has_data': bool(latest_data['clusters']),
         'last_updated': latest_data['timestamp'],
         'article_count': sum(len(cluster) for cluster in latest_data['clusters']) if latest_data['clusters'] else 0,
-        'cluster_count': len(latest_data['clusters']) if latest_data['clusters'] else 0
+        'cluster_count': len(latest_data['clusters']) if latest_data['clusters'] else 0,
+        'paywall_bypass_enabled': session.get('paywall_bypass_enabled', False)
     })
 
 @app.route('/debug')
@@ -172,6 +204,7 @@ def debug():
     debug_info = {
         'timestamp': latest_data['timestamp'],
         'cluster_count': len(latest_data['clusters']),
+        'paywall_bypass_enabled': session.get('paywall_bypass_enabled', False),
         'clusters': []
     }
     
@@ -204,7 +237,10 @@ def debug():
 def initialize_data():
     """Initialize the latest data by running the RSS reader once at startup."""
     try:
-        logging.info("Initializing RSS reader with paywall bypass enabled...")
+        # Default to paywall bypass disabled
+        os.environ['ENABLE_PAYWALL_BYPASS'] = 'false'
+        
+        logging.info("Initializing RSS reader (paywall bypass disabled by default)...")
         reader = RSSReader()
         output_file = reader.process_feeds()
         
