@@ -375,6 +375,38 @@
       font-size: 0.875rem;
     }
 
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--neutral-200);
+      margin-bottom: 1.5rem;
+    }
+
+    .tab {
+      padding: 0.75rem 1.25rem;
+      cursor: pointer;
+      font-weight: 500;
+      color: var(--neutral-600);
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      color: var(--primary);
+    }
+
+    .tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
     @media (max-width: 768px) {
       .settings-grid {
         grid-template-columns: 1fr;
@@ -406,7 +438,10 @@
         <h1 class="card-title">Welcome to Data Points AI</h1>
         <p>Smart AI-powered RSS reader that summarizes and clusters related articles automatically.</p>
         
+        <!-- Configuration Section -->
+        <h3 class="card-title">Global Settings</h3>
         <div class="settings-grid">
+          <!-- Paywall Access -->
           <div class="setting-card">
             <div class="setting-header">
               <svg class="setting-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -435,6 +470,7 @@
             </form>
           </div>
           
+          <!-- Feed Processing -->
           <div class="setting-card">
             <div class="setting-header">
               <svg class="setting-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -446,16 +482,18 @@
             </div>
             <p class="setting-description">Control how NewsAI processes your RSS feeds.</p>
             
-            <div class="input-group">
-              <div class="form-group">
-                <label class="form-label" for="batch_size_setting">Batch Size</label>
-                <input class="form-input" type="number" id="batch_size_setting" value="25" min="1">
+            <form id="globalSettingsForm">
+              <div class="input-group">
+                <div class="form-group">
+                  <label class="form-label" for="global_batch_size">Batch Size</label>
+                  <input class="form-input" type="number" id="global_batch_size" name="global_batch_size" value="25" min="1">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="global_batch_delay">Delay (sec)</label>
+                  <input class="form-input" type="number" id="global_batch_delay" name="global_batch_delay" value="15" min="1">
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label" for="batch_delay_setting">Delay (sec)</label>
-                <input class="form-input" type="number" id="batch_delay_setting" value="15" min="1">
-              </div>
-            </div>
+            </form>
           </div>
         </div>
         
@@ -463,44 +501,49 @@
           <p><strong>No summaries available yet.</strong> Use default feeds or add your own custom sources below.</p>
         </div>
         
-        {% if has_default_feeds %}
-        <div class="feed-section">
-          <h3>Start with Default Feeds</h3>
-          <p>Process articles from the default feed list in <span class="code">rss_feeds.txt</span>.</p>
-          <p><span class="strong">Note:</span> This will process all feeds in the list.</p>
-          
-          <form action="/refresh" method="post" style="margin-top: 1rem">
-            <input type="hidden" name="use_default" value="true">
-            <button type="submit" class="button success large">Process Default Feeds</button>
-          </form>
+        <!-- Feed Processing Section -->
+        <div class="tabs">
+          <div class="tab active" data-tab="default-feeds">Default Feeds</div>
+          <div class="tab" data-tab="custom-feeds">Custom Feeds</div>
         </div>
         
-        <div class="separator">
-          <span>OR</span>
-        </div>
-        {% endif %}
-        
-        <h3 class="card-title">Custom Feeds</h3>
-        <form action="/refresh" method="post">
-          <div class="form-group">
-            <label class="form-label" for="feeds">RSS Feed URLs (one per line)</label>
-            <textarea class="form-input" id="feeds" name="feeds" placeholder="https://example.com/rss.xml"></textarea>
+        <!-- Default Feeds -->
+        <div class="tab-content active" id="default-feeds">
+          {% if has_default_feeds %}
+          <div class="feed-section">
+            <h3>Process Default Feeds</h3>
+            <p>Process articles from the default feed list in <span class="code">rss_feeds.txt</span>.</p>
+            <p><span class="strong">Note:</span> This will process all feeds in the list using the global settings above.</p>
+            
+            <form action="/refresh" method="post" style="margin-top: 1rem">
+              <input type="hidden" name="use_default" value="true">
+              <input type="hidden" name="batch_size" id="default_batch_size">
+              <input type="hidden" name="batch_delay" id="default_batch_delay">
+              <button type="submit" class="button success large">Process Default Feeds</button>
+            </form>
           </div>
-          
-          <div class="input-group">
+          {% else %}
+          <div class="info-banner">
+            <p>No default feeds found. Please create a <span class="code">rss_feeds.txt</span> file or add custom feeds.</p>
+          </div>
+          {% endif %}
+        </div>
+        
+        <!-- Custom Feeds -->
+        <div class="tab-content" id="custom-feeds">
+          <h3>Add Custom Feeds</h3>
+          <form action="/refresh" method="post">
             <div class="form-group">
-              <label class="form-label" for="batch_size">Batch Size</label>
-              <input class="form-input" type="number" id="batch_size" name="batch_size" value="25" min="1">
+              <label class="form-label" for="feeds">RSS Feed URLs (one per line)</label>
+              <textarea class="form-input" id="feeds" name="feeds" placeholder="https://example.com/rss.xml"></textarea>
             </div>
             
-            <div class="form-group">
-              <label class="form-label" for="batch_delay">Batch Delay (seconds)</label>
-              <input class="form-input" type="number" id="batch_delay" name="batch_delay" value="15" min="1">
-            </div>
-          </div>
-          
-          <button type="submit" class="button">Process Custom Feeds</button>
-        </form>
+            <input type="hidden" name="batch_size" id="custom_batch_size">
+            <input type="hidden" name="batch_delay" id="custom_batch_delay">
+            
+            <button type="submit" class="button">Process Custom Feeds</button>
+          </form>
+        </div>
       </div>
     </main>
     
@@ -508,5 +551,55 @@
       <p>Powered by Data Points AI with Anthropic Claude API</p>
     </footer>
   </div>
+  
+  <script>
+    // Tab switching functionality
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Remove active class from all tabs and contents
+        tabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        
+        // Add active class to clicked tab
+        tab.classList.add('active');
+        
+        // Show corresponding content
+        const tabId = tab.getAttribute('data-tab');
+        document.getElementById(tabId).classList.add('active');
+      });
+    });
+    
+    // Synchronize global settings with the form submissions
+    const globalBatchSizeInput = document.getElementById('global_batch_size');
+    const globalBatchDelayInput = document.getElementById('global_batch_delay');
+    const defaultBatchSizeInput = document.getElementById('default_batch_size');
+    const defaultBatchDelayInput = document.getElementById('default_batch_delay');
+    const customBatchSizeInput = document.getElementById('custom_batch_size');
+    const customBatchDelayInput = document.getElementById('custom_batch_delay');
+    
+    // Update hidden fields when global settings change
+    function updateHiddenFields() {
+      defaultBatchSizeInput.value = globalBatchSizeInput.value;
+      defaultBatchDelayInput.value = globalBatchDelayInput.value;
+      customBatchSizeInput.value = globalBatchSizeInput.value;
+      customBatchDelayInput.value = globalBatchDelayInput.value;
+    }
+    
+    // Initialize hidden fields with global settings
+    updateHiddenFields();
+    
+    // Add event listeners to update when global settings change
+    globalBatchSizeInput.addEventListener('change', updateHiddenFields);
+    globalBatchDelayInput.addEventListener('change', updateHiddenFields);
+    
+    // Update before form submission
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+      form.addEventListener('submit', updateHiddenFields);
+    });
+  </script>
 </body>
 </html>
