@@ -80,11 +80,34 @@
         .primary-button:hover {
             background-color: #218838;
         }
+        .danger-button {
+            background-color: #dc3545;
+        }
+        .danger-button:hover {
+            background-color: #c82333;
+        }
+        .secondary-button {
+            background-color: #6c757d;
+        }
+        .secondary-button:hover {
+            background-color: #5a6268;
+        }
+        .btn-sm {
+            padding: 8px 12px;
+            font-size: 14px;
+        }
         .info-box {
             background-color: #e0f0ff;
             border-left: 4px solid #0066cc;
             padding: 15px;
             margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-top: 10px;
             border-radius: 4px;
         }
         .default-feeds-section {
@@ -131,6 +154,21 @@
             color: #888;
             font-size: 0.9em;
         }
+        .settings-box {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .text-danger {
+            color: #dc3545;
+        }
+        small {
+            font-size: 80%;
+            display: block;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -142,6 +180,20 @@
         <div class="container">
             <h2>Welcome to RSS Reader</h2>
             <p>This web application fetches articles from RSS feeds, summarizes them using AI, and clusters related articles together.</p>
+            
+            <div class="settings-box">
+                <h3>Settings</h3>
+                <form action="/toggle_paywall_bypass" method="post">
+                    <button type="submit" class="btn-sm {{ 'danger-button' if paywall_bypass_enabled else 'secondary-button' }}">
+                        {{ 'Disable' if paywall_bypass_enabled else 'Enable' }} Paywall Bypass
+                    </button>
+                    {% if paywall_bypass_enabled %}
+                    <small class="text-danger">Warning: Bypassing paywalls may violate some sites' terms of service</small>
+                    {% else %}
+                    <small>Enable this option to attempt reading articles behind paywalls</small>
+                    {% endif %}
+                </form>
+            </div>
             
             <div class="info-box">
                 <p><strong>No summaries available yet.</strong> You can either use the default feeds or specify custom feeds below.</p>
