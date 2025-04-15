@@ -7,7 +7,13 @@ import logging
 import sys
 from datetime import datetime
 from flask import Flask, render_template, redirect, url_for, request, jsonify
-from reader import RSSReader
+
+# Import in a try/except block to provide better error messages
+try:
+    from reader import RSSReader
+except ImportError:
+    print("Error: Could not import RSSReader. Make sure reader.py is in the same directory.")
+    sys.exit(1)
 
 # Set environment variable to enable paywall bypass
 os.environ['ENABLE_PAYWALL_BYPASS'] = 'true'
@@ -246,7 +252,30 @@ def initialize_data():
     except Exception as e:
         logging.error(f"Error initializing RSS reader: {str(e)}", exc_info=True)
 
+# Helper function to determine if we're in a production environment
+def is_production():
+    """Check if we're running in a production environment."""
+    # This is a simple check - you might want to use a more robust method
+    # like checking for environment variables
+    return not sys.flags.debug
+
 if __name__ == '__main__':
-    # Run the Flask app immediately without initializing data
-    # Data will be processed only when the user requests it
-    app.run(debug=True, host='0.0.0.0', port=5005)
+    # Better handling of production vs development environment
+    debug_mode = False  # Never run with debug=True in production
+    
+    # By default, only bind to localhost in production for security
+    host = '127.0.0.1'  # Only accept connections from the local machine
+    
+    # Check if this is explicitly requested to be exposed externally
+    if '--public' in sys.argv:
+        host = '0.0.0.0'
+        logging.warning("Running with public access (0.0.0.0). Make sure this is intended and secured.")
+    
+    # Check if initialization is requested
+    if '--init' in sys.argv:
+        initialize_data()
+        
+    # Use a safer configuration for the web server
+    port = int(os.environ.get('PORT', 5005))
+    logging.info(f"Starting server on {host}:{port} (debug={debug_mode})")
+    app.run(debug=debug_mode, host=host, port=port)

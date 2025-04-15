@@ -370,7 +370,7 @@ class ArticleSummarizer:
             "Focus on conveying the key points and implications without explicitly stating that you're doing so."
         )
 
-    def _parse_summary_response(self, summary_text: str, title: str, url: str, source_name: str) -> Dict[str, str]::
+    def _parse_summary_response(self, summary_text: str, title: str, url: str, source_name: str) -> Dict[str, str]:
         """
         Parse the summary response from Claude.
         
@@ -440,7 +440,7 @@ class ArticleSummarizer:
             }
 
     @retry_with_backoff(max_retries=3, initial_backoff=2)
-    def _call_claude_api(self, model_id: str, prompt: str, temperature: float, max_tokens: int) -> str::
+    def _call_claude_api(self, model_id: str, prompt: str, temperature: float, max_tokens: int) -> str:
         """
         Call the Claude API with retry logic.
         
@@ -617,7 +617,19 @@ class ArticleSummarizer:
             }
         finally:
             # Clear context after the operation
-            self.logger.clear_context().
+            self.logger.clear_context()
+
+    def summarize_article(
+        self, 
+        text: str, 
+        title: str, 
+        url: str, 
+        model: Optional[str] = None,
+        force_refresh: bool = False,
+        temperature: float = 0.3,
+    ) -> Dict[str, str]:
+        """
+        Generate a concise summary of the article text.
         
         Args:
             text: The article text to summarize
