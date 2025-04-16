@@ -15,75 +15,102 @@ A comprehensive RSS feed reader that fetches articles, summarizes them using the
 
 ## Installation
 
-1. Clone the repository:
+1. **Clone the repository:**
    ```bash
    git clone <repository-url>
    cd rss-reader
    ```
 
-2. Create and activate a virtual environment:
+2. **Create and activate a virtual environment (recommended):**
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. Install dependencies:
+3. **Install dependencies:**
    ```bash
+   pip install --upgrade pip
    pip install -r requirements.txt
    ```
+   This project requires Python 3.8 or newer. All required dependencies are listed in `requirements.txt`:
 
-4. Create a `.env` file in the project root with your Anthropic API key:
+   - anthropic
+   - beautifulsoup4
+   - feedparser
+   - Flask
+   - fasttext
+   - hdbscan
+   - langdetect
+   - numpy
+   - python-dateutil
+   - python-dotenv
+   - psutil
+   - requests
+   - ratelimit
+   - scikit-learn
+   - safetensors
+   - sentence-transformers
+   - torch
+   - transformers
+   - tqdm
+
+4. **Add your Anthropic API key:**
+   Create a `.env` file in the project root:
    ```
    ANTHROPIC_API_KEY=your_api_key_here
    ```
 
+### Updating Dependencies
+
+To update dependencies to the latest compatible versions, run:
+```bash
+pip install -U -r requirements.txt
+```
+If you add new packages to your code, be sure to add them to `requirements.txt` as well.
+
 ## Using the Web Interface
 
-The easiest way to use the RSS Reader is through its web interface:
+The recommended way to use the RSS Reader is via the web interface:
 
-1. Start the web server:
+1. **Start the web server:**
    ```bash
    python server.py
    ```
+   By default, the server runs on [http://localhost:5004](http://localhost:5004).
 
-2. Open your browser and navigate to:
-   ```
-   http://localhost:5004
-   ```
+2. **Open your browser:**
+   Go to [http://localhost:5004](http://localhost:5004)
 
-3. Using the web interface:
-   - Click the **Refresh Feeds** button to fetch and process the latest articles
-   - Browse through the clustered articles and their AI-generated summaries
-   - Click on article titles to read the original articles
-   - The timestamp at the top shows when the feeds were last processed
-
-4. Customizing feeds:
-   - You can add custom RSS feed URLs through the web interface
-   - Enter one URL per line in the input field on the home page
+3. **Web interface features:**
+   - Refresh feeds to fetch and process the latest articles
+   - Browse clustered articles and AI-generated summaries
+   - Click article titles to view the original sources
+   - See when feeds were last processed (timestamp at top)
+   - Add custom RSS feed URLs via the input field (one per line)
    - Adjust batch size and delay settings if needed
 
 ## Command-line Usage
 
-You can also run the RSS reader directly from the command line:
+You can also run the RSS reader from the command line for batch processing:
 
 ```bash
 python reader.py
 ```
 
-This will process the default feeds and generate an HTML output file in the `output` directory.
+This will process the feeds listed in `rss_feeds.txt` and generate a summary HTML file in the `output` directory.
 
 ## Using as a Library
 
-You can use the RSS reader as a library in your Python code:
+You can use the RSS reader programmatically in your own Python scripts:
 
 ```python
 from reader import RSSReader
 
-# Initialize with custom feeds
-feeds = ['https://example.com/rss', 'https://example2.com/rss']
+feeds = [
+    'https://example.com/rss',
+    'https://example2.com/rss',
+]
 reader = RSSReader(feeds=feeds, batch_size=10, batch_delay=5)
-
-# Process feeds and get output file path
 output_file = reader.process_feeds()
 print(f"Generated summary at: {output_file}")
 ```
@@ -161,10 +188,10 @@ Summaries are generated using the Anthropic Claude API. The system prompt and st
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.8 or higher
 - Anthropic API key (Claude 3 Haiku model)
 - Web browser for accessing the interface
-- Dependencies listed in requirements.txt
+- All dependencies listed in requirements.txt (see above)
 
 ## Performance Notes
 
