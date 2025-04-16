@@ -17,3 +17,8 @@ sentence-transformers>=2.2.0
 torch>=1.10.0
 transformers>=4.30.0
 tqdm>=4.64.0
+# Additional dependencies from imports
+umap-learn>=0.5.1
+bertopic>=0.16.0
+spacy>=3.0.0
+bs4>=0.0.1

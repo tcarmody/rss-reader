@@ -636,6 +636,49 @@ class AdvancedClusteringPipeline:
 
 
 class ArticleClusterer:
+    def cluster_articles(self, articles):
+        """
+        Cluster a list of article dicts into groups of similar articles.
+        Args:
+            articles: List[dict] - articles to cluster (must have 'title', 'content', etc.)
+        Returns:
+            List[List[dict]]: List of clusters, each a list of article dicts
+        """
+        if not articles:
+            return []
+        # Prepare article texts and metadata
+        texts, sources, languages, publication_times, entities_by_index = self._prepare_articles_for_clustering(articles)
+        if not texts:
+            return [[article] for article in articles]
+        # Compute or retrieve embeddings
+        embeddings = []
+        for text in texts:
+            cached = self.embedding_cache.get(text)
+            if cached is not None:
+                embeddings.append(cached)
+            else:
+                emb = self.model.encode(text)
+                self.embedding_cache.set(text, emb)
+                embeddings.append(emb)
+        embeddings = torch.stack(embeddings).cpu().numpy() if hasattr(embeddings[0], 'cpu') else np.array(embeddings)
+        # Compute adaptive threshold
+        threshold = self._calculate_adaptive_threshold(embeddings)
+        # Run clustering pipeline
+        labels = self.clustering_pipeline.cluster(embeddings, threshold, publication_times)
+        # Group articles by cluster label
+        clusters_dict = {}
+        for idx, label in enumerate(labels):
+            if label not in clusters_dict:
+                clusters_dict[label] = []
+            clusters_dict[label].append(articles[idx])
+        # Convert to list, ignore noise (-1) as singletons
+        clusters = [group for label, group in clusters_dict.items() if label != -1]
+        # Add noise articles as their own clusters
+        noise = [articles[idx] for idx, label in enumerate(labels) if label == -1]
+        for article in noise:
+            clusters.append([article])
+        return clusters
+
     """
     Enhanced article clusterer with multiple improvements:
     - Caching for embeddings
