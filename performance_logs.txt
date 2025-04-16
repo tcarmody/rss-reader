@@ -384,3 +384,5 @@
 2025-04-16 14:50:13 | process_cluster_summaries | Time: 1061.91s | Memory: -1382.44MB
 2025-04-16 14:50:13 | generate_html_output | Time: 0.02s | Memory: 14.72MB
 2025-04-16 14:50:13 | process_feeds | Time: 1188.10s | Memory: -90.81MB
+2025-04-16 15:06:34 | _process_feed | Time: 0.39s | Memory: 15.55MB
+2025-04-16 15:06:34 | process_feeds | Time: 0.39s | Memory: 18.58MB
