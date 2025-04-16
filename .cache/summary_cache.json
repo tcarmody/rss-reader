@@ -1,24 +1,4 @@
 {
-  "10de1ba9f9d7786fe821363626ce1152": {
-    "headline": "New book chronicles Nvidia CEO Jensen Huang's rise to AI dominance",
-    "summary": "\"The Thinking Machine\" by Stephen Witt offers a compelling biography of Nvidia CEO Jensen Huang, tracing his journey from Thai immigrant to tech titan whose chips power modern AI systems. The book details Huang's founding of Nvidia in 1993 as a gaming graphics chip company that later positioned itself perfectly for the AI revolution. Though published before recent industry developments like DeepSeek's cost-efficient Chinese chatbot that temporarily shook Nvidia's stock price, the narrative captures Huang's remarkable focus and business acumen that transformed Nvidia from a gaming hardware company into the world's most valuable semiconductor firm.\n\nSource: The New York Times\nhttps://www.nytimes.com/2025/04/05/books/review/the-thinking-machine-stephen-witt.html",
-    "timestamp": 1744264778.547922
-  },
-  "c5cec7bd28d4449e5b5875e6882e44ae": {
-    "headline": "Companies race to develop humanoid robots for home service",
-    "summary": "Dozens of companies are manufacturing humanoid robots, with one firm specifically training a machine to function as a butler that will soon be tested in homes. The development represents a significant advancement in domestic robotics, combining sophisticated mechanical engineering with AI systems capable of performing household tasks. This emerging market for humanoid service robots could transform home automation by providing physical assistance beyond what current smart home devices offer.\n\nSource: nytimes.com https://www.nytimes.com/es/2025/04/05/espanol/negocios/robots-humanoides-domesticos.html",
-    "timestamp": 1744264781.888882
-  },
-  "8a4761106eace09f4d8874df23434917": {
-    "headline": "Judge rejects AI-generated lawyer persona in New York court",
-    "summary": "A New York judge issued a stern rebuke after a lawyer used an AI-generated video persona to present arguments in court. The judge rejected the digital representation, ruling that AI-generated personas cannot serve as legal representatives in judicial proceedings. This case marks one of the first formal judicial opinions on the boundaries of AI use in courtroom advocacy, establishing precedent that could influence future regulations on AI in legal settings across jurisdictions.\n\nSource: nytimes.com https://www.nytimes.com/2025/04/04/nyregion/ai-lawyer-replica-new-york.html",
-    "timestamp": 1744264785.588495
-  },
-  "5d34ec2212dfbc67bd9968c170062dad": {
-    "headline": "Hard Fork podcast explores Trump tariffs, OpenAI drama, and Tinder's AI flirting bot",
-    "summary": "The latest episode of Hard Fork podcast examines President Trump's new tariffs and their potential impact on the tech sector, particularly whether they might give China a competitive advantage in AI development. Hosts Kevin Roose and Casey Newton interview Wall Street Journal reporter Keach Hagey about her forthcoming book \"The Optimist,\" which investigates Sam Altman's firing from OpenAI and subsequent reinstatement. The episode concludes with a discussion of Tinder's new AI chatbot designed to help users practice flirting skills.\n\nSource: nytimes.com\nhttps://www.nytimes.com/2025/04/04/podcasts/hardfork-tariffs-hagey-tinder.html",
-    "timestamp": 1744264802.893867
-  },
   "2cc61223a5dc63cc8bf3c0fbef7208ba": {
     "headline": "Humanoid robots prepare to enter homes as AI advances to physical tasks",
     "summary": "A Norwegian start-up called 1X plans to deploy its humanoid robot Neo in over 100 homes by year's end, marking a significant step toward AI-powered robots handling everyday household chores. The robot, which features a faceless design in a beige bodysuit, can perform tasks like retrieving items from refrigerators and interacting with humans through conversation and physical contact. Investment in humanoid robotics has surged to 7.2 billion dollars across more than 50 start-ups since 2015, with 1.6 billion dollars invested last year alone, not including Elon Musk's separate investment in Tesla's Optimus humanoid project.\n\nSource: The New York Times https://www.nytimes.com/2025/04/04/technology/humanoid-robots-1x.html",
@@ -2498,5 +2478,25 @@
     "headline": "xAI launches Grok Studio, a canvas-like document creation and code execution tool",
     "summary": "Elon Musk's AI company xAI introduced Grok Studio, a new feature for its Grok chatbot that functions as a canvas-like environment for document creation and editing. The tool enables users to generate and modify documents while also running code in languages including Python and JavaScript. Grok Studio expands the chatbot's capabilities beyond conversation, positioning it as a more comprehensive productivity tool that competes with similar offerings from other AI companies.\n\nSource: TechCrunch\nhttp://www.techmeme.com/250415/p44#a250415p44",
     "timestamp": 1744829413.8032541
+  },
+  "3713d4b7f886e59b41f6d1ddd99f1f93": {
+    "headline": "Nvidia shares drop as U.S. restricts AI chip exports to China",
+    "summary": "Nvidia shares fell more than 7 percent after the company revealed new U.S. export restrictions requiring government licenses to sell H20 processors in China. The stock has declined 30 percent from its January record high, reflecting investor concerns about regulatory impacts on Nvidia's global AI chip business. These restrictions represent the latest move in ongoing U.S. efforts to limit China's access to advanced semiconductor technology used for AI development.\n\nSource: fool.com https://www.fool.com/investing/2025/04/16/nvidia-stock-crash-bad-news-washington-buy-dip/?source=eptyholnk0000202&utm_source=yahoo-host-full&utm_medium=feed&utm_campaign=article&referring_guid=960742da-4369-4a25-8516-a68c2a0cf189",
+    "timestamp": 1744831334.16858
+  },
+  "2d57769069549bbfb94792edb105c3e5": {
+    "headline": "OpenAI introduces new reasoning models and programming tool",
+    "summary": "OpenAI unveiled new reasoning models called O3 and O4 Mini alongside a tool designed to assist computer programmers in leveraging chatbots for code writing. The reasoning models represent an advancement in AI's ability to solve complex problems through logical analysis. These developments aim to enhance productivity for developers while potentially addressing limitations in current AI systems. The company did not disclose pricing or specific availability dates for the new offerings.\n\nSource: New York Times https://www.nytimes.com/2025/04/16/technology/openai-reasoning-models-o3-o4-mini.html",
+    "timestamp": 1744831338.5498838
+  },
+  "9477cfd152d8754f484c803d6cacd56b": {
+    "headline": "New AI agent switches between models to optimize task performance",
+    "summary": "Startup Simular developed an AI agent that automatically selects the most appropriate AI model for different tasks, effectively giving the system multiple \"personalities.\" The agent evaluates incoming requests and routes them to specialized models from various providers including OpenAI, Anthropic, and Google, choosing the best tool for each specific job. This approach aims to overcome the limitations of single-model systems while potentially reducing costs by using less powerful models for simpler tasks. Simular plans to charge users 20 dollars per month for the service, which is currently available in beta.\n\nSource: Wired https://www.wired.com/story/simular-ai-agent-multiple-models-personalities/",
+    "timestamp": 1744831343.54392
+  },
+  "14e15a9804c157486701adcacbdd28a4": {
+    "headline": "Japanese artist Kenshi Yonezu completes JUNK World Tour, looks ahead",
+    "summary": "Kenshi Yonezu concluded his JUNK World Tour with performances in New York and Los Angeles. The Japanese musician appears poised for additional international performances following these U.S. shows. Yonezu's tour showcased his distinctive musical style that has earned him significant popularity in Japan and growing recognition globally.\n\nSource: Forbes\nhttps://www.forbes.com/sites/laurasirikul/2025/04/16/kenshi-yonezu-talks-world-tour-music-styles-and-the-future-of-ai/",
+    "timestamp": 1744831348.6662452
   }
 }

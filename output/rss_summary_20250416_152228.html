@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Points AI - Smart RSS Reader</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --neutral-50: #f9fafb;
+      --neutral-100: #f3f4f6;
+      --neutral-200: #e5e7eb;
+      --neutral-300: #d1d5db;
+      --neutral-400: #9ca3af;
+      --neutral-500: #6b7280;
+      --neutral-600: #4b5563;
+      --neutral-700: #374151;
+      --neutral-800: #1f2937;
+      --neutral-900: #111827;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --radius-sm: 0.125rem;
+      --radius: 0.25rem;
+      --radius-md: 0.375rem;
+      --radius-lg: 0.5rem;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.5;
+      color: var(--neutral-800);
+      background-color: var(--neutral-100);
+    }
+
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .nav {
+      background-color: white;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: var(--neutral-900);
+      text-decoration: none;
+    }
+
+    .logo svg {
+      margin-right: 0.5rem;
+      color: var(--primary);
+    }
+
+    .logo-text {
+      background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .button {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      font-weight: 500;
+      font-size: 0.875rem;
+      color: white;
+      background-color: var(--primary);
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    .button:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .button:active {
+      transform: translateY(1px);
+    }
+
+    .button.outline {
+      background-color: transparent;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+
+    .button.outline:hover {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--neutral-300);
+      transition: .4s;
+      border-radius: 34px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .toggle-slider {
+      background-color: var(--danger);
+    }
+
+    input:checked + .toggle-slider:before {
+      transform: translateX(22px);
+    }
+
+    .paywall-container {
+      display: flex;
+      align-items: center;
+      position: relative;
+      gap: 0.5rem;
+    }
+
+    .paywall-label {
+      font-size: 0.75rem;
+      color: var(--neutral-600);
+      display: flex;
+      align-items: center;
+    }
+
+    .paywall-label svg {
+      margin-right: 0.25rem;
+    }
+
+    .warning-tooltip {
+      position: absolute;
+      bottom: -40px;
+      right: 0;
+      background-color: #fee2e2;
+      color: var(--danger);
+      padding: 0.5rem;
+      border-radius: var(--radius);
+      font-size: 0.75rem;
+      width: 200px;
+      box-shadow: var(--shadow);
+      display: none;
+      z-index: 10;
+    }
+
+    .paywall-container:hover .warning-tooltip {
+      display: block;
+    }
+
+    .main {
+      flex: 1;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+      width: 100%;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .page-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--neutral-900);
+    }
+
+    .timestamp {
+      font-size: 0.875rem;
+      color: var(--neutral-500);
+    }
+
+    .cluster {
+      background-color: white;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+
+    .cluster-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--neutral-200);
+    }
+
+    .cluster-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--neutral-900);
+      margin-bottom: 0.5rem;
+    }
+
+    .cluster-info {
+      display: inline-block;
+      font-size: 0.75rem;
+      background-color: var(--primary);
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: var(--radius);
+    }
+
+    .article-summary {
+      padding: 1.5rem;
+      background-color: var(--neutral-50);
+      border-bottom: 1px solid var(--neutral-200);
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      color: var(--neutral-700);
+    }
+
+    .articles-container {
+      padding: 0.5rem 0;
+    }
+
+    .article {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--neutral-200);
+    }
+
+    .article:last-child {
+      border-bottom: none;
+    }
+
+    .article-title {
+      font-size: 1rem;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+
+    .article-title a {
+      color: var(--neutral-800);
+      text-decoration: none;
+      transition: color 0.2s;
+      flex: 1;
+    }
+
+    .article-title a:hover {
+      color: var(--primary);
+    }
+
+    .article-source {
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--neutral-500);
+      padding: 0.125rem 0.375rem;
+      background-color: var(--neutral-100);
+      border-radius: var(--radius);
+      margin-left: 0.5rem;
+      white-space: nowrap;
+    }
+
+    .article-meta {
+      font-size: 0.75rem;
+      color: var(--neutral-500);
+    }
+
+    .footer {
+      background-color: white;
+      border-top: 1px solid var(--neutral-200);
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .footer p {
+      color: var(--neutral-600);
+      font-size: 0.875rem;
+    }
+
+    @media (max-width: 768px) {
+      .nav-container {
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 0.75rem;
+      }
+      
+      .nav-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+      
+      .article-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+      }
+      
+      .article-source {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <nav class="nav">
+      <div class="nav-container">
+        <a href="/" class="logo">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 6v6l4 2"></path>
+          </svg>
+          <span class="logo-text">Data Points AI</span>
+        </a>
+        
+        <div class="nav-actions">
+          <a href="/" class="button outline">Home</a>
+          <form action="/refresh" method="post" style="display: inline;">
+            <button type="submit" class="button">Refresh Feeds</button>
+          </form>
+          
+          <form action="/toggle_paywall_bypass" method="post" style="display: inline;">
+            <div class="paywall-container">
+              <span class="paywall-label">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                Paywall
+              </span>
+              <label class="toggle-switch">
+                <input type="checkbox"  onChange="this.form.submit()">
+                <span class="toggle-slider"></span>
+              </label>
+              
+            </div>
+          </form>
+        </div>
+      </div>
+    </nav>
+    
+    <main class="main">
+      <div class="page-header">
+        <h1 class="page-title">AI News Digest</h1>
+        <span class="timestamp">Generated on 2025-04-16 15:22:28</span>
+      </div>
+      
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Nvidia shares drop as U.S. restricts AI chip exports to China</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Nvidia shares fell more than 7 percent after the company revealed new U.S. export restrictions requiring government licenses to sell H20 processors in China. The stock has declined 30 percent from its January record high, reflecting investor concerns about regulatory impacts on Nvidia's global AI chip business. These restrictions represent the latest move in ongoing U.S. efforts to limit China's access to advanced semiconductor technology used for AI development.<br><br>Source: fool.com https://www.fool.com/investing/2025/04/16/nvidia-stock-crash-bad-news-washington-buy-dip/?source=eptyholnk0000202&utm_source=yahoo-host-full&utm_medium=feed&utm_campaign=article&referring_guid=960742da-4369-4a25-8516-a68c2a0cf189
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.fool.com/investing/2025/04/16/nvidia-stock-crash-bad-news-washington-buy-dip/?source=eptyholnk0000202&amp;utm_source=yahoo-host-full&amp;utm_medium=feed&amp;utm_campaign=article&amp;referring_guid=960742da-4369-4a25-8516-a68c2a0cf189" target="_blank">Nvidia Stock Crashed on Bad News From Washington. Should Investors Buy the Dip?</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 18:34:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">OpenAI introduces new reasoning models and programming tool</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            OpenAI unveiled new reasoning models called O3 and O4 Mini alongside a tool designed to assist computer programmers in leveraging chatbots for code writing. The reasoning models represent an advancement in AI's ability to solve complex problems through logical analysis. These developments aim to enhance productivity for developers while potentially addressing limitations in current AI systems. The company did not disclose pricing or specific availability dates for the new offerings.<br><br>Source: New York Times https://www.nytimes.com/2025/04/16/technology/openai-reasoning-models-o3-o4-mini.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.nytimes.com/2025/04/16/technology/openai-reasoning-models-o3-o4-mini.html" target="_blank">OpenAI Unveils New ‘Reasoning’ Models o3 and o4-mini</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 17:46:28 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Nvidia discloses that U.S. will limit sales of advanced chips to China after all</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            The Trump administration reversed its position on Nvidia's ability to sell AI chips to China, following NPR's reporting that initially indicated the company would be allowed to continue such sales. This policy reversal represents a significant shift in U.S. export controls targeting advanced semiconductor technology. The decision specifically affects Nvidia's H20 chips, which were designed to comply with earlier export restrictions while still serving the lucrative Chinese market. The abrupt change highlights ongoing tensions between maintaining U.S. technological advantages and semiconductor companies' commercial interests in China.<br><br>Source: npr.org<br>https://www.npr.org/2025/04/16/nx-s1-5366665/nvidia-china-h20-chips-exports
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.npr.org/2025/04/16/nx-s1-5366665/nvidia-china-h20-chips-exports" target="_blank">Nvidia discloses that U.S. will limit sales of advanced chips to China after all</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 17:12:04 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">OpenAI says newest AI model can &#39;think with images,&#39; understanding diagrams and sketches</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            OpenAI launched a new AI model capable of understanding and interpreting visual content including whiteboards, sketches, and diagrams, even when the images are of poor quality. The system can analyze visual information and reason about it, representing a significant advancement in multimodal AI capabilities. This technology could help developers create applications that can process hand-drawn content, interpret technical diagrams, and assist with visual problem-solving tasks.<br><br>Source: cnbc.com<br>https://www.cnbc.com/2025/04/16/openai-releases-most-advanced-ai-model-yet-o3-o4-mini-reasoning-images.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.cnbc.com/2025/04/16/openai-releases-most-advanced-ai-model-yet-o3-o4-mini-reasoning-images.html" target="_blank">OpenAI says newest AI model can &#39;think with images,&#39; understanding diagrams and sketches</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 17:00:20 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">OpenAI launches a pair of AI reasoning models, o3 and o4-mini</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            OpenAI launched two new AI models, o3 and o4-mini, specifically designed to enhance reasoning capabilities by pausing to work through complex questions before generating responses. The models represent a significant advancement in AI problem-solving approaches, allowing systems to break down multi-step problems into manageable components rather than rushing to immediate answers. These reasoning-focused models can tackle mathematical problems, logical puzzles, and complex analysis with improved accuracy compared to previous generations. Both models are available now through OpenAI's API, with o3 priced at $3 per million input tokens and $15 per million output tokens, while o4-mini costs $5 and $20 respectively.<br><br>Source: TechCrunch https://techcrunch.com/2025/04/16/openai-launches-a-pair-of-ai-reasoning-models-o3-and-o4-mini/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://techcrunch.com/2025/04/16/openai-launches-a-pair-of-ai-reasoning-models-o3-and-o4-mini/" target="_blank">OpenAI launches a pair of AI reasoning models, o3 and o4-mini</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 17:00:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Crucial CVE flaw-tracking database narrowly avoids closure to DHS cuts</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            The Common Vulnerabilities and Exposures (CVE) database, a critical cybersecurity resource that tracks software vulnerabilities, narrowly avoided shutdown after losing Department of Homeland Security funding. Former board members established a new nonprofit organization to maintain the database, which security professionals worldwide rely on to identify and address software flaws. The CVE system assigns unique identifiers to vulnerabilities, enabling consistent tracking across security tools and platforms. The transition comes after MITRE, which previously managed the program, announced it could no longer support CVE operations due to budget constraints.<br><br>Source: Ars Technica<br>https://arstechnica.com/security/2025/04/crucial-cve-flaw-tracking-database-narrowly-avoids-closure-to-dhs-cuts/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://arstechnica.com/security/2025/04/crucial-cve-flaw-tracking-database-narrowly-avoids-closure-to-dhs-cuts/" target="_blank">Crucial CVE flaw-tracking database narrowly avoids closure to DHS cuts</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 16:36:58 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">ChatGPT just made it easy to find and edit all the AI images you&#39;ve ever generated</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            OpenAI added a new library feature to ChatGPT that consolidates all AI-generated images in one location, simplifying image management for users. The update allows users to browse their complete image history, regenerate variations of previous creations, and edit existing images without starting from scratch. This organizational improvement addresses a common pain point where users previously had to scroll through conversation history to find specific images. The feature is available now to all ChatGPT users, including those on the free tier.<br><br>Source: ZDNet<br>https://www.zdnet.com/article/chatgpt-just-made-it-easy-to-find-and-edit-all-the-ai-images-youve-ever-generated/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.zdnet.com/article/chatgpt-just-made-it-easy-to-find-and-edit-all-the-ai-images-youve-ever-generated/" target="_blank">ChatGPT just made it easy to find and edit all the AI images you&#39;ve ever generated</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 16:29:23 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">New AI agent switches between models to optimize task performance</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Startup Simular developed an AI agent that automatically selects the most appropriate AI model for different tasks, effectively giving the system multiple "personalities." The agent evaluates incoming requests and routes them to specialized models from various providers including OpenAI, Anthropic, and Google, choosing the best tool for each specific job. This approach aims to overcome the limitations of single-model systems while potentially reducing costs by using less powerful models for simpler tasks. Simular plans to charge users 20 dollars per month for the service, which is currently available in beta.<br><br>Source: Wired https://www.wired.com/story/simular-ai-agent-multiple-models-personalities/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.wired.com/story/simular-ai-agent-multiple-models-personalities/" target="_blank">Meet The AI Agent With Multiple Personalities</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 16:21:04 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Why Nvidia (NVDA) Stock Is Down Today</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Nvidia stock fell 7.4 percent in morning trading after the company revealed it may be unable to sell certain high-end chips, including H20 models, to China due to Trump administration export controls. The company received an export restriction notice on April 9, 2025, suggesting this development was unexpected and likely not factored into Nvidia's near-term sales projections. This restriction could significantly impact Nvidia's revenue stream in the Chinese market, which has been an important growth area for the GPU manufacturer amid the global AI hardware boom.<br><br>Source: finance.yahoo.com<br>https://finance.yahoo.com/news/why-nvidia-nvda-stock-down-160330625.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://finance.yahoo.com/news/why-nvidia-nvda-stock-down-160330625.html" target="_blank">Why Nvidia (NVDA) Stock Is Down Today</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 16:03:30 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">$155B Tech Bloodbath: Nvidia Banned, ASML Bombs, and AI Hype Hits a Wall</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Nvidia shares dropped over eight percent after the U.S. government imposed new export restrictions on AI chips to China, affecting the company's H20, L20, and L2 models designed specifically for the Chinese market. The restrictions aim to prevent China from accessing advanced semiconductor technology while maintaining some U.S. market share in the region. ASML, the Dutch lithography equipment maker critical to chip manufacturing, reported weaker-than-expected orders, contributing to a broader semiconductor industry selloff that erased approximately 155 billion dollars in market value across major chip companies.<br><br>Source: Yahoo Finance<br>https://finance.yahoo.com/news/155b-tech-bloodbath-nvidia-banned-153048976.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://finance.yahoo.com/news/155b-tech-bloodbath-nvidia-banned-153048976.html" target="_blank">$155B Tech Bloodbath: Nvidia Banned, ASML Bombs, and AI Hype Hits a Wall</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 15:30:48 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Japanese artist Kenshi Yonezu completes JUNK World Tour, looks ahead</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Kenshi Yonezu concluded his JUNK World Tour with performances in New York and Los Angeles. The Japanese musician appears poised for additional international performances following these U.S. shows. Yonezu's tour showcased his distinctive musical style that has earned him significant popularity in Japan and growing recognition globally.<br><br>Source: Forbes<br>https://www.forbes.com/sites/laurasirikul/2025/04/16/kenshi-yonezu-talks-world-tour-music-styles-and-the-future-of-ai/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.forbes.com/sites/laurasirikul/2025/04/16/kenshi-yonezu-talks-world-tour-music-styles-and-the-future-of-ai/" target="_blank">Kenshi Yonezu Talks World Tour, Music Styles, And The Future Of A.I.</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 15:00:40 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Exclusive: Deck raises $12M to &#39;Plaid-ify&#34; any website using AI</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Deck, a startup developing AI-powered data extraction technology, secured 12 million dollars in Series A funding approximately nine months after its seed round. The company aims to become "the Plaid for the rest of the internet" by creating a universal API that allows developers to extract structured data from any website without building custom scrapers. Deck's technology uses large language models to understand website structures and automatically adapt to changes, addressing a key pain point in web scraping. The funding will help Deck expand its team and enhance its product capabilities.<br><br>Source: TechCrunch https://techcrunch.com/2025/04/16/deck-raises-12m-to-plaid-ify-any-website-using-ai/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://techcrunch.com/2025/04/16/deck-raises-12m-to-plaid-ify-any-website-using-ai/" target="_blank">Exclusive: Deck raises $12M to &#39;Plaid-ify&#34; any website using AI</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 15:00:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Nvidia Stock Falls After Trump Essentially Blocks China AI Chip Sales</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            The Trump administration implemented restrictions that prevent Nvidia from selling its custom AI processors to customers in China, representing a significant escalation in U.S. technology export controls. This regulatory action targets advanced semiconductors critical for artificial intelligence development and training large language models. Nvidia's stock declined following the announcement as investors assessed potential impacts on the company's revenue stream from the Chinese market. The restrictions specifically affect specialized AI accelerators designed for high-performance computing applications.<br><br>Source: Investors.com https://www.investors.com/news/technology/nvidia-stock-falls-trump-curbs-china-ai-chip-sales/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.investors.com/news/technology/nvidia-stock-falls-trump-curbs-china-ai-chip-sales/" target="_blank">Nvidia Stock Falls After Trump Essentially Blocks China AI Chip Sales</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 14:23:50 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Markets sink after Nvidia announces $5.5 billion charge to comply with new Trump rule</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Stock markets declined after Nvidia announced a 5.5 billion dollar charge related to complying with Trump-era export restrictions on advanced chips to China. The semiconductor giant, which has become a bellwether for major stock indexes due to its dominance in AI chip production, saw its shares fall over seven percent following the announcement. Despite the setback, Nvidia still reported strong quarterly earnings with 26 billion dollars in revenue, though the unexpected charge dampened investor sentiment. The company's performance has outsized influence on market indexes as its market capitalization has grown to nearly two trillion dollars.<br><br>Source: nbcnews.com https://www.nbcnews.com/business/business-news/markets-sink-after-nvidia-5point5-billion-charge-comply-trump-rule-rcna201505
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.nbcnews.com/business/business-news/markets-sink-after-nvidia-5point5-billion-charge-comply-trump-rule-rcna201505" target="_blank">Markets sink after Nvidia announces $5.5 billion charge to comply with new Trump rule</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 14:00:16 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">It&#39;s a different world for Nvidia&#39;s stock under Trump. The chipmaker&#39;s latest China hit proves that</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Nvidia's stock fell sharply Wednesday morning following the company's announcement that its chips designed specifically for the Chinese market now face additional export restrictions. The development represents another obstacle in Nvidia's efforts to maintain access to China's lucrative AI chip market while complying with U.S. regulations. These specialized chips were originally created to meet previous export control requirements while still allowing Nvidia to sell to Chinese customers. The new restrictions highlight the ongoing challenges semiconductor companies face in navigating geopolitical tensions between the U.S. and China.<br><br>Source: CNBC https://www.cnbc.com/2025/04/16/its-a-different-world-for-nvidias-stock-under-trump-the-chipmakers-latest-china-hit-proves-that.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.cnbc.com/2025/04/16/its-a-different-world-for-nvidias-stock-under-trump-the-chipmakers-latest-china-hit-proves-that.html" target="_blank">It&#39;s a different world for Nvidia&#39;s stock under Trump. The chipmaker&#39;s latest China hit proves that</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 13:13:45 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Nvidia stock dives after chipmaker discloses $5.5 billion hit from &#39;surprise&#39; China chip controls</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Nvidia shares dropped sharply after the company disclosed it would face a financial impact exceeding $5 billion due to new U.S. chip export controls targeting China. The chipmaker revealed this unexpected hit in a regulatory filing, noting that restrictions on its advanced AI processors would significantly affect its revenue projections. The U.S. government recently expanded export controls on high-performance semiconductors to prevent China from accessing cutting-edge AI technology. Nvidia indicated it would develop alternative products for the Chinese market that comply with the new regulations.<br><br>Source: finance.yahoo.com<br>https://finance.yahoo.com/news/nvidia-stock-dives-as-chipmaker-sees-55-billion-hit-from-surprise-china-chip-controls-130319576.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://finance.yahoo.com/news/nvidia-stock-dives-as-chipmaker-sees-55-billion-hit-from-surprise-china-chip-controls-130319576.html" target="_blank">Nvidia stock dives after chipmaker discloses $5.5 billion hit from &#39;surprise&#39; China chip controls</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 13:03:20 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Broadcom Unveils AI-Powered Cybersecurity Tool To Disrupt Hackers And Boost Resilience</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Broadcom unveiled Incident Prediction, a new AI-powered security capability for its Symantec Endpoint Security Complete solution that identifies and disrupts living-off-the-land attacks before they can fully execute. The system leverages training on more than 500,000 real-world attack chains documented by Symantec's Threat Hunter Team to predict attackers' next moves and prevent them, even when attackers use legitimate system tools. This predictive approach aims to stop sophisticated threats that typically evade traditional security measures by anticipating malicious behavior patterns rather than relying solely on known signatures or indicators of compromise.<br><br>Source: finance.yahoo.com<br>https://finance.yahoo.com/news/broadcom-unveils-ai-powered-cybersecurity-130116681.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://finance.yahoo.com/news/broadcom-unveils-ai-powered-cybersecurity-130116681.html" target="_blank">Broadcom Unveils AI-Powered Cybersecurity Tool To Disrupt Hackers And Boost Resilience</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 13:01:16 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Nvidia Building AI Supercomputers In The U.S. But Who Will Operate Them?</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Nvidia has begun reshoring its AI supercomputer manufacturing to the United States, highlighting a critical skills gap in the domestic workforce. The move represents a significant shift in high-tech manufacturing strategy but raises urgent questions about whether American workers possess the specialized knowledge needed to operate these advanced systems. This skills shortage could potentially limit the effectiveness of reshoring efforts and impact the country's competitive position in AI infrastructure development.<br><br>Source: Forbes<br>https://www.forbes.com/sites/benjaminlaker/2025/04/16/nvidia-building-ai-supercomputers-in-the-us-but-who-will-operate-them/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.forbes.com/sites/benjaminlaker/2025/04/16/nvidia-building-ai-supercomputers-in-the-us-but-who-will-operate-them/" target="_blank">Nvidia Building AI Supercomputers In The U.S. But Who Will Operate Them?</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 13:00:47 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">What &#39;Silicon Valley&#39; Knew About Tech-Bro Paternalism</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            HBO's Silicon Valley satirized tech culture years before the current AI boom, accurately foreseeing how male-dominated tech companies would shape AI development with inherent biases. The show portrayed tech bros building products that reflected their limited worldviews while claiming to serve humanity's best interests. This paternalistic approach mirrors today's AI landscape where predominantly male teams create systems that make decisions for users while insisting they know what's best for society.<br><br>Source: The Atlantic<br>https://www.theatlantic.com/culture/archive/2025/04/silicon-valley-tv-show-ai-paternalism/682411/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.theatlantic.com/culture/archive/2025/04/silicon-valley-tv-show-ai-paternalism/682411/" target="_blank">What &#39;Silicon Valley&#39; Knew About Tech-Bro Paternalism</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 12:30:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">The real argument artists should be making against AI</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            AI image generators trained on artists' work without consent are causing psychological damage beyond legal copyright concerns. Artists report experiencing "moral injury" - a profound sense of betrayal and violation when their artistic styles are mimicked without permission or compensation. This harm extends beyond economic impact, affecting artists' sense of identity and creative purpose. Companies like Midjourney and Stability AI have faced criticism for using artists' work in training data, while some artists have successfully negotiated licensing deals with AI companies.<br><br>Source: Vox<br>https://www.vox.com/artificial-intelligence/408786/ai-art-studio-ghibli-moral-injury-copyright
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.vox.com/artificial-intelligence/408786/ai-art-studio-ghibli-moral-injury-copyright" target="_blank">The real argument artists should be making against AI</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 12:30:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">A dev built a test to see how AI chatbots respond to controversial topics</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            A pseudonymous developer has released SpeechMap, a new evaluation framework that measures how freely AI chatbots engage with sensitive or controversial topics. The benchmark tests various commercial AI models on their responses to prompts about politics, religion, race, gender, and other potentially divisive subjects. Initial results show significant variation among popular models, with Anthropic's Claude and Meta's Llama demonstrating more restrictive boundaries than some competitors. The evaluation aims to provide transparency about content policies implemented by different AI companies and highlight inconsistencies in how models handle controversial requests.<br><br>Source: TechCrunch<br>https://techcrunch.com/2025/04/16/theres-now-a-benchmark-for-how-free-an-ai-chatbot-is-to-talk-about-controversial-topics/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://techcrunch.com/2025/04/16/theres-now-a-benchmark-for-how-free-an-ai-chatbot-is-to-talk-about-controversial-topics/" target="_blank">A dev built a test to see how AI chatbots respond to controversial topics</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 12:30:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">The Download: how AI is changing music, and a US city’s AI experiment</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            OpenAI is reportedly working on developing its own social network, marking a significant expansion beyond its core AI model development. The company appears to be moving toward creating a platform where users could directly interact with its AI systems and each other, potentially competing with established social media companies. This strategic shift suggests OpenAI aims to control more of the user experience rather than relying solely on partnerships with existing platforms. The move aligns with broader industry trends of AI companies seeking direct consumer relationships.<br><br>Source: MIT Technology Review<br>https://www.technologyreview.com/2025/04/16/1115231/the-download-how-ai-is-changing-music-and-a-us-citys-ai-experiment/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.technologyreview.com/2025/04/16/1115231/the-download-how-ai-is-changing-music-and-a-us-citys-ai-experiment/" target="_blank">The Download: how AI is changing music, and a US city’s AI experiment</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 12:10:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Gamma AI Platform Abused in Phishing Chain to Spoof Microsoft SharePoint Logins</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Threat actors are exploiting Gamma's AI presentation platform to host sophisticated Microsoft login phishing pages that bypass traditional security measures. The attack involves creating legitimate-looking Gamma presentations that mimic Microsoft authentication portals, then distributing these links through email campaigns. Security researchers discovered these phishing attempts successfully evade detection because Gamma's domain has high reputation scores, allowing attackers to steal credentials from unsuspecting users who trust the familiar interface.<br><br>Source: The Hacker News<br>https://thehackernews.com/2025/04/ai-powered-gamma-used-to-host-microsoft.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://thehackernews.com/2025/04/ai-powered-gamma-used-to-host-microsoft.html" target="_blank">Gamma AI Platform Abused in Phishing Chain to Spoof Microsoft SharePoint Logins</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 11:44:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Google Suspends 2.9 Million Ad Accounts In India For Policy Abuse</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Google suspended 2.9 million advertiser accounts in India and removed 247.4 million advertisements in 2024 for violating its advertising policies. The enforcement actions were part of Google's broader efforts to maintain ad quality and protect users from potentially harmful or misleading advertising content. These measures reflect the increasing scale of policy enforcement required in India's rapidly growing digital advertising market. The suspensions highlight ongoing challenges in maintaining advertising standards across Google's platforms.<br><br>Source: NDTV<br>https://www.ndtv.com/india-news/google-suspends-2-9-million-advertisers-accounts-in-india-for-policy-abuse-8178931
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.ndtv.com/india-news/google-suspends-2-9-million-advertisers-accounts-in-india-for-policy-abuse-8178931" target="_blank">Google Suspends 2.9 Million Ad Accounts In India For Policy Abuse</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 11:31:03 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Google Ads Suspended 200% More Advertisers &amp; Removed 5.5 Billion Ads</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Google's annual Ads Safety report reveals a dramatic increase in enforcement actions, with 39.2 million advertiser accounts suspended in 2024 compared to 12.7 million in 2023—a more than 200 percent increase. The company removed 5.1 billion ads from its platform and restricted over 9.1 billion additional ads. Google also took enforcement actions against publisher content, restricting ads on 1.3 billion publisher pages and implementing site-level enforcement on more than 220,000 publisher sites.<br><br>Source: seroundtable.com<br>https://www.seroundtable.com/google-ads-safety-report-39242.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.seroundtable.com/google-ads-safety-report-39242.html" target="_blank">Google Ads Suspended 200% More Advertisers &amp; Removed 5.5 Billion Ads</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 16 Apr 2025 11:31:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+    </main>
+    
+    <footer class="footer">
+      <p>Powered by Data Points AI with Anthropic Claude API</p>
+    </footer>
+  </div>
+</body>
+</html>
