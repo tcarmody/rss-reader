@@ -1,13 +1,38 @@
-"""Enhanced article clustering functionality using sentence transformers.
+"""Enhanced                                     # Add entities to cluster info
+                                if top_entities:
+                                    for article in cluster:
+                                        article['cluster_entities'] = [entity[0] for entity in top_entities]
+                        except Exception as e:
+                            logging.warning(f"Error extracting entities for cluster: {e}")
+
+            # Log clustering results
+            logging.info(f"Created {len(merged_clusters)} clusters:")
+            for i, cluster in enumerate(merged_clusters):
+                titles = [a.get('title', 'No title') for a in cluster]
+                topics = cluster[0].get('cluster_topics', []) if cluster else []
+                entities = cluster[0].get('cluster_entities', []) if cluster else []
+                
+                logging.info(f"Cluster {i}: {len(cluster)} articles. Topics: {topics}")
+                if entities:
+                    logging.info(f"Cluster {i} entities: {entities}")
+                logging.info(f"Titles: {titles}")
+
+            return merged_clusters
+
+        except Exception as e:
+            logging.error(f"Error clustering articles: {str(e)}", exc_info=True)
+            # Fallback: return each article in its own cluster
+            return [[article] for article in articles] clustering functionality using sentence transformers and advanced topic modeling.
 
 This improved version includes:
 - Caching for embeddings
 - Better error handling
 - Adaptive distance thresholds
-- Topic extraction
+- Advanced topic extraction with BERTopic
 - Improved date handling
-- Enhanced cluster merging
+- Enhanced cluster merging with entity recognition
 - Performance optimizations
+- UMAP+HDBSCAN clustering pipeline
 """
 
 import logging
@@ -21,7 +46,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from functools import lru_cache
 from dateutil import parser as date_parser
-from sklearn.cluster import AgglomerativeClustering, DBSCAN, HDBSCAN
+from sklearn.cluster import AgglomerativeClustering, DBSCAN
 from sklearn.feature_extraction.text import CountVectorizer
 from sentence_transformers import SentenceTransformer
 import fasttext
@@ -48,7 +73,12 @@ CONFIG = {
     'min_keyword_matches': int(os.environ.get('MIN_KEYWORD_MATCHES', 2)),
     'cluster_match_threshold': float(os.environ.get('CLUSTER_MATCH_THRESHOLD', 0.5)),
     'use_hdbscan': True,
+    'use_bertopic': True,  # New flag to enable advanced topic modeling
+    'use_umap': True,      # New flag to enable UMAP dimensionality reduction
+    'use_ner': True,       # New flag to enable Named Entity Recognition
     'circuit_breaker_attempts': int(os.environ.get('CIRCUIT_BREAKER_ATTEMPTS', 3)),
+    'umap_components': int(os.environ.get('UMAP_COMPONENTS', 5)),
+    'umap_neighbors': int(os.environ.get('UMAP_NEIGHBORS', 15)),
     'stopwords': set(['this', 'that', 'with', 'from', 'what', 'when', 'where', 'which', 'about', 'have', 'will', 'your', 'their', 'there', 'they', 'these', 'those', 'some', 'were', 'after', 'before', 'could', 'should', 'would']),
 }
 
@@ -115,9 +145,10 @@ class DummyModel:
 class EmbeddingCache:
     """Cache for article embeddings to avoid recomputing them."""
     
-    def __init__(self, cache_dir=CONFIG['cache_dir']):
+    def __init__(self, cache_dir=CONFIG['cache_dir'], max_cache_size=1000):
         self.cache_dir = cache_dir
         self.memory_cache = {}
+        self.max_cache_size = max_cache_size  # New: limit cache size
         os.makedirs(cache_dir, exist_ok=True)
         
     def _get_cache_key(self, text):
@@ -134,7 +165,10 @@ class EmbeddingCache:
         
         # Check memory cache first
         if key in self.memory_cache:
-            return self.memory_cache[key]
+            # LRU-like behavior: move to the "front" by removing and re-adding
+            value = self.memory_cache.pop(key)
+            self.memory_cache[key] = value
+            return value
         
         # Check disk cache
         cache_path = self._get_cache_path(key)
@@ -143,19 +177,27 @@ class EmbeddingCache:
                 with open(cache_path, 'rb') as f:
                     embedding = pickle.load(f)
                     # Store in memory cache for faster access next time
-                    self.memory_cache[key] = embedding
+                    self._add_to_memory_cache(key, embedding)
                     return embedding
             except Exception as e:
                 logging.warning(f"Failed to load cached embedding: {e}")
         
         return None
     
+    def _add_to_memory_cache(self, key, value):
+        """Add item to memory cache with LRU eviction if needed."""
+        # If cache is full, remove oldest item (first item in dict)
+        if len(self.memory_cache) >= self.max_cache_size:
+            oldest_key = next(iter(self.memory_cache))
+            self.memory_cache.pop(oldest_key)
+        self.memory_cache[key] = value
+    
     def set(self, text, embedding):
         """Store embedding for a text in cache."""
         key = self._get_cache_key(text)
         
         # Store in memory cache
-        self.memory_cache[key] = embedding
+        self._add_to_memory_cache(key, embedding)
         
         # Store on disk
         cache_path = self._get_cache_path(key)
@@ -190,184 +232,407 @@ class LanguageDetector:
             return "en"
 
 
-class TopicExtractor:
-    """Extract keywords and topics from article clusters."""
+class NamedEntityRecognizer:
+    """Extract named entities from text for better clustering."""
     
     def __init__(self):
-        # Enhanced stopwords list with common web terms and non-informative words
-        self.extended_stopwords = list(CONFIG['stopwords']) + [
-            'com', 'www', 'http', 'https', 'html', 'jpg', 'png', 'pdf',
-            'says', 'said', 'according', 'reported', 'report', 'reports',
-            'year', 'years', 'month', 'months', 'week', 'weeks', 'day', 'days',
-            'time', 'times', 'new', 'news', 'latest', 'update', 'updates',
-            'first', 'last', 'next', 'previous', 'one', 'two', 'three', 'four', 'five',
-            'article', 'story', 'post', 'read', 'view', 'click', 'find', 'get',
-            'just', 'like', 'make', 'made', 'take', 'took', 'way', 'use', 'used',
-            'know', 'need', 'see', 'look', 'want', 'going', 'come', 'came', 'back'
-        ]
+        self.model = None
+        self.circuit_breaker = CircuitBreaker()
         
-        # Enhanced vectorizer with optimized parameters for better topic extraction
-        self.vectorizer = CountVectorizer(
-            max_features=300,  # Increased to capture more potential topics
-            stop_words=self.extended_stopwords,
-            min_df=1,  # Allow terms that appear in at least 1 document (important for small clusters)
-            max_df=0.8,  # More strict - ignore terms that appear in >80% of documents
-            ngram_range=(1, 3),  # Include up to trigrams for more meaningful multi-word topics
-            token_pattern=r'(?u)\b[A-Za-z][A-Za-z0-9+\-_\.]*\b'  # Better pattern to capture technical terms
-        )
-        
-    def extract_topics(self, articles, top_n=5):
-        """Extract top keywords and meaningful topics from a group of articles."""
-        if not articles:
-            return []
+    def _initialize_model(self):
+        """Lazily initialize NER model."""
+        if self.model is not None:
+            return True
             
-        # For single article clusters, use a simplified approach
-        if len(articles) == 1:
-            return self._extract_topics_from_single_article(articles[0], top_n)
-            
-        # For very small clusters, adjust vectorizer parameters
-        if len(articles) < 3:
-            return self._extract_topics_from_small_cluster(articles, top_n)
-            
-        # Standard approach for larger clusters
-        return self._extract_topics_from_cluster(articles, top_n)
-    
-    def _extract_topics_from_single_article(self, article, top_n=5):
-        """Extract topics from a single article, focusing on the title."""
-        title = self._clean_text(article.get('title', ''))
-        content = self._clean_text(article.get('content', ''))
-        
-        # Extract significant words from title
-        title_words = [w.lower() for w in title.split() 
-                     if len(w) > 3 and w.lower() not in self.extended_stopwords]
-        
-        # If we have enough words from the title, prioritize those
-        if len(title_words) >= top_n:
-            # Count frequencies
-            word_freq = defaultdict(int)
-            for word in title_words:
-                word_freq[word] += 1
-                
-            # Get top keywords from title
-            sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
-            topics = [word for word, freq in sorted_words[:top_n]]
-            
-            # If we have enough topics, return them
-            if len(topics) >= min(3, top_n):
-                return topics
-        
-        # If title doesn't provide enough keywords, include content
-        all_text = f"{title} {content}"
-        words = [w.lower() for w in all_text.split() 
-                if len(w) > 3 and w.lower() not in self.extended_stopwords]
-        
-        # Count word frequencies
-        word_freq = defaultdict(int)
-        for word in words:
-            word_freq[word] += 1
-            
-        # Get top keywords
-        sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
-        return [word for word, freq in sorted_words[:top_n]]
-    
-    def _extract_topics_from_small_cluster(self, articles, top_n=5):
-        """Extract topics from a small cluster (2-3 articles)."""
-        # Collect all text
-        all_text = ""
-        for article in articles:
-            title = self._clean_text(article.get('title', ''))
-            content = self._clean_text(article.get('content', ''))
-            # Weight title more heavily
-            all_text += f"{title} {title} {content} "
-        
-        # Extract words and filter
-        words = [w.lower() for w in all_text.split() 
-                if len(w) > 3 and w.lower() not in self.extended_stopwords]
-        
-        # Count word frequencies
-        word_freq = defaultdict(int)
-        for word in words:
-            word_freq[word] += 1
-            
-        # Get top keywords
-        sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
-        return [word for word, freq in sorted_words[:top_n]]
-    
-    def _extract_topics_from_cluster(self, articles, top_n=5):
-        """Extract topics from a larger cluster using CountVectorizer."""
-        # Weight titles more heavily than content
-        texts = []
-        titles = []
-        for article in articles:
-            title = self._clean_text(article.get('title', ''))
-            content = self._clean_text(article.get('content', ''))
-            
-            # Add title and content to their respective lists
-            titles.append(title)
-            texts.append(f"{title} {title} {content}")  # Weight title 2x
+        if self.circuit_breaker.is_open():
+            logging.warning("NER model initialization circuit breaker is open")
+            return False
             
         try:
-            # Create a custom vectorizer with parameters adjusted for cluster size
-            cluster_vectorizer = CountVectorizer(
-                max_features=200,
-                stop_words=self.extended_stopwords,
-                min_df=1,  # Accept terms that appear in at least 1 document
-                max_df=1.0,  # Accept terms that appear in all documents
-                ngram_range=(1, 2)  # Include bigrams
-            )
+            # Try to import and load SpaCy model
+            import spacy
+            try:
+                self.model = spacy.load("en_core_web_sm")
+                return True
+            except:
+                # If en_core_web_sm is not available, try the smaller model
+                try:
+                    self.model = spacy.load("en_core_web_md")
+                    return True
+                except:
+                    logging.warning("SpaCy models not available. Using fallback entity extraction.")
+                    self.circuit_breaker.record_failure()
+                    return False
+        except ImportError:
+            logging.warning("SpaCy not installed. Using fallback entity extraction.")
+            self.circuit_breaker.record_failure()
+            return False
+    
+    def extract_entities(self, text):
+        """Extract named entities from text."""
+        if not text:
+            return []
             
-            # Extract topics from full text (titles + content)
-            X = cluster_vectorizer.fit_transform(texts)
-            word_counts = X.sum(axis=0)
-            word_counts = np.asarray(word_counts).flatten()
+        # Try to initialize model if not already done
+        if not self._initialize_model():
+            # Fallback: use regex-based extraction
+            return self._extract_entities_fallback(text)
             
-            # Get feature names and their counts
-            feature_names = cluster_vectorizer.get_feature_names_out()
-            word_count_pairs = [(feature_names[i], word_counts[i]) for i in range(len(feature_names))]
+        try:
+            doc = self.model(text[:5000])  # Limit text length for performance
+            entities = []
             
-            # Filter out low-information terms
-            filtered_pairs = []
-            for term, count in word_count_pairs:
-                # Skip terms that are just numbers or very short
-                if term.isdigit() or len(term) < 3:
-                    continue
+            for ent in doc.ents:
+                # Filter for the most relevant entity types
+                if ent.label_ in ["PERSON", "ORG", "GPE", "LOC", "PRODUCT", "EVENT", "WORK_OF_ART"]:
+                    entities.append({
+                        "text": ent.text,
+                        "type": ent.label_,
+                        "count": 1
+                    })
+            
+            # Merge duplicate entities and count occurrences
+            merged_entities = {}
+            for entity in entities:
+                key = f"{entity['text']}|{entity['type']}"
+                if key in merged_entities:
+                    merged_entities[key]["count"] += 1
+                else:
+                    merged_entities[key] = entity
                     
-                # Skip terms that are years (e.g., 2025)
-                if len(term) == 4 and term.isdigit() and 1900 <= int(term) <= 2100:
-                    continue
-                    
-                filtered_pairs.append((term, count))
-            
-            # Sort by count and get top terms
-            sorted_pairs = sorted(filtered_pairs, key=lambda x: x[1], reverse=True)
-            top_keywords = [term for term, count in sorted_pairs[:top_n]]
-            
-            # If we got meaningful topics, return them
-            if top_keywords:
-                return top_keywords
-                
-            # Fallback to title-only analysis if the above didn't work well
-            raise Exception("Primary topic extraction yielded poor results, falling back")
+            return list(merged_entities.values())
             
         except Exception as e:
-            logging.warning(f"Primary topic extraction failed: {e}. Using fallback method.")
-            return self._extract_topics_from_small_cluster(articles, top_n)
+            logging.warning(f"Entity extraction failed: {e}. Using fallback method.")
+            self.circuit_breaker.record_failure()
+            return self._extract_entities_fallback(text)
     
-    def _clean_text(self, text):
-        """Clean text by removing URLs, special characters, etc."""
+    def _extract_entities_fallback(self, text):
+        """Simple regex-based entity extraction as fallback."""
         if not text:
-            return ""
+            return []
             
-        # Remove URLs
-        text = re.sub(r'https?://\S+|www\.\S+', '', text)
+        # Simple regex for potential named entities (capitalized phrases)
+        entity_pattern = r'\b[A-Z][a-zA-Z0-9]*(?:\s+[A-Z][a-zA-Z0-9]*)*\b'
+        matches = re.findall(entity_pattern, text)
         
-        # Remove special characters but keep spaces and alphanumerics
-        text = re.sub(r'[^\w\s]', ' ', text)
+        # Filter and count entities
+        entity_counts = defaultdict(int)
+        for match in matches:
+            # Skip very short matches and common words
+            if len(match) < 3 or match.lower() in CONFIG['stopwords']:
+                continue
+            entity_counts[match] += 1
         
-        # Remove extra whitespace
-        text = re.sub(r'\s+', ' ', text).strip()
+        # Convert to list format
+        entities = []
+        for entity_text, count in entity_counts.items():
+            entities.append({
+                "text": entity_text,
+                "type": "UNKNOWN",
+                "count": count
+            })
         
-        return text
+        return sorted(entities, key=lambda x: x["count"], reverse=True)[:20]
+
+
+class AdvancedTopicModeler:
+    """Advanced topic modeling with BERTopic and fallback methods."""
+    
+    def __init__(self):
+        self.model = None
+        self.circuit_breaker = CircuitBreaker()
+        self.fallback_extractor = None
+        
+    def _initialize_model(self):
+        """Lazily initialize BERTopic model."""
+        if self.model is not None:
+            return True
+            
+        if self.circuit_breaker.is_open():
+            logging.warning("BERTopic initialization circuit breaker is open, using fallback")
+            return False
+            
+        try:
+            # Try to import and initialize BERTopic
+            try:
+                from bertopic import BERTopic
+                from sklearn.feature_extraction.text import CountVectorizer
+                
+                # Configure vectorizer with stopwords and n-gram range
+                vectorizer = CountVectorizer(
+                    stop_words="english",
+                    ngram_range=(1, 2)
+                )
+                
+                # Initialize BERTopic with minimal compute requirements
+                self.model = BERTopic(
+                    vectorizer_model=vectorizer,
+                    calculate_probabilities=False,
+                    verbose=True
+                )
+                logging.info("Successfully initialized BERTopic model")
+                return True
+                
+            except ImportError:
+                logging.warning("BERTopic not installed. Using fallback topic extraction.")
+                self.circuit_breaker.record_failure()
+                return False
+                
+        except Exception as e:
+            logging.warning(f"Failed to initialize BERTopic: {e}. Using fallback.")
+            self.circuit_breaker.record_failure()
+            return False
+    
+    def extract_topics(self, texts, top_n=5):
+        """Extract topics from a collection of texts."""
+        if not texts:
+            return []
+            
+        # Initialize fallback extractor if needed
+        if self.fallback_extractor is None:
+            from sklearn.feature_extraction.text import CountVectorizer
+            # Enhanced stopwords list with common web terms and non-informative words
+            extended_stopwords = list(CONFIG['stopwords']) + [
+                'com', 'www', 'http', 'https', 'html', 'jpg', 'png', 'pdf',
+                'says', 'said', 'according', 'reported', 'report', 'reports',
+                'year', 'years', 'month', 'months', 'week', 'weeks', 'day', 'days',
+                'time', 'times', 'new', 'news', 'latest', 'update', 'updates',
+                'first', 'last', 'next', 'previous', 'one', 'two', 'three', 'four', 'five',
+                'article', 'story', 'post', 'read', 'view', 'click', 'find', 'get',
+                'just', 'like', 'make', 'made', 'take', 'took', 'way', 'use', 'used',
+                'know', 'need', 'see', 'look', 'want', 'going', 'come', 'came', 'back'
+            ]
+            
+            self.fallback_extractor = CountVectorizer(
+                max_features=300,
+                stop_words=extended_stopwords,
+                min_df=1,
+                max_df=0.8,
+                ngram_range=(1, 3),
+                token_pattern=r'(?u)\b[A-Za-z][A-Za-Z0-9+\-_\.]*\b'
+            )
+        
+        # For very small collections, use fallback immediately
+        if len(texts) < 3 or not CONFIG['use_bertopic']:
+            return self._extract_topics_fallback(texts, top_n)
+            
+        # Try to initialize model if not already done
+        if not self._initialize_model():
+            return self._extract_topics_fallback(texts, top_n)
+            
+        try:
+            # Fit BERTopic model to the texts
+            topics, _ = self.model.fit_transform(texts)
+            
+            # Get the top topic words
+            topic_words = self.model.get_topic_info()
+            
+            # Extract the most common topic (excluding -1 which is noise)
+            valid_topics = [t for t in set(topics) if t != -1]
+            if not valid_topics:
+                return self._extract_topics_fallback(texts, top_n)
+                
+            # Get the topic words for each topic
+            result_topics = []
+            for topic_id in valid_topics:
+                top_words = self.model.get_topic(topic_id)
+                # Extract just the words (not the weights)
+                words = [word for word, _ in top_words[:top_n]]
+                result_topics.extend(words)
+                
+            # Limit to top_n unique words
+            unique_topics = []
+            for topic in result_topics:
+                if topic not in unique_topics:
+                    unique_topics.append(topic)
+                if len(unique_topics) >= top_n:
+                    break
+                    
+            return unique_topics
+            
+        except Exception as e:
+            logging.warning(f"BERTopic extraction failed: {e}. Using fallback method.")
+            self.circuit_breaker.record_failure()
+            return self._extract_topics_fallback(texts, top_n)
+    
+    def _extract_topics_fallback(self, texts, top_n=5):
+        """Fallback method for topic extraction using CountVectorizer."""
+        try:
+            # Join all texts
+            all_text = " ".join(texts)
+            
+            # Vectorize
+            X = self.fallback_extractor.fit_transform([all_text])
+            
+            # Get feature names and counts
+            feature_names = self.fallback_extractor.get_feature_names_out()
+            word_counts = X.toarray()[0]
+            
+            # Sort by count
+            sorted_idx = word_counts.argsort()[::-1]
+            
+            # Get top words
+            top_words = [feature_names[i] for i in sorted_idx[:top_n]]
+            return top_words
+            
+        except Exception as e:
+            logging.error(f"Fallback topic extraction also failed: {e}")
+            # Last resort: just return empty list
+            return []
+
+
+class AdvancedClusteringPipeline:
+    """Advanced clustering pipeline with UMAP+HDBSCAN and fallbacks."""
+    
+    def __init__(self):
+        self.umap_model = None
+        self.hdbscan_model = None
+        self.circuit_breaker = CircuitBreaker()
+        
+    def _initialize_models(self):
+        """Lazily initialize UMAP and HDBSCAN models."""
+        if self.umap_model is not None and self.hdbscan_model is not None:
+            return True
+            
+        if self.circuit_breaker.is_open():
+            logging.warning("Advanced clustering pipeline circuit breaker is open")
+            return False
+            
+        try:
+            # Try to import and initialize UMAP
+            import umap
+            import hdbscan
+            
+            self.umap_model = umap.UMAP(
+                n_components=CONFIG['umap_components'],
+                n_neighbors=CONFIG['umap_neighbors'],
+                min_dist=0.1,
+                metric='cosine'
+            )
+            
+            self.hdbscan_model = hdbscan.HDBSCAN(
+                min_cluster_size=2,
+                min_samples=2,
+                metric='euclidean',
+                cluster_selection_epsilon=0.5,
+                prediction_data=True
+            )
+            
+            logging.info("Successfully initialized UMAP+HDBSCAN pipeline")
+            return True
+            
+        except ImportError:
+            logging.warning("UMAP or HDBSCAN not installed. Using fallback clustering.")
+            self.circuit_breaker.record_failure()
+            return False
+            
+        except Exception as e:
+            logging.warning(f"Failed to initialize clustering pipeline: {e}")
+            self.circuit_breaker.record_failure()
+            return False
+    
+    def cluster(self, embeddings, threshold, publication_times=None):
+        """Apply the UMAP+HDBSCAN clustering pipeline with fallbacks."""
+        # Check if we should use the advanced pipeline
+        if not CONFIG['use_umap'] or len(embeddings) < 5:
+            # For very small datasets, use the simpler method
+            return self._apply_fallback_clustering(embeddings, threshold, publication_times)
+            
+        # Try to initialize models if not already done
+        if not self._initialize_models():
+            return self._apply_fallback_clustering(embeddings, threshold, publication_times)
+            
+        try:
+            # Apply UMAP dimensionality reduction
+            logging.info("Applying UMAP dimensionality reduction")
+            reduced_embeddings = self.umap_model.fit_transform(embeddings)
+            
+            # Apply HDBSCAN clustering
+            logging.info("Applying HDBSCAN clustering")
+            self.hdbscan_model.cluster_selection_epsilon = threshold * 1.5
+            
+            # For small datasets, adjust parameters
+            if len(embeddings) < 10:
+                self.hdbscan_model.min_cluster_size = 2
+                self.hdbscan_model.min_samples = 1
+            else:
+                self.hdbscan_model.min_cluster_size = 2
+                self.hdbscan_model.min_samples = 2
+                
+            labels = self.hdbscan_model.fit_predict(reduced_embeddings)
+            
+            # If we got only noise points, try with more permissive settings
+            if np.all(labels == -1) and len(embeddings) > 3:
+                logging.info("All points classified as noise, trying more permissive clustering")
+                self.hdbscan_model.min_cluster_size = 2
+                self.hdbscan_model.min_samples = 1
+                self.hdbscan_model.cluster_selection_epsilon = threshold * 2
+                labels = self.hdbscan_model.fit_predict(reduced_embeddings)
+                
+            # If we still have all noise, fall back to agglomerative clustering
+            if np.all(labels == -1) and len(embeddings) > 3:
+                logging.info("HDBSCAN still classified all points as noise, falling back")
+                return self._apply_fallback_clustering(embeddings, threshold, publication_times)
+                
+            unique_labels = set(labels)
+            if -1 in unique_labels:
+                unique_labels.remove(-1)
+            logging.info(f"UMAP+HDBSCAN created {len(unique_labels)} clusters")
+            
+            self.circuit_breaker.reset()  # Success, reset circuit breaker
+            return labels
+            
+        except Exception as e:
+            logging.warning(f"Advanced clustering failed: {e}. Using fallback method.")
+            self.circuit_breaker.record_failure()
+            return self._apply_fallback_clustering(embeddings, threshold, publication_times)
+    
+    def _apply_fallback_clustering(self, embeddings, threshold, publication_times=None):
+        """Fallback clustering method using Agglomerative Clustering."""
+        logging.info("Using fallback Agglomerative Clustering")
+        
+        # Time-weighted similarity matrix if we have publication times
+        if publication_times and len(publication_times) == len(embeddings):
+            try:
+                # Convert times to relative hours
+                base_time = min(publication_times)
+                time_diffs = np.array([(t - base_time).total_seconds() / 3600 for t in publication_times])
+                
+                # Calculate time weight matrix (closer in time = higher weight)
+                max_time_diff = max(time_diffs) if len(time_diffs) > 0 else 1
+                time_weights = 1 - (np.abs(time_diffs[:, np.newaxis] - time_diffs[np.newaxis, :]) / (max_time_diff + 1e-6)) * 0.3
+                
+                # Create cosine similarity matrix
+                cosine_sim = np.matmul(embeddings, embeddings.T)
+                
+                # Combine content and time similarity
+                combined_sim = cosine_sim * time_weights
+                
+                # Convert to distance
+                distances = 1 - combined_sim
+                
+                # Use pre-computed distances with AgglomerativeClustering
+                clustering = AgglomerativeClustering(
+                    n_clusters=None,
+                    distance_threshold=threshold,
+                    metric='precomputed',
+                    linkage='complete'
+                ).fit(distances)
+                
+                return clustering.labels_
+            except Exception as e:
+                logging.warning(f"Time-weighted clustering failed: {e}. Falling back to standard clustering.")
+        
+        # Default to standard AgglomerativeClustering
+        clustering = AgglomerativeClustering(
+            n_clusters=None,
+            distance_threshold=threshold,
+            metric='cosine',
+            linkage='complete'
+        ).fit(embeddings)
+        
+        return clustering.labels_
 
 
 class ArticleClusterer:
@@ -376,7 +641,7 @@ class ArticleClusterer:
     - Caching for embeddings
     - Adaptive distance thresholds
     - Multiple clustering algorithms
-    - Topic extraction
+    - Advanced topic extraction
     - Better date handling
     - Enhanced cluster merging
     - Performance optimizations
@@ -389,7 +654,9 @@ class ArticleClusterer:
         self.device = None
         self.embedding_cache = EmbeddingCache()
         self.language_detector = LanguageDetector()
-        self.topic_extractor = TopicExtractor()
+        self.entity_recognizer = NamedEntityRecognizer()
+        self.topic_modeler = AdvancedTopicModeler()
+        self.clustering_pipeline = AdvancedClusteringPipeline()
         self.model_circuit_breaker = CircuitBreaker()
         
         # Load model (will happen on first use if not here)
@@ -500,21 +767,52 @@ class ArticleClusterer:
         sources = []
         languages = []
         publication_times = []
+        entities_by_index = {}  # Store entity data by article index
         
-        for article in articles:
+        for i, article in enumerate(articles):
             title = article.get('title', '')
             content = article.get('content', '')
             
-            # Extract potential entity names and important keywords from the title
-            # These are typically proper nouns, product names, company names, etc.
-            import re
-            
-            # Look for capitalized words and phrases that might be entity names
-            entity_pattern = r'\b[A-Z][a-zA-Z0-9]*(?:\s+[A-Z][a-zA-Z0-9]*)*\b'
-            entities = re.findall(entity_pattern, title)
-            
-            # Repeat entity names multiple times to give them more weight
-            entity_text = ' '.join([entity for entity in entities for _ in range(3)])
+            # Extract entities from title and content if enabled
+            entities = []
+            if CONFIG['use_ner']:
+                try:
+                    # Weight title entities more heavily
+                    title_entities = self.entity_recognizer.extract_entities(title)
+                    content_entities = self.entity_recognizer.extract_entities(content)
+                    
+                    # Combine entities, prioritizing those from the title
+                    title_entity_texts = {e["text"]: e for e in title_entities}
+                    content_entity_texts = {e["text"]: e for e in content_entities}
+                    
+                    # Add title entities first (they're more important)
+                    for text, entity in title_entity_texts.items():
+                        entity["count"] *= 2  # Weight title entities more heavily
+                        entities.append(entity)
+                    
+                    # Add content entities that weren't in the title
+                    for text, entity in content_entity_texts.items():
+                        if text not in title_entity_texts:
+                            entities.append(entity)
+                    
+                    # Save entities for later use in merging
+                    entities_by_index[i] = entities
+                    
+                    # Create entity text for embedding enhancement
+                    entity_text = " ".join([e["text"] for e in entities for _ in range(e["count"])])
+                except Exception as e:
+                    logging.debug(f"Entity extraction failed: {e}")
+                    entity_text = ""
+            else:
+                # Extract potential entity names and important keywords from the title using simple regex
+                import re
+                
+                # Look for capitalized words and phrases that might be entity names
+                entity_pattern = r'\b[A-Z][a-zA-Z0-9]*(?:\s+[A-Z][a-zA-Z0-9]*)*\b'
+                extracted_entities = re.findall(entity_pattern, title)
+                
+                # Repeat entity names multiple times to give them more weight
+                entity_text = ' '.join([entity for entity in extracted_entities for _ in range(3)])
             
             # Weight the title more heavily by repeating it
             combined_text = f"{title} {title} {entity_text} {content}".strip()
@@ -540,383 +838,4 @@ class ArticleClusterer:
             
             logging.debug(f"Processing article for clustering: {title} (language: {lang})")
             
-        return texts, sources, languages, publication_times
-    
-    def _get_embeddings(self, texts):
-        """
-        Generate embeddings for texts with caching to avoid recomputation.
-        """
-        if not texts:
-            return np.array([])
-            
-        # Check cache first
-        embeddings_list = []
-        texts_to_encode = []
-        indices_to_encode = []
-        
-        for i, text in enumerate(texts):
-            cached_embedding = self.embedding_cache.get(text)
-            if cached_embedding is not None:
-                embeddings_list.append((i, cached_embedding))
-            else:
-                texts_to_encode.append(text)
-                indices_to_encode.append(i)
-                
-        logging.info(f"Found {len(embeddings_list)} cached embeddings, need to encode {len(texts_to_encode)} texts")
-        
-        # Re-initialize model if needed (e.g., after errors)
-        self._initialize_model()
-        
-        # Encode texts that weren't in cache
-        if texts_to_encode:
-            try:
-                # Use progress bar for larger batches
-                show_progress = len(texts_to_encode) > 10
-                
-                new_embeddings = self.model.encode(
-                    texts_to_encode,
-                    show_progress_bar=show_progress,
-                    batch_size=CONFIG['batch_size'],
-                    normalize_embeddings=True
-                )
-                
-                # Cache the new embeddings
-                for idx, text, embedding in zip(indices_to_encode, texts_to_encode, new_embeddings):
-                    self.embedding_cache.set(text, embedding)
-                    embeddings_list.append((idx, embedding))
-                    
-                self.model_circuit_breaker.reset()  # Reset circuit breaker on success
-                    
-            except Exception as e:
-                logging.error(f"Error generating embeddings: {e}")
-                # Generate dummy embeddings for uncached texts
-                for idx, text in zip(indices_to_encode, texts_to_encode):
-                    dummy_embedding = np.random.rand(768)
-                    dummy_embedding = dummy_embedding / np.linalg.norm(dummy_embedding)
-                    embeddings_list.append((idx, dummy_embedding))
-                    
-                self.model_circuit_breaker.record_failure()
-        
-        # Sort by original index and extract just the embeddings
-        embeddings_list.sort()
-        final_embeddings = np.array([emb for _, emb in embeddings_list])
-        return final_embeddings
-    
-    def _apply_clustering(self, embeddings, threshold, publication_times=None):
-        """
-        Apply the appropriate clustering algorithm based on configuration.
-        """
-        if CONFIG['use_hdbscan']:
-            try:
-                import hdbscan
-                # Install HDBSCAN if not already installed
-                try:
-                    # HDBSCAN is good for finding clusters of varying densities
-                    # Improved parameters for better clustering:
-                    # - Lower min_cluster_size to allow smaller clusters
-                    # - Adjusted min_samples for better noise handling
-                    # - Using 'euclidean' metric since 'cosine' isn't directly supported
-                    # - Added cluster_selection_method for better cluster extraction
-                    
-                    # First normalize the embeddings to unit length for cosine similarity
-                    # This allows us to use euclidean distance as a proxy for cosine distance
-                    normalized_embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
-                    
-                    clusterer = hdbscan.HDBSCAN(
-                        min_cluster_size=2,  # Allow clusters as small as 2 articles
-                        min_samples=2,       # More conservative to avoid false positives
-                        metric='euclidean',  # Use euclidean on normalized vectors (equivalent to cosine)
-                        cluster_selection_epsilon=threshold * 1.5,  # More precise threshold
-                        cluster_selection_method='leaf',  # More conservative cluster extraction
-                        prediction_data=True  # Keep prediction data for possible soft clustering
-                    )
-                    
-                    # Fit the model and get cluster labels
-                    labels = clusterer.fit_predict(embeddings)
-                    
-                    # If we got only noise points (label -1), try with more permissive settings
-                    if np.all(labels == -1) and len(embeddings) > 3:
-                        logging.info("All points classified as noise, trying more permissive clustering")
-                        clusterer = hdbscan.HDBSCAN(
-                            min_cluster_size=2,
-                            min_samples=1,
-                            metric='cosine',
-                            cluster_selection_epsilon=threshold * 1.5,  # More permissive threshold
-                            prediction_data=True
-                        )
-                        labels = clusterer.fit_predict(embeddings)
-                    
-                    # If we still have all noise, fall back to agglomerative clustering
-                    if np.all(labels == -1) and len(embeddings) > 3:
-                        logging.info("HDBSCAN still classified all points as noise, falling back to AgglomerativeClustering")
-                        raise Exception("HDBSCAN produced all noise points")
-                        
-                    unique_labels = set(labels)
-                    if -1 in unique_labels:
-                        unique_labels.remove(-1)
-                    logging.info(f"HDBSCAN created {len(unique_labels)} clusters")
-                    return labels
-                    
-                except Exception as e:
-                    logging.warning(f"HDBSCAN clustering failed: {e}. Falling back to AgglomerativeClustering.")
-            except ImportError:
-                logging.warning("HDBSCAN not installed. Falling back to AgglomerativeClustering.")
-        
-        # Time-weighted similarity matrix if we have publication times
-        if publication_times and len(publication_times) == len(embeddings):
-            try:
-                # Convert times to relative hours
-                base_time = min(publication_times)
-                time_diffs = np.array([(t - base_time).total_seconds() / 3600 for t in publication_times])
-                
-                # Calculate time weight matrix (closer in time = higher weight)
-                max_time_diff = max(time_diffs) if len(time_diffs) > 0 else 1
-                time_weights = 1 - (np.abs(time_diffs[:, np.newaxis] - time_diffs[np.newaxis, :]) / (max_time_diff + 1e-6)) * 0.3
-                
-                # Create cosine similarity matrix
-                cosine_sim = np.matmul(embeddings, embeddings.T)
-                
-                # Combine content and time similarity
-                combined_sim = cosine_sim * time_weights
-                
-                # Convert to distance
-                distances = 1 - combined_sim
-                
-                # Use pre-computed distances with AgglomerativeClustering
-                clustering = AgglomerativeClustering(
-                    n_clusters=None,
-                    distance_threshold=threshold,
-                    metric='precomputed',
-                    linkage='complete'
-                ).fit(distances)
-                
-                return clustering.labels_
-            except Exception as e:
-                logging.warning(f"Time-weighted clustering failed: {e}. Falling back to standard clustering.")
-        
-        # Default to standard AgglomerativeClustering
-        clustering = AgglomerativeClustering(
-            n_clusters=None,
-            distance_threshold=threshold,
-            metric='cosine',
-            linkage='complete'
-        ).fit(embeddings)
-        
-        return clustering.labels_
-        
-    def _merge_similar_clusters(self, clusters, recent_articles):
-        """
-        Enhanced cluster merging with topic overlap and better duplicate detection.
-        """
-        merged_clusters = []
-        processed_keys = set()
-        article_ids = {id(article): i for i, article in enumerate(recent_articles)}
-
-        # Extract topics for each cluster for better merging decisions
-        cluster_topics = {}
-        for key, articles in clusters.items():
-            topics = self.topic_extractor.extract_topics(articles)
-            cluster_topics[key] = set(topics)
-            logging.debug(f"Cluster {key} topics: {topics}")
-
-        for key1 in clusters:
-            if key1 in processed_keys:
-                continue
-
-            label1 = int(key1.split('_')[0])
-            source1 = key1.split('_', 1)[1] if '_' in key1 else ''
-            current_cluster = clusters[key1].copy()
-            processed_keys.add(key1)
-            
-            # Get article indices for later duplicate detection
-            current_indices = {article_ids[id(article)] for article in current_cluster if id(article) in article_ids}
-            
-            # Get publication times
-            current_times = []
-            for article in current_cluster:
-                try:
-                    pub_time = self._parse_date(article.get('published', ''))
-                    current_times.append(pub_time)
-                except:
-                    current_times.append(datetime.now())
-            
-            # Look for similar clusters to merge
-            for key2 in clusters:
-                if key2 in processed_keys:
-                    continue
-
-                label2 = int(key2.split('_')[0])
-                source2 = key2.split('_', 1)[1] if '_' in key2 else ''
-                
-                # Candidate indices for duplicate detection
-                candidate_indices = {article_ids[id(article)] for article in clusters[key2] if id(article) in article_ids}
-                
-                # Skip if we'd be adding the same articles (avoiding duplicates)
-                if current_indices.intersection(candidate_indices):
-                    continue
-                
-                # Check if the articles are from the same source
-                same_source = source1 == source2
-                
-                # For articles from the same source, require very strong topic overlap
-                # For articles from different sources, use normal topic overlap criteria
-                common_topics = len(cluster_topics[key1].intersection(cluster_topics[key2]))
-                
-                # Adjust required topic match based on source
-                if same_source:
-                    # Same source - require very strong topic match to avoid grouping unrelated articles
-                    significant_overlap = common_topics >= CONFIG['min_keyword_matches'] + 2
-                else:
-                    # Different sources - use normal criteria to group related articles across publications
-                    significant_overlap = common_topics >= CONFIG['min_keyword_matches']
-                
-                # Only proceed if there's significant topic overlap or same algorithm cluster (for different sources)
-                if significant_overlap or (label1 == label2 and label1 != -1 and not same_source):
-                        # Check publication time proximity
-                        time_matches = 0
-                        for article in clusters[key2]:
-                            try:
-                                article_time = self._parse_date(article.get('published', ''))
-                                # Check if this article was published close to any article in the first cluster
-                                for curr_time in current_times:
-                                    time_diff = abs((article_time - curr_time).total_seconds() / 3600)  # hours
-                                    if time_diff < 48:  # Within 48 hours
-                                        time_matches += 1
-                                        break
-                            except:
-                                pass
-                        
-                        # Merge if topics match AND timing is close
-                        # Require stronger topic match for articles from different sources
-                        matches = len(cluster_topics[key1].intersection(cluster_topics[key2]))
-                        if matches >= CONFIG['min_keyword_matches'] + 1 and (
-                            time_matches >= len(clusters[key2]) * 0.7  # Require 70% of articles to match in time
-                        ):
-                            current_cluster.extend(clusters[key2])
-                            processed_keys.add(key2)
-                            logging.info(f"Merged clusters with topic overlap: {cluster_topics[key1].intersection(cluster_topics[key2])}")
-                            
-                            # Update indices and times
-                            current_indices.update(candidate_indices)
-                            for article in clusters[key2]:
-                                try:
-                                    pub_time = self._parse_date(article.get('published', ''))
-                                    current_times.append(pub_time)
-                                except:
-                                    pass
-
-            # Only add clusters with at least one article
-            if len(current_cluster) > 0:
-                # Extract topics for the merged cluster
-                if len(current_cluster) > 1:
-                    topics = self.topic_extractor.extract_topics(current_cluster)
-                    # Add topics to the first article in the cluster for reference
-                    if topics and current_cluster:
-                        current_cluster[0]['cluster_topics'] = topics
-                
-                merged_clusters.append(current_cluster)
-                
-            # Log the cluster titles for debugging
-            if len(current_cluster) > 1:
-                titles = [a.get('title', 'No title')[:50] for a in current_cluster]
-                logging.info(f"Created cluster with {len(current_cluster)} articles: {titles}")
-                
-        return merged_clusters
-    
-    @track_performance()
-    def cluster_articles(self, articles, days_threshold=None, distance_threshold=None):
-        """
-        Cluster articles based on semantic similarity with multiple improvements.
-        
-        Args:
-            articles: List of articles to cluster
-            days_threshold: Number of days to include in filtering (override config)
-            distance_threshold: Similarity threshold for clustering (override config)
-            
-        Returns:
-            list: List of article clusters with topic information
-        """
-        # Use config values unless overridden
-        days_threshold = days_threshold or CONFIG['days_threshold']
-        distance_threshold = distance_threshold or CONFIG['base_distance_threshold']
-        
-        try:
-            if not articles:
-                logging.warning("No articles to cluster")
-                return []
-
-            logging.info(f"Clustering {len(articles)} articles")
-
-            # Filter articles by date
-            current_time = datetime.now()
-            cutoff_date = current_time - timedelta(days=days_threshold)
-            
-            recent_articles = self._filter_recent_articles(articles, cutoff_date)
-            
-            if not recent_articles:
-                logging.warning("No recent articles to cluster")
-                return []
-
-            logging.info(f"Found {len(recent_articles)} articles from the last {days_threshold} days")
-
-            # Get article texts and metadata for clustering
-            texts, sources, languages, publication_times = self._prepare_articles_for_clustering(recent_articles)
-
-            # Get embeddings with caching
-            logging.info("Generating embeddings for articles...")
-            embeddings = self._get_embeddings(texts)
-            
-            if len(embeddings) == 0:
-                logging.warning("No embeddings were generated")
-                return [[article] for article in recent_articles]
-                
-            # Calculate adaptive threshold if enough articles
-            if len(embeddings) > 10:
-                threshold = self._calculate_adaptive_threshold(embeddings)
-                logging.info(f"Using adaptive distance threshold: {threshold}")
-            else:
-                threshold = distance_threshold
-                logging.info(f"Using fixed distance threshold: {threshold}")
-
-            # Apply clustering
-            logging.info("Clustering articles...")
-            labels = self._apply_clustering(embeddings, threshold, publication_times)
-
-            # Group articles by cluster, considering source
-            clusters = defaultdict(list)
-            for idx, label in enumerate(labels):
-                if label == -1:  # HDBSCAN noise point
-                    # Each noise point gets its own "cluster"
-                    clusters[f"{10000 + idx}_{sources[idx]}"].append(recent_articles[idx])
-                else:
-                    # Create a unique cluster key that includes the source
-                    source_key = f"{label}_{sources[idx]}"
-                    clusters[source_key].append(recent_articles[idx])
-
-            # Merge similar clusters
-            merged_clusters = self._merge_similar_clusters(clusters, recent_articles)
-
-            # Extract topics for each final cluster
-            for i, cluster in enumerate(merged_clusters):
-                if len(cluster) > 1:  # Only extract topics for actual clusters
-                    topics = self.topic_extractor.extract_topics(cluster)
-                    logging.info(f"Cluster {i} ({len(cluster)} articles) topics: {topics}")
-                    
-                    # Add topics to each article in the cluster
-                    for article in cluster:
-                        article['cluster_topics'] = topics
-
-            # Log clustering results
-            logging.info(f"Created {len(merged_clusters)} clusters:")
-            for i, cluster in enumerate(merged_clusters):
-                titles = [a.get('title', 'No title') for a in cluster]
-                topics = cluster[0].get('cluster_topics', []) if cluster else []
-                logging.info(f"Cluster {i}: {len(cluster)} articles. Topics: {topics}")
-                logging.info(f"Titles: {titles}")
-
-            return merged_clusters
-
-        except Exception as e:
-            logging.error(f"Error clustering articles: {str(e)}", exc_info=True)
-            # Fallback: return each article in its own cluster
-            return [[article] for article in articles]
+        return texts, sources, languages, publication_times, entities_by_index
