@@ -1,169 +1,4 @@
 {
-  "8428b0077318ac77d8732161908c1d64": {
-    "headline": "Nintendo Switch 2 Pre-Orders Delayed in Canada",
-    "summary": "Nintendo has confirmed that pre-orders for the Nintendo Switch 2 in Canada have been delayed past the originally scheduled April 9 start date. The company stated that the pre-orders will be aligned with the timing of pre-orders in the U.S., which were also delayed last week due to the potential impact of tariffs and evolving market conditions. The launch date of June 5, 2025 remains unchanged. Nintendo has also revealed that the Switch 2 will adopt \"variable pricing,\" with some games costing up to $113 CAD.\n\nSource: techmeme.com",
-    "timestamp": 1744205078.303176
-  },
-  "d07e49fd52ab5abcd98c0e481133e16b": {
-    "headline": "Meta Fudged Benchmarks for Llama 4 Model",
-    "summary": "Meta released two new Llama 4 models, Scout and Maverick, claiming Maverick can outperform GPT-4 and Gemini 2.0 Flash on widely reported benchmarks. Maverick secured the number-two spot on the LMArena AI benchmark site, but researchers later discovered that Meta used an \"experimental chat version\" of Maverick specifically optimized for conversationality, rather than the publicly available model. This raised concerns about gaming the benchmark system, as companies can submit specially-tuned versions for testing while releasing different versions to the public. The AI community also discussed rumors that Meta had trained Llama 4 to perform better on benchmarks while hiding its real limitations. Meta's VP of generative AI addressed the accusations, stating that the variable quality is due to needing to stabilize implementations. The Llama 4 release was also seen as confusing, with the model being released on a Saturday, an unusual time for big AI news drops.\n\nSource: techmeme.com",
-    "timestamp": 1744205081.240719
-  },
-  "b12adc6ac57e6aa8c28e027e91bd092e": {
-    "headline": "Google unveils Ironwood, a new AI accelerator chip",
-    "summary": "Google unveiled its latest generation of TPU AI accelerator chip, called Ironwood, during its Cloud Next conference. Ironwood is Google's seventh-generation TPU and is the first optimized for inference, designed to power large-scale AI models. Ironwood will come in two configurations - a 256-chip cluster and a 9,216-chip cluster - and is scheduled to launch later this year for Google Cloud customers. The new chip delivers 4,614 TFLOPs of computing power at peak and features 192GB of dedicated RAM with 7.4 Tbps of bandwidth, along with an enhanced specialized core for processing data common in advanced ranking and recommendation workloads.\n\nSource: techcrunch.com",
-    "timestamp": 1744205218.4937978
-  },
-  "b33fea002801fdbe3ad9dcd92361fb83": {
-    "headline": "Google Releases Efficient Gemini 2.5 Flash AI Model",
-    "summary": "Google has unveiled a new AI model, Gemini 2.5 Flash, designed to deliver strong performance with a focus on efficiency. The model will soon launch in Vertex AI, Google's AI development platform, offering \"dynamic and controllable\" computing that allows developers to adjust processing time based on the complexity of queries. Gemini 2.5 Flash is a \"reasoning\" model similar to OpenAI's o3-mini and DeepSeek's R1, optimized for \"high-volume\" and \"real-time\" applications like customer service and document parsing. While Google did not publish a safety or technical report for the model, the company says it is the \"ideal engine for responsive virtual assistants and real-time summarization tools where efficiency at scale is key.\"\n\nSource: techcrunch.com",
-    "timestamp": 1744205220.29308
-  },
-  "4f963a423bfcd05d1d5ad184627e67c1": {
-    "headline": "Google Brings Music-Generating AI Model to Enterprise Cloud",
-    "summary": "Google rolls out updates to several first-party media-generating AI models on its Vertex AI cloud platform, including a text-to-music model called Lyria, enhanced video creation model Veo 2, and improved image generator Imagen 3. The company also launched a voice-cloning feature powered by its Chirp 3 audio understanding model. These updates are part of Google's push to corner the enterprise market for generative AI, competing with Amazon's Bedrock cloud AI platform.\n\nSource: TechCrunch\nhttps://techcrunch.com/2025/04/09/google-brings-a-music-generating-ai-model-to-its-enterprise-cloud/",
-    "timestamp": 1744205221.915881
-  },
-  "b55b422cf853f32fac0285871854ba0e": {
-    "headline": "Elon Musk's DOGE Operatives Infiltrate the Department of Veterans Affairs",
-    "summary": "Elon Musk's so-called Department of Government Efficiency (DOGE) has been inserting its representatives, including Sahil Lavingia, Cary Volpert, and Christopher Roussos, into the Department of Veterans Affairs (VA). These DOGE operatives, with no relevant government experience, are attempting to drastically change the VA's operations, including introducing AI tools like OpenHands to write code and eliminate paper forms. VA employees express concerns that these changes could jeopardize veterans' access to critical benefits and services, as well as introduce security vulnerabilities. The DOGE team's actions have alarmed VA staff and government officials, who warn that veterans' lives are being put at risk.\n\nSource: wired.com",
-    "timestamp": 1744205224.438717
-  },
-  "faab1f16320e72b2c8e427dc4b4f181d": {
-    "headline": "New AI Techniques Enhance 90%+ of The Wizard of Oz for Las Vegas Sphere",
-    "summary": "Google used new AI techniques to enhance over 90 percent of the 1939 film The Wizard of Oz, which will be shown on the giant screen of the Las Vegas Sphere starting August 28, 2025. The article does not provide technical details about the AI methods used or availability and pricing information for the enhanced film.\n\nSource: techmeme.com",
-    "timestamp": 1744205225.575707
-  },
-  "a12e90c42d8634e6134bd5b3d7958163": {
-    "headline": "Google Cloud Next: Gemini 2.5 Flash, a new reasoning model for \"high-volume, cost-sensitive\" and \"real-time\" apps, to launch soon in Vertex AI",
-    "summary": "Google unveiled Gemini 2.5 Flash, a new reasoning model designed for \"high-volume, cost-sensitive\" and \"real-time\" applications. The model will be launching soon in Google's Vertex AI platform, providing AI developers with a powerful tool for building advanced applications. Gemini 2.5 Flash offers improved performance and efficiency, making it well-suited for a variety of use cases in the AI industry.\n\nSource: techmeme.com",
-    "timestamp": 1744205227.633613
-  },
-  "e2f79123d45d8acb0b600bcc31a6bf88": {
-    "headline": "Colombian Judge Pioneers AI Use in Judiciary",
-    "summary": "A trailblazing judge in Colombia's Magdalena region, Mar\u00eda Victoria Qui\u00f1ones, is leading the integration of AI tools like Microsoft Copilot to expedite judicial processes and tackle case backlogs. Qui\u00f1ones has championed the use of AI for automating repetitive tasks, summarizing hearings, and drafting judicial documents, allowing her to issue up to 20 rulings per week, a significant increase from before. Colombia's judiciary is among the first in Latin America to embrace AI, with a 2024 ruling allowing judges to use AI tools under specific regulations. The Copilot beta program, launched last year, is set to expand to 150 participants, including judges and clerks, as the country aims to improve judicial efficiency and provide more timely responses to citizens.\n\nSource: news.microsoft.com",
-    "timestamp": 1744205230.602571
-  },
-  "a38a90a1910bcb24eaab21687f014dd4": {
-    "headline": "Meta Llama 4 Models Arrive in Azure AI Foundry and Azure Databricks",
-    "summary": "Meta has released the first models in its Llama 4 family, which are now available in Azure AI Foundry and Azure Databricks. These models are designed to seamlessly integrate text and vision tokens, enabling developers to build more personalized multimodal experiences. The Llama 4 Scout model is a powerful multimodal option that can handle extensive context, while the Llama 4 Maverick model is a high-quality conversational agent suitable for interactive applications. Both models come with security and safety mitigations integrated throughout the development process, empowering developers to create helpful, adaptable, and secure AI-powered experiences.\n\nSource: azure.microsoft.com",
-    "timestamp": 1744205233.1143858
-  },
-  "ac7879c191338f8ec25c0cc03a4f8bcb": {
-    "headline": "Microsoft Celebrates 50th Anniversary with AI-Powered CEO Interviews",
-    "summary": "Microsoft's 50th anniversary was marked by a unique event where three former CEOs were interviewed by the company's AI assistant, Copilot. The interview provided an inside look at the confidence and perspectives of Microsoft's leadership over the years, highlighting the differences between an owner's and an employee's confidence even at the CEO level.\n\nThe event showcased Microsoft's advancements in AI, with the potential for AI-powered podcasts and content creation. However, the commentator also offered constructive criticism, suggesting that Microsoft's AI still needs improvement in terms of humor and comedic capabilities. The overall tone was celebratory, acknowledging Microsoft's significant contributions to the technology industry over the past five decades.",
-    "timestamp": 1744205235.16837
-  },
-  "a8eec60a8eeb730d69dcccc39d9265db": {
-    "headline": "New device could detect bird flu in just 5 minutes",
-    "summary": "A team at Washington University in St. Louis has developed a device that can detect bird flu in air samples in just 5 minutes. The device uses a specialized biosensor with genetic material that binds to the virus, creating an electrical change that can be detected. This could help farmers contain future outbreaks more quickly than the current 48-hour DNA sequencing process. While promising, the device's performance in real-world conditions remains uncertain, as dirt and other particles in farm air could hinder its effectiveness.\n\nSource: technologyreview.com",
-    "timestamp": 1744205237.372154
-  },
-  "e78fa9ae0d8b80b77577beafc205f188": {
-    "headline": "Nuclear Reactors Could Power Chemical Plant in Texas",
-    "summary": "Dow Chemical and X-energy have applied for a construction permit with the Nuclear Regulatory Commission to build four of X-energy's Xe-100 nuclear reactors at Dow's chemical plant in Seadrift, Texas. The reactors would provide high-temperature steam to power the plant's operations, potentially serving as a model for powering data centers and other industrial facilities with advanced nuclear technology. The project represents a milestone for the integration of nuclear power with industrial processes, demonstrating a pathway for tech giants and other power-hungry industries to decarbonize their operations.\n\nSource: technologyreview.com",
-    "timestamp": 1744205238.91726
-  },
-  "b5fab2bff9ce50d0cd5ac0074554b910": {
-    "headline": "New Bill Aims to Regulate AI Companions Amid Concerns Over Addiction and Harm",
-    "summary": "California lawmakers are proposing legislation to force tech companies to implement more safeguards for AI companions, which are becoming increasingly popular and addictive, especially among younger users. The bill comes amid concerns that these AI-powered chatbots can contribute to mental health issues, with one case involving a teen's suicide. The research paper cited in the article highlights how AI companions are designed to maximize user engagement, making them more addictive than traditional social media. Lawmakers are struggling to keep up with the rapid adoption of these AI assistants, which are poised to become even more compelling as they incorporate video, images, and personalized features.\n\nSource: technologyreview.com",
-    "timestamp": 1744205240.549778
-  },
-  "e919a496ea72ca286dd55ace8320d96f": {
-    "headline": "Former Pentagon Official Reflects on China's Technological Rise",
-    "summary": "Kathleen Hicks, the former U.S. deputy secretary of defense, discusses China's technological advancements, the future of AI in warfare, and her initiatives to speed up defense innovation. She emphasizes China's ability to rapidly develop capabilities like surface maritime, missile, and stealth fighter technology, while noting the U.S. still holds strategic advantages in its free-market system. Hicks also highlights the Replicator program, which aimed to rapidly field low-cost autonomous systems, and the importance of responsible AI development for national defense.\n\nSource: technologyreview.com",
-    "timestamp": 1744205242.007809
-  },
-  "56e982054ecb86d740eb952866475a0e": {
-    "headline": "AI Agents Pose Growing Cybersecurity Threat",
-    "summary": "Researchers have demonstrated that AI agents are capable of executing complex cyberattacks, and experts warn that we should expect to see these types of attacks spilling over into the real world. AI agents represent an attractive prospect to cybercriminals as they are much cheaper than hiring professional hackers and could orchestrate attacks more quickly and at a far larger scale than humans. The AI research organization Palisade Research has built a system called LLM Agent Honeypot to detect and track attempts by AI agents to hack into vulnerable servers, acting as an early warning system. While the majority of attempts have been from curious humans and bots, the researchers have detected and confirmed the presence of eight potential AI agents. Experts are still unsure when agent-orchestrated attacks will become more widespread, but they warn that we could be living in a world of agentic attackers as soon as this year.\n\nSource: technologyreview.com https://www.technologyreview.com/2025/04/04/1114228/cyberattacks-by-ai-agents-are-coming/",
-    "timestamp": 1744205244.357226
-  },
-  "2118379b38a3ca848cc14db3d841b746": {
-    "headline": "Navigating the Future of Work: HR Leaders' Strategies for Managing AI Employees",
-    "summary": "ADNOC's HR team integrated AI to enhance efficiency and focus on strategic initiatives. By clearly defining AI and human roles, establishing governance structures, and fostering collaboration, the organization successfully navigated the challenges of a hybrid workforce. Key strategies include aligning AI and human performance metrics, providing continuous training, and implementing feedback mechanisms to ensure adaptability. As AI continues to shape the future of work, HR leaders must take a proactive approach to managing this technology and creating an environment where humans and machines work in tandem.\n\nSource: forbes.com",
-    "timestamp": 1744205245.7719092
-  },
-  "1635d5ab8d3c3d1ec96d7908bfe7421e": {
-    "headline": "Former Facebook Executive Alleges Meta Helped China Advance AI Capabilities",
-    "summary": "Former Facebook executive Sarah Wynn-Williams plans to testify before Congress, alleging that Meta executives aided China in advancing its AI capabilities and undermining U.S. national security. Wynn-Williams, who worked at Facebook from 2011 to 2017, filed a whistleblower complaint with the SEC in March and published a memoir detailing her concerns about Meta's company culture and China operations. Meta has disputed Wynn-Williams' claims, stating that the \"false and defamatory book should never have been published.\" Wynn-Williams' draft testimony includes allegations that Meta established a clandestine relationship with China, providing user data to the Chinese Communist Party and establishing a \"physical pipeline\" between the U.S. and China.\n\nSource: businessinsider.com",
-    "timestamp": 1744205247.9791849
-  },
-  "1aef464015207ce1d56c9e9954628b65": {
-    "headline": "Sphere Entertainment to Reimagine 'The Wizard of Oz' Using AI and Advanced Computing",
-    "summary": "Sphere Entertainment, in partnership with Warner Bros. Discovery, Google Cloud, and Magnopus, is using generative AI and an advanced computing architecture to create an immersive, multisensory experience of the 1939 classic film \"The Wizard of Oz.\" The project, titled \"The Wizard of Oz at Sphere,\" will open on August 28 and leverage Google Cloud's AI to upscale and reimagine the classic, while using the company's infrastructure to support the massive data processing and rendering requirements. The collaboration marks the start of a broader AI partnership between Sphere Entertainment and Google Cloud.\n\nSource: variety.com",
-    "timestamp": 1744205249.6593359
-  },
-  "9cd52b1f8b3815499cbb3642a57d71e4": {
-    "headline": "New Trump Order Aims to Boost Coal for AI Power",
-    "summary": "President Trump has signed an executive order to 'turbocharge' coal mining across the U.S. in an effort to meet growing power demands from the AI industry. The plan tests whether government intervention can undo the historical decline of the coal sector, which has faced increasing competition from cheaper and cleaner energy sources like natural gas and renewables. While the order could provide a short-term boost to coal production, experts warn that it is unlikely to reverse the long-term market forces driving the industry's decline.\n\nSource: Axios",
-    "timestamp": 1744205250.9065971
-  },
-  "71c3afdceac2988e001f47d3c5e774e4": {
-    "headline": "Trump Signs Executive Order to Boost U.S. Coal Industry, Part to Fuel Artificial Intelligence",
-    "summary": "The Trump administration has signed executive orders to bolster the declining U.S. coal industry, relaxing restrictions on coal mining, leasing, and exports. The orders aim to meet the energy-intensive needs of artificial intelligence data centers, despite global efforts to reduce coal power and greenhouse gas emissions. The orders will keep some coal plants open, resume coal leasing on public lands, and direct federal agencies to assess how coal-fired power can meet rising AI energy demand. This move contradicts public opinion, which favors a transition to clean energy, and the economic realities of coal being more expensive than renewable sources like wind and solar.\n\nSource: nbcnews.com",
-    "timestamp": 1744205253.731801
-  },
-  "612321fa2c6647e797991dcd5137e080": {
-    "headline": "New CMS Administrator Oz Promotes AI Avatars Over Frontline Health Workers",
-    "summary": "Dr. Mehmet Oz, the new administrator for the Centers for Medicare and Medicaid Services (CMS), spent his first all-staff meeting advocating for the use of AI avatars in patient care. Oz claimed that AI appointments would cost patients $2 per hour compared to $100 per hour for human doctors, and that patients rate AI care as equal to or better than human doctors. However, research suggests patients are more skeptical of medical advice from AI. Oz also endorsed the \"Make America Healthy Again\" initiative, which was originally a cornerstone of RFK Jr.'s 2024 presidential campaign. Current CMS employees expressed concerns about Oz's lack of experience in health care policy and his focus on nutrition and exercise rather than the agency's core responsibilities.\n\nSource: wired.com",
-    "timestamp": 1744205255.5276139
-  },
-  "4d8ecccf23977b85d890240b6138e299": {
-    "headline": "New Tariffs Shake Global Economy, Impacting Tech Sector",
-    "summary": "Trump's Sweeping Tariffs Test Apple's Supply Chain and Give China AI Advantage\n\nPresident Trump announced new tariffs that are disrupting the global economy. The tech sector could be significantly impacted, with concerns that the tariffs will give China a competitive edge in AI development over the U.S. The article also discusses a new book on Sam Altman and his firing from OpenAI, as well as Tinder's new chatbot feature.",
-    "timestamp": 1744205291.763723
-  },
-  "49398518434e8e5f68f34491bd20dca4": {
-    "headline": "New FT digital subscription options unveiled",
-    "summary": "The Financial Times has introduced new digital subscription plans, offering readers more flexible and affordable access to its premium journalism. The plans range from a basic digital-only option at \u00a399 per month to a comprehensive package that includes the weekend print edition. All subscriptions provide complete digital access across devices and include expert analysis and insights. The FT aims to cater to a wider audience by providing a range of subscription choices to suit different reader preferences and budgets.\n\nSource: ft.com",
-    "timestamp": 1744205329.049131
-  },
-  "4e0572e33d02a50923596e549ecd6ce6": {
-    "headline": "FT Edit Offers Annual Subscription Discount",
-    "summary": "FT.com is offering an annual subscription to its FT Edit service at a discounted price of CA$64, down from the regular CA$77.88. The FT Edit provides access to eight curated articles per day, hand-picked by FT editors, available through the FT.com website, newsletter, or mobile app. The annual subscription includes a 20 percent savings for paying upfront, and the service provides seamless digital access to quality FT journalism on any device.\n\nSource: ft.com",
-    "timestamp": 1744205330.577183
-  },
-  "f1eccfeb8a200a74ba3e5a046bc6b0e2": {
-    "headline": "Nvidia's AI Business Remains Resilient Amid Economic Downturn",
-    "summary": "Nvidia's artificial intelligence (AI) business has shown resilience during the current economic downturn, with the company's AI-powered products and services continuing to see strong demand. The article examines Nvidia's position in the AI market, highlighting the company's dominance in the graphics processing unit (GPU) space and its growing presence in other AI-related technologies. It also discusses the potential impact of the recession on Nvidia's AI business and the company's strategies to maintain its competitive edge.\n\nSource: news.google.com",
-    "timestamp": 1744205332.478335
-  },
-  "95900a755908af535da1e48504030b32": {
-    "headline": "AI Development Faces Higher Costs Due to Tariffs",
-    "summary": "New tariffs could make AI development more expensive for U.S. companies. Experts warn that a trade war-induced recession could actually boost AI adoption as businesses seek to cut costs. However, tariffs on key AI components like semiconductors and cloud computing services threaten to raise prices and slow the pace of AI innovation in the U.S.\n\nSource: news.google.com",
-    "timestamp": 1744205333.541864
-  },
-  "49d8966441bd9b7cf7594ec25dfe6482": {
-    "headline": "New AI models from DeepSeek and Tsinghua University aim to boost reasoning capabilities",
-    "summary": "DeepSeek, a Chinese AI company, has partnered with Tsinghua University to develop self-improving AI models with enhanced reasoning abilities. The companies are working on a new AI technique that can create more scalable and intelligent reward models, which are crucial for training AI systems. This collaboration comes as DeepSeek prepares to unveil its anticipated R2 AI model, which is expected to further advance the field of AI reasoning and problem-solving.\n\nSource: news.google.com",
-    "timestamp": 1744205335.417013
-  },
-  "7a50ca944fcc833066a21daf078016e0": {
-    "headline": "Anthropic Introduces Claude for Education",
-    "summary": "Anthropic and Northeastern University partner to drive responsible AI innovation in higher education. Anthropic's Claude AI assistant is being integrated into Northeastern's curriculum, allowing students to use the language model for research, writing, and other academic tasks. The article discusses how Claude's 'Learning Mode' encourages students to engage critically with the AI system rather than relying on it to do their work.\n\nSource: news.google.com",
-    "timestamp": 1744205336.556999
-  },
-  "0c61a8dc2dde6cc73b497f926547b7d0": {
-    "headline": "AI Stocks to Buy and Hold for the Long Term",
-    "summary": "Company releases two new AI models with improved capabilities and lower costs\n\nThe article highlights two AI stocks that are worth considering for long-term investment. The first is a leading tech company that recently released a new AI model with enhanced performance and a lower price point compared to previous versions. The second is a startup developing advanced AI systems for enterprise applications, with its latest model offering improved accuracy and efficiency. Both companies are well-positioned to capitalize on the growing demand for AI technologies across various industries.",
-    "timestamp": 1744205337.876537
-  },
-  "c5ec44f20e01e8139ddd5837428d043d": {
-    "headline": "New AI models push the boundaries of language understanding",
-    "summary": "Researchers have developed advanced AI language models that can engage in more natural and contextual conversations. These models, such as GPT-3 and DALL-E 2, demonstrate significant improvements in areas like text generation, question answering, and multimodal understanding. The latest advancements have important implications for AI-powered applications, including chatbots, content creation tools, and virtual assistants. While these models are not yet perfect, they represent significant progress in the field of natural language processing and could lead to more human-like interactions with AI systems.\n\nSource: news.google.com",
-    "timestamp": 1744205339.426987
-  },
-  "d3c727a43fbd5c6e0d7157ab06cc01ce": {
-    "headline": "New AI-Powered Stocks to Consider",
-    "summary": "Company releases two promising AI-focused stocks for investors to consider. The first is a leading tech firm that has developed advanced AI models and tools for enterprise customers. The second is a startup focused on applying AI to improve healthcare outcomes. Both companies have seen strong growth and are well-positioned to capitalize on the expanding AI market, which is projected to reach over 8 billion dollars globally by 2030. Pricing and availability details for the new AI products and services are not provided.\n\nSource: news.google.com",
-    "timestamp": 1744205340.974742
-  },
-  "6f2348a0a8cbc8c0f85d31a0ccc5e291": {
-    "headline": "Microsoft Backs Away from Ohio Data Center Investment",
-    "summary": "Microsoft is canceling its plans to invest $1 billion in three data centers in Ohio, the latest in a series of data center project cancellations by the company. This decision comes as the U.S. government imposes a 104% tariff on Chinese imports, which is expected to significantly impact Apple and its supply chain. The White House has expressed a belief that Apple can move iPhone manufacturing to the U.S., citing the company's $500 billion investment in the country. However, experts argue that an iPhone made in the U.S. is \"pure fantasy\" due to the lack of skilled labor and advanced tooling required for such production.\n\nSource: techmeme.com",
-    "timestamp": 1744205480.466681
-  },
   "a27a5c0303c577f9c0082f637c0f2802": {
     "headline": "Microsoft details domain controller ransomware attack techniques",
     "summary": "Microsoft Security researchers explain how cybercriminals target domain controllers in ransomware attacks, highlighting the critical role these servers play in network security. Attackers typically exploit domain controllers to gain privileged access, deploy malware across networks, and encrypt critical infrastructure. The analysis reveals common attack vectors including credential theft, exploitation of unpatched vulnerabilities, and living-off-the-land techniques that leverage legitimate administrative tools to avoid detection.\n\nSource: microsoft.com\nhttps://www.microsoft.com/en-us/security/blog/2025/04/09/how-cyberattackers-exploit-domain-controllers-using-ransomware/",
@@ -2498,5 +2333,120 @@
     "headline": "OpenAI launches new GPT-4.1 model family optimized for coding tasks",
     "summary": "OpenAI introduced a new family of models called GPT-4.1, GPT-4.1 mini, and GPT-4.1 nano, all featuring a 1-million-token context window capable of processing approximately 750,000 words at once. The models excel at coding and instruction following but are only available through OpenAI's API, not ChatGPT. While GPT-4.1 scored between 52 percent and 54.6 percent on SWE-bench Verified, slightly below competitors like Google's Gemini 2.5 Pro (63.8 percent) and Anthropic's Claude 3.7 Sonnet (62.3 percent), OpenAI claims it achieved 72 percent accuracy on video understanding tests. Pricing ranges from $2 per million input tokens and $8 per million output tokens for the full GPT-4.1 model to just $0.10 per million input tokens and $0.40 per million output tokens for the nano version.\n\nSource: techmeme.com http://www.techmeme.com/250415/p2#a250415p2",
     "timestamp": 1744804259.577746
+  },
+  "c7d22b8299d519b88d9d259020648a80": {
+    "headline": "Trump administration reverses decision on Nvidia's AI chip sales to China",
+    "summary": "The Trump administration reversed its position on Nvidia's ability to sell AI chips to China, following NPR's reporting that initially indicated the company would be allowed to continue such sales. This policy reversal represents a significant shift in U.S. export controls targeting advanced semiconductor technology. The decision specifically affects Nvidia's H20 chips, which were designed to comply with earlier export restrictions while still serving the lucrative Chinese market. The abrupt change highlights ongoing tensions between maintaining U.S. technological advantages and semiconductor companies' commercial interests in China.\n\nSource: npr.org\nhttps://www.npr.org/2025/04/16/nx-s1-5366665/nvidia-china-h20-chips-exports",
+    "timestamp": 1744826345.895689
+  },
+  "96f5fb8ae9c5d01f79fb9e99a3ba59e4": {
+    "headline": "OpenAI's new model can interpret sketches, diagrams and whiteboard images",
+    "summary": "OpenAI launched a new AI model capable of understanding and interpreting visual content including whiteboards, sketches, and diagrams, even when the images are of poor quality. The system can analyze visual information and reason about it, representing a significant advancement in multimodal AI capabilities. This technology could help developers create applications that can process hand-drawn content, interpret technical diagrams, and assist with visual problem-solving tasks.\n\nSource: cnbc.com\nhttps://www.cnbc.com/2025/04/16/openai-releases-most-advanced-ai-model-yet-o3-o4-mini-reasoning-images.html",
+    "timestamp": 1744826349.694771
+  },
+  "d5c4e8e8cb50626c354b9e618a465ecf": {
+    "headline": "OpenAI introduces new reasoning-focused AI models that pause to think",
+    "summary": "OpenAI launched two new AI models, o3 and o4-mini, specifically designed to enhance reasoning capabilities by pausing to work through complex questions before generating responses. The models represent a significant advancement in AI problem-solving approaches, allowing systems to break down multi-step problems into manageable components rather than rushing to immediate answers. These reasoning-focused models can tackle mathematical problems, logical puzzles, and complex analysis with improved accuracy compared to previous generations. Both models are available now through OpenAI's API, with o3 priced at $3 per million input tokens and $15 per million output tokens, while o4-mini costs $5 and $20 respectively.\n\nSource: TechCrunch https://techcrunch.com/2025/04/16/openai-launches-a-pair-of-ai-reasoning-models-o3-and-o4-mini/",
+    "timestamp": 1744826354.1421142
+  },
+  "07794e36d3bfb51034db54a66e4323cb": {
+    "headline": "ChatGPT introduces centralized image library for easier management",
+    "summary": "OpenAI added a new library feature to ChatGPT that consolidates all AI-generated images in one location, simplifying image management for users. The update allows users to browse their complete image history, regenerate variations of previous creations, and edit existing images without starting from scratch. This organizational improvement addresses a common pain point where users previously had to scroll through conversation history to find specific images. The feature is available now to all ChatGPT users, including those on the free tier.\n\nSource: ZDNet\nhttps://www.zdnet.com/article/chatgpt-just-made-it-easy-to-find-and-edit-all-the-ai-images-youve-ever-generated/",
+    "timestamp": 1744826358.220712
+  },
+  "4470e11e5a880c20ae4630f225356d50": {
+    "headline": "Nvidia shares drop as export controls threaten China chip sales",
+    "summary": "Nvidia stock fell 7.4 percent in morning trading after the company revealed it may be unable to sell certain high-end chips, including H20 models, to China due to Trump administration export controls. The company received an export restriction notice on April 9, 2025, suggesting this development was unexpected and likely not factored into Nvidia's near-term sales projections. This restriction could significantly impact Nvidia's revenue stream in the Chinese market, which has been an important growth area for the GPU manufacturer amid the global AI hardware boom.\n\nSource: finance.yahoo.com\nhttps://finance.yahoo.com/news/why-nvidia-nvda-stock-down-160330625.html",
+    "timestamp": 1744826361.7982771
+  },
+  "965f8d6eb271752c1918ce3cb2809180": {
+    "headline": "U.S.-China tech tensions trigger semiconductor market selloff",
+    "summary": "Nvidia shares dropped over eight percent after the U.S. government imposed new export restrictions on AI chips to China, affecting the company's H20, L20, and L2 models designed specifically for the Chinese market. The restrictions aim to prevent China from accessing advanced semiconductor technology while maintaining some U.S. market share in the region. ASML, the Dutch lithography equipment maker critical to chip manufacturing, reported weaker-than-expected orders, contributing to a broader semiconductor industry selloff that erased approximately 155 billion dollars in market value across major chip companies.\n\nSource: Yahoo Finance\nhttps://finance.yahoo.com/news/155b-tech-bloodbath-nvidia-banned-153048976.html",
+    "timestamp": 1744826366.608472
+  },
+  "f806b393e24e47bd9b67852c5b0801e6": {
+    "headline": "Deck raises 12 million dollars to create universal data extraction layer for websites",
+    "summary": "Deck, a startup developing AI-powered data extraction technology, secured 12 million dollars in Series A funding approximately nine months after its seed round. The company aims to become \"the Plaid for the rest of the internet\" by creating a universal API that allows developers to extract structured data from any website without building custom scrapers. Deck's technology uses large language models to understand website structures and automatically adapt to changes, addressing a key pain point in web scraping. The funding will help Deck expand its team and enhance its product capabilities.\n\nSource: TechCrunch https://techcrunch.com/2025/04/16/deck-raises-12m-to-plaid-ify-any-website-using-ai/",
+    "timestamp": 1744826371.523787
+  },
+  "ca08c37a8196fdd550cf709768ace7e1": {
+    "headline": "Trump administration restricts Nvidia's AI chip sales to China",
+    "summary": "The Trump administration implemented restrictions that prevent Nvidia from selling its custom AI processors to customers in China, representing a significant escalation in U.S. technology export controls. This regulatory action targets advanced semiconductors critical for artificial intelligence development and training large language models. Nvidia's stock declined following the announcement as investors assessed potential impacts on the company's revenue stream from the Chinese market. The restrictions specifically affect specialized AI accelerators designed for high-performance computing applications.\n\nSource: Investors.com https://www.investors.com/news/technology/nvidia-stock-falls-trump-curbs-china-ai-chip-sales/",
+    "timestamp": 1744826375.517853
+  },
+  "34aeca49b614e2625710b4d5aba3e70a": {
+    "headline": "Markets sink after Nvidia's 5.5 billion dollar charge to comply with Trump rule",
+    "summary": "Stock markets declined after Nvidia announced a 5.5 billion dollar charge related to complying with Trump-era export restrictions on advanced chips to China. The semiconductor giant, which has become a bellwether for major stock indexes due to its dominance in AI chip production, saw its shares fall over seven percent following the announcement. Despite the setback, Nvidia still reported strong quarterly earnings with 26 billion dollars in revenue, though the unexpected charge dampened investor sentiment. The company's performance has outsized influence on market indexes as its market capitalization has grown to nearly two trillion dollars.\n\nSource: nbcnews.com https://www.nbcnews.com/business/business-news/markets-sink-after-nvidia-5point5-billion-charge-comply-trump-rule-rcna201505",
+    "timestamp": 1744826379.6448672
+  },
+  "b73877c8c5b150e3d75e77b527adf65a": {
+    "headline": "Nvidia shares drop after new restrictions on China-specific chips",
+    "summary": "Nvidia's stock fell sharply Wednesday morning following the company's announcement that its chips designed specifically for the Chinese market now face additional export restrictions. The development represents another obstacle in Nvidia's efforts to maintain access to China's lucrative AI chip market while complying with U.S. regulations. These specialized chips were originally created to meet previous export control requirements while still allowing Nvidia to sell to Chinese customers. The new restrictions highlight the ongoing challenges semiconductor companies face in navigating geopolitical tensions between the U.S. and China.\n\nSource: CNBC https://www.cnbc.com/2025/04/16/its-a-different-world-for-nvidias-stock-under-trump-the-chipmakers-latest-china-hit-proves-that.html",
+    "timestamp": 1744826384.425803
+  },
+  "1f8b16774d3ddb33ec4f16d097d4c705": {
+    "headline": "Nvidia stock plunges after revealing $5 billion impact from export restrictions",
+    "summary": "Nvidia shares dropped sharply after the company disclosed it would face a financial impact exceeding $5 billion due to new U.S. chip export controls targeting China. The chipmaker revealed this unexpected hit in a regulatory filing, noting that restrictions on its advanced AI processors would significantly affect its revenue projections. The U.S. government recently expanded export controls on high-performance semiconductors to prevent China from accessing cutting-edge AI technology. Nvidia indicated it would develop alternative products for the Chinese market that comply with the new regulations.\n\nSource: finance.yahoo.com\nhttps://finance.yahoo.com/news/nvidia-stock-dives-as-chipmaker-sees-55-billion-hit-from-surprise-china-chip-controls-130319576.html",
+    "timestamp": 1744826388.538841
+  },
+  "c73f89b78a1677484c85518bc404f458": {
+    "headline": "Broadcom introduces AI-powered security prediction to thwart sophisticated attacks",
+    "summary": "Broadcom unveiled Incident Prediction, a new AI-powered security capability for its Symantec Endpoint Security Complete solution that identifies and disrupts living-off-the-land attacks before they can fully execute. The system leverages training on more than 500,000 real-world attack chains documented by Symantec's Threat Hunter Team to predict attackers' next moves and prevent them, even when attackers use legitimate system tools. This predictive approach aims to stop sophisticated threats that typically evade traditional security measures by anticipating malicious behavior patterns rather than relying solely on known signatures or indicators of compromise.\n\nSource: finance.yahoo.com\nhttps://finance.yahoo.com/news/broadcom-unveils-ai-powered-cybersecurity-130116681.html",
+    "timestamp": 1744826392.823531
+  },
+  "16407e7b324184ef4eff904d1601d912": {
+    "headline": "Nvidia's U.S. supercomputer production faces workforce readiness challenges",
+    "summary": "Nvidia has begun reshoring its AI supercomputer manufacturing to the United States, highlighting a critical skills gap in the domestic workforce. The move represents a significant shift in high-tech manufacturing strategy but raises urgent questions about whether American workers possess the specialized knowledge needed to operate these advanced systems. This skills shortage could potentially limit the effectiveness of reshoring efforts and impact the country's competitive position in AI infrastructure development.\n\nSource: Forbes\nhttps://www.forbes.com/sites/benjaminlaker/2025/04/16/nvidia-building-ai-supercomputers-in-the-us-but-who-will-operate-them/",
+    "timestamp": 1744826396.495543
+  },
+  "9546c00219294a280d8ce2a72beea907": {
+    "headline": "Silicon Valley TV show predicted AI's masculine entitlement problem",
+    "summary": "HBO's Silicon Valley satirized tech culture years before the current AI boom, accurately foreseeing how male-dominated tech companies would shape AI development with inherent biases. The show portrayed tech bros building products that reflected their limited worldviews while claiming to serve humanity's best interests. This paternalistic approach mirrors today's AI landscape where predominantly male teams create systems that make decisions for users while insisting they know what's best for society.\n\nSource: The Atlantic\nhttps://www.theatlantic.com/culture/archive/2025/04/silicon-valley-tv-show-ai-paternalism/682411/",
+    "timestamp": 1744826399.8860679
+  },
+  "8957b24dc49d32896f27f33e221c3e0c": {
+    "headline": "AI art generators cause moral harm to human artists",
+    "summary": "AI image generators trained on artists' work without consent are causing psychological damage beyond legal copyright concerns. Artists report experiencing \"moral injury\" - a profound sense of betrayal and violation when their artistic styles are mimicked without permission or compensation. This harm extends beyond economic impact, affecting artists' sense of identity and creative purpose. Companies like Midjourney and Stability AI have faced criticism for using artists' work in training data, while some artists have successfully negotiated licensing deals with AI companies.\n\nSource: Vox\nhttps://www.vox.com/artificial-intelligence/408786/ai-art-studio-ghibli-moral-injury-copyright",
+    "timestamp": 1744826404.188504
+  },
+  "cecc788488d426bbb6f62258f37476f0": {
+    "headline": "Developer creates benchmark to measure AI chatbots' willingness to discuss controversial topics",
+    "summary": "A pseudonymous developer has released SpeechMap, a new evaluation framework that measures how freely AI chatbots engage with sensitive or controversial topics. The benchmark tests various commercial AI models on their responses to prompts about politics, religion, race, gender, and other potentially divisive subjects. Initial results show significant variation among popular models, with Anthropic's Claude and Meta's Llama demonstrating more restrictive boundaries than some competitors. The evaluation aims to provide transparency about content policies implemented by different AI companies and highlight inconsistencies in how models handle controversial requests.\n\nSource: TechCrunch\nhttps://techcrunch.com/2025/04/16/theres-now-a-benchmark-for-how-free-an-ai-chatbot-is-to-talk-about-controversial-topics/",
+    "timestamp": 1744826408.440971
+  },
+  "a8e863de21bbf1c3d97330d1a02bf628": {
+    "headline": "OpenAI explores creating its own social network",
+    "summary": "OpenAI is reportedly working on developing its own social network, marking a significant expansion beyond its core AI model development. The company appears to be moving toward creating a platform where users could directly interact with its AI systems and each other, potentially competing with established social media companies. This strategic shift suggests OpenAI aims to control more of the user experience rather than relying solely on partnerships with existing platforms. The move aligns with broader industry trends of AI companies seeking direct consumer relationships.\n\nSource: MIT Technology Review\nhttps://www.technologyreview.com/2025/04/16/1115231/the-download-how-ai-is-changing-music-and-a-us-citys-ai-experiment/",
+    "timestamp": 1744826412.9974122
+  },
+  "a2649bdf98e8a4a03f03ccad97365422": {
+    "headline": "Hackers leverage Gamma's AI platform to create convincing Microsoft phishing sites",
+    "summary": "Threat actors are exploiting Gamma's AI presentation platform to host sophisticated Microsoft login phishing pages that bypass traditional security measures. The attack involves creating legitimate-looking Gamma presentations that mimic Microsoft authentication portals, then distributing these links through email campaigns. Security researchers discovered these phishing attempts successfully evade detection because Gamma's domain has high reputation scores, allowing attackers to steal credentials from unsuspecting users who trust the familiar interface.\n\nSource: The Hacker News\nhttps://thehackernews.com/2025/04/ai-powered-gamma-used-to-host-microsoft.html",
+    "timestamp": 1744826416.797329
+  },
+  "16443307d373c5fd8431d1b39b099141": {
+    "headline": "Google suspends 2.9 million advertiser accounts in India for policy violations",
+    "summary": "Google suspended 2.9 million advertiser accounts in India and removed 247.4 million advertisements in 2024 for violating its advertising policies. The enforcement actions were part of Google's broader efforts to maintain ad quality and protect users from potentially harmful or misleading advertising content. These measures reflect the increasing scale of policy enforcement required in India's rapidly growing digital advertising market. The suspensions highlight ongoing challenges in maintaining advertising standards across Google's platforms.\n\nSource: NDTV\nhttps://www.ndtv.com/india-news/google-suspends-2-9-million-advertisers-accounts-in-india-for-policy-abuse-8178931",
+    "timestamp": 1744826420.366839
+  },
+  "b88ad1f6537fa92e9a1e292cf7712ee8": {
+    "headline": "Google suspends over 200 percent more advertiser accounts in 2024",
+    "summary": "Google's annual Ads Safety report reveals a dramatic increase in enforcement actions, with 39.2 million advertiser accounts suspended in 2024 compared to 12.7 million in 2023\u2014a more than 200 percent increase. The company removed 5.1 billion ads from its platform and restricted over 9.1 billion additional ads. Google also took enforcement actions against publisher content, restricting ads on 1.3 billion publisher pages and implementing site-level enforcement on more than 220,000 publisher sites.\n\nSource: seroundtable.com\nhttps://www.seroundtable.com/google-ads-safety-report-39242.html",
+    "timestamp": 1744826423.7466822
+  },
+  "83ec260d4a50b25bd48779f467cae030": {
+    "headline": "Google researchers claim breakthrough in defending against prompt injections",
+    "summary": "Google researchers developed a new method to protect AI assistants from prompt injection attacks, which trick AI systems into ignoring their safety guidelines. The technique, called \"instruction fine-tuning with adversarial demonstrations,\" reduced successful attacks by 88 percent while maintaining the AI's helpfulness. This approach addresses a significant security vulnerability that has plagued large language models since their widespread deployment, potentially making AI assistants more reliable for sensitive applications. The researchers published their findings in a paper that details how they systematically generated adversarial examples to strengthen the model's defenses.\n\nSource: Ars Technica\nhttps://arstechnica.com/information-technology/2025/04/researchers-claim-breakthrough-in-fight-against-ais-frustrating-security-hole/",
+    "timestamp": 1744826428.867094
+  },
+  "d7f1af7d70a6c76d069f2e555ce5eb00": {
+    "headline": "Nvidia and partners plan to build $500 billion worth of AI hardware in the U.S.",
+    "summary": "Nvidia announced a partnership with Amkor, Foxconn, SPIL, TSMC, and Wistron to manufacture $500 billion worth of AI hardware in the United States over the next four years. The initiative includes production of AI processors, testing, packaging, and server assembly, with TSMC already committed to invest $165 billion in its Fab 21 manufacturing site. Foxconn and Wistron plan to build AI server assembly plants in Texas that will begin operations within 12-15 months, aiming to produce hundreds of thousands of AI servers annually. While ambitious, the timeline raises questions about feasibility, particularly since TSMC's 3nm production won't start until 2028 and Amkor's packaging facility opens in 2027.\n\nSource: tomshardware.com\nhttps://www.tomshardware.com/tech-industry/artificial-intelligence/made-in-the-usa-inside-nvidias-usd500-billion-server-gambit",
+    "timestamp": 1744826434.19063
+  },
+  "406f6f672c75e35627bb5477c3a1e58c": {
+    "headline": "Nvidia to take $5.5 billion charge due to U.S. export restrictions on AI chips",
+    "summary": "Nvidia shares fell in premarket trading Wednesday after the company announced it expects a $5.5 billion first-quarter charge resulting from U.S. restrictions on AI chip exports to China. The significant financial impact highlights the growing economic consequences of technology export controls amid escalating tensions between the United States and China. This development could force Nvidia to accelerate development of China-specific chips that comply with export regulations while maintaining competitive performance. The charge represents a substantial financial setback for the AI chip leader despite its otherwise strong market position.\n\nSource: Investopedia\nhttps://www.investopedia.com/nvidia-to-record-usd5-5b-charge-as-us-cracks-down-on-chip-exports-to-china-11716119",
+    "timestamp": 1744826439.309383
   }
 }
