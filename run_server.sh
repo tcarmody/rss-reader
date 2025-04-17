@@ -9,7 +9,7 @@ cd "$SCRIPT_DIR"
 # Check if virtual environment exists
 if [ ! -d "venv" ]; then
     echo "Virtual environment not found. Creating one..."
-    python -m venv venv
+    python3.11 -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt
 else
@@ -18,4 +18,4 @@ fi
 
 # Run the server
 echo "Starting Data Points AI server..."
-python server.py
+python3.11 server.py
