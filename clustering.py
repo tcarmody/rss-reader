@@ -1,28 +1,4 @@
-"""Enhanced                                     # Add entities to cluster info
-                                if top_entities:
-                                    for article in cluster:
-                                        article['cluster_entities'] = [entity[0] for entity in top_entities]
-                        except Exception as e:
-                            logging.warning(f"Error extracting entities for cluster: {e}")
-
-            # Log clustering results
-            logging.info(f"Created {len(merged_clusters)} clusters:")
-            for i, cluster in enumerate(merged_clusters):
-                titles = [a.get('title', 'No title') for a in cluster]
-                topics = cluster[0].get('cluster_topics', []) if cluster else []
-                entities = cluster[0].get('cluster_entities', []) if cluster else []
-                
-                logging.info(f"Cluster {i}: {len(cluster)} articles. Topics: {topics}")
-                if entities:
-                    logging.info(f"Cluster {i} entities: {entities}")
-                logging.info(f"Titles: {titles}")
-
-            return merged_clusters
-
-        except Exception as e:
-            logging.error(f"Error clustering articles: {str(e)}", exc_info=True)
-            # Fallback: return each article in its own cluster
-            return [[article] for article in articles] clustering functionality using sentence transformers and advanced topic modeling.
+"""Enhanced clustering functionality using sentence transformers and advanced topic modeling.
 
 This improved version includes:
 - Caching for embeddings
@@ -80,6 +56,7 @@ CONFIG = {
     'umap_components': int(os.environ.get('UMAP_COMPONENTS', 5)),
     'umap_neighbors': int(os.environ.get('UMAP_NEIGHBORS', 15)),
     'stopwords': set(['this', 'that', 'with', 'from', 'what', 'when', 'where', 'which', 'about', 'have', 'will', 'your', 'their', 'there', 'they', 'these', 'those', 'some', 'were', 'after', 'before', 'could', 'should', 'would']),
+    'min_epsilon': float(os.environ.get('MIN_EPSILON', 0.001)),  # New config for minimum epsilon value
 }
 
 # Create cache directory if it doesn't exist
@@ -515,7 +492,7 @@ class AdvancedClusteringPipeline:
                 min_cluster_size=2,
                 min_samples=2,
                 metric='euclidean',
-                cluster_selection_epsilon=0.5,
+                cluster_selection_epsilon=CONFIG['min_epsilon'],  # Initialize with min value
                 prediction_data=True
             )
             
@@ -550,7 +527,11 @@ class AdvancedClusteringPipeline:
             
             # Apply HDBSCAN clustering
             logging.info("Applying HDBSCAN clustering")
-            self.hdbscan_model.cluster_selection_epsilon = threshold * 1.5
+            
+            # Ensure epsilon is always positive - FIX: Added this check
+            epsilon_value = max(CONFIG['min_epsilon'], threshold * 1.5)
+            logging.info(f"Setting cluster_selection_epsilon to {epsilon_value}")
+            self.hdbscan_model.cluster_selection_epsilon = epsilon_value
             
             # For small datasets, adjust parameters
             if len(embeddings) < 10:
@@ -567,7 +548,12 @@ class AdvancedClusteringPipeline:
                 logging.info("All points classified as noise, trying more permissive clustering")
                 self.hdbscan_model.min_cluster_size = 2
                 self.hdbscan_model.min_samples = 1
-                self.hdbscan_model.cluster_selection_epsilon = threshold * 2
+                
+                # Ensure epsilon is always positive - FIX: Added this check
+                epsilon_value = max(CONFIG['min_epsilon'], threshold * 2)
+                logging.info(f"Setting more permissive cluster_selection_epsilon to {epsilon_value}")
+                self.hdbscan_model.cluster_selection_epsilon = epsilon_value
+                
                 labels = self.hdbscan_model.fit_predict(reduced_embeddings)
                 
             # If we still have all noise, fall back to agglomerative clustering
@@ -777,8 +763,8 @@ class ArticleClusterer:
                 adjusted_threshold = threshold - adjustment
                 
                 # Ensure threshold stays in reasonable bounds, but allow for lower values
-                # to create more distinct clusters
-                final_threshold = max(0.05, min(0.25, adjusted_threshold))
+                # FIX: Add explicit check to ensure adjusted_threshold is positive
+                final_threshold = max(CONFIG['min_epsilon'], min(0.25, adjusted_threshold))
                 
                 logging.info(f"Adaptive threshold calculation: base={threshold}, adjusted={final_threshold}")
                 return final_threshold
@@ -882,3 +868,98 @@ class ArticleClusterer:
             logging.debug(f"Processing article for clustering: {title} (language: {lang})")
             
         return texts, sources, languages, publication_times, entities_by_index
+    
+    @track_performance
+    def cluster_with_topics(self, articles, merge_clusters=True):
+        """
+        Cluster articles with topic extraction for each cluster.
+        
+        Args:
+            articles: List[dict] - articles to cluster
+            merge_clusters: bool - whether to merge related clusters
+            
+        Returns:
+            List[List[dict]]: Clusters of articles with topics
+        """
+        try:
+            if not articles:
+                return []
+                
+            # Filter for recent articles if days_threshold is set
+            if CONFIG['days_threshold'] > 0:
+                cutoff_date = datetime.now() - timedelta(days=CONFIG['days_threshold'])
+                articles = self._filter_recent_articles(articles, cutoff_date)
+                
+            # Basic clustering
+            clusters = self.cluster_articles(articles)
+            
+            # Extract topics for each cluster
+            for cluster in clusters:
+                try:
+                    if not cluster:
+                        continue
+                        
+                    # Extract text for topic modeling
+                    texts = []
+                    for article in cluster:
+                        title = article.get('title', '')
+                        content = article.get('content', '')
+                        combined = f"{title} {content}"
+                        if combined.strip():
+                            texts.append(combined)
+                            
+                    # Get top topics
+                    top_topics = self.topic_modeler.extract_topics(texts, top_n=5)
+                    
+                    # Add topics to cluster info
+                    if top_topics:
+                        for article in cluster:
+                            article['cluster_topics'] = top_topics
+                            
+                    # Extract top entities if available
+                    top_entities = []
+                    entity_counter = defaultdict(int)
+                    
+                    # Collect entities from all articles in cluster
+                    for article in cluster:
+                        article_entities = article.get('entities', [])
+                        for entity in article_entities:
+                            entity_key = f"{entity.get('text')}|{entity.get('type')}"
+                            entity_counter[entity_key] += entity.get('count', 1)
+                    
+                    # Get top entities by count
+                    top_entity_keys = sorted(entity_counter.keys(), 
+                                            key=lambda k: entity_counter[k], 
+                                            reverse=True)[:5]
+                                            
+                    # Convert back to format (text, count)
+                    for key in top_entity_keys:
+                        text, entity_type = key.split('|')
+                        count = entity_counter[key]
+                        top_entities.append((text, count, entity_type))
+                        
+                    # Add entities to cluster info
+                    if top_entities:
+                        for article in cluster:
+                            article['cluster_entities'] = [entity[0] for entity in top_entities]
+                except Exception as e:
+                    logging.warning(f"Error extracting entities for cluster: {e}")
+
+            # Log clustering results
+            logging.info(f"Created {len(clusters)} clusters:")
+            for i, cluster in enumerate(clusters):
+                titles = [a.get('title', 'No title') for a in cluster]
+                topics = cluster[0].get('cluster_topics', []) if cluster else []
+                entities = cluster[0].get('cluster_entities', []) if cluster else []
+                
+                logging.info(f"Cluster {i}: {len(cluster)} articles. Topics: {topics}")
+                if entities:
+                    logging.info(f"Cluster {i} entities: {entities}")
+                logging.info(f"Titles: {titles}")
+
+            return clusters
+
+        except Exception as e:
+            logging.error(f"Error clustering articles: {str(e)}", exc_info=True)
+            # Fallback: return each article in its own cluster
+            return [[article] for article in articles]

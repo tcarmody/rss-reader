@@ -1,29 +1,4 @@
 {
-  "617c8ab374deee1a101decbb28876b0e": {
-    "headline": "Comcast offers five-year price guarantee for Xfinity Internet with no contract",
-    "summary": "Comcast launched a nationwide five-year price guarantee for new Xfinity Internet customers starting at 55 dollars monthly with no annual contract required. The offer includes Xfinity's WiFi gateway, unlimited data, and one free year of an unlimited Xfinity Mobile line. Additional features include access to Comcast's WiFi network outside the home, ultra-low lag internet for applications like FaceTime and gaming platforms, cybersecurity protection through Xfinity Advanced Security, and comprehensive parental controls via the Xfinity app. The initiative aims to address consumer concerns about rising costs and pricing transparency.\n\nSource: VentureBeat\nhttps://venturebeat.com/games/comcast-launches-five-year-price-guarantee-for-xfinity-internet-customers/",
-    "timestamp": 1744833027.692567
-  },
-  "32eaa9a8639eea5fc653239c9ea2c0c3": {
-    "headline": "Dragon Age: The Veilguard leads Gayming Awards 2025 nominations with three nods",
-    "summary": "The Gayming Awards, the world's only LGBTQ+ video game award show, announced its 2025 nominees across twelve categories, with Dragon Age: The Veilguard securing three nominations. Several titles including Life is Strange: Double Exposure, Dragon's Dogma 2, and The Last of Us Part II Remastered received two nominations each. The awards ceremony will broadcast exclusively on WOW Presents Plus on July 8, 2025, with public voting now open in four categories at gaymingawards.com. Beyond games, the awards recognize industry diversity efforts, community impact, content creators, and LGBTQ+ representation in entertainment media.\n\nSource: VentureBeat\nhttps://venturebeat.com/games/gayming-awards-unveils-2025-nominees-for-lgbtq-celebration/",
-    "timestamp": 1744833031.909534
-  },
-  "cd8efdd2c6b8a4194b74817073eac810": {
-    "headline": "Trevor Noah's Day Zero Productions launches climate-themed game jam with Anima Interactive",
-    "summary": "Day Zero Productions, founded by Trevor Noah, is partnering with Anima Interactive and Cinereach to host the \"Solarpunk Jam,\" a global game competition offering a ten thousand dollar grand prize. The initiative challenges developers to create games imagining optimistic climate futures, with submissions opening on Earth Day (April 22, 2025) and running through May 10, 2025. This climate-focused game jam reflects Day Zero's growing commitment to gaming, following their recent investment in Midsummer Studios, and leverages gaming's massive global reach as a platform for addressing environmental issues through creative storytelling.\n\nSource: VentureBeat\nhttps://venturebeat.com/games/trevor-noahs-day-zero-productions-unveils-solarpunk-jam-with-anima-interactive/",
-    "timestamp": 1744833036.0172238
-  },
-  "ed622cce76265638dca3eab6e6852443": {
-    "headline": "Moveworks launches AI agent marketplace with over 100 pre-built enterprise solutions",
-    "summary": "Moveworks introduced an AI Agent Marketplace featuring more than 100 pre-built agents across HR, sales, finance, and IT operations that enterprises can customize and deploy. The marketplace offers agent templates with third-party platform integrations that connect to an organization's existing tech infrastructure. Unlike other marketplaces that provide simple prompt packs, Moveworks claims its solution offers direct integrations to enterprise workloads through plugins or a low-code platform. This launch follows similar marketplace initiatives from ServiceNow, Microsoft, Salesforce, and AWS, reflecting the growing demand for ready-made AI agents that enterprises can quickly implement.\n\nSource: venturebeat.com\nhttps://venturebeat.com/ai/moveworks-joins-ai-agent-library-craze/",
-    "timestamp": 1744833040.8457239
-  },
-  "2bd7e88cdd76d447a00ce9d2f30fee70": {
-    "headline": "Sandbox VR reaches $200 million in lifetime sales as location-based VR business expands",
-    "summary": "Sandbox VR achieved $200 million in lifetime sales for its location-based virtual reality venues, with $75 million generated in 2024 alone and 1.4 million players visiting its locations. The company has dramatically accelerated its franchise model, selling 83 franchise units since early 2024 and planning to increase its footprint by over 50 percent this year with 29 new locations. Sandbox VR's proprietary motion-tracking technology captures players' entire bodies, creating immersive social experiences that attract a growing audience of Gen Z and millennial customers, with 40 percent of visitors now under age 25.\n\nSource: VentureBeat\nhttps://venturebeat.com/games/sandbox-vr-surpasses-200m-in-lifetime-sales-with-127-more-locations-in-the-pipeline/",
-    "timestamp": 1744833045.13969
-  },
   "5d4ee2c3b02d777ff9a757ac2dee7d88": {
     "headline": "Cohere launches Embed 4 with 128,000 token context window for enterprise RAG applications",
     "summary": "Cohere released Embed 4, its latest embeddings model designed for enterprise retrieval augmented generation (RAG) use cases with a 128,000 token context window capable of processing documents up to 200 pages long. The model enhances multimodal capabilities to handle unstructured data including scanned documents and handwriting without extensive pre-processing, making it particularly valuable for regulated industries like finance, healthcare, and manufacturing. Embed 4 supports over 100 languages and creates compressed data embeddings to reduce storage costs while maintaining accuracy despite imperfections in enterprise data.\n\nSource: venturebeat.com\nhttps://venturebeat.com/ai/cohere-launches-embed-4-new-multimodal-search-model-processes-200-page-documents/",
@@ -2498,5 +2473,30 @@
     "headline": "AMD expects $800 million hit from new US export rules on AI chips",
     "summary": "AMD disclosed in an SEC filing that new US export restrictions on its MI308 chips to China will cost the company approximately $800 million in inventory, purchase commitments, and related reserves charges. The semiconductor manufacturer noted that the license control requirements for exporting AI chips to China and certain other countries could materially impact its earnings. These restrictions represent the latest development in ongoing US efforts to limit advanced chip technology access to China amid growing geopolitical tensions around AI capabilities.\n\nSource: TechCrunch\nhttp://www.techmeme.com/250416/p26#a250416p26",
     "timestamp": 1744892382.193779
+  },
+  "1b8973b68ddca7156740b4a0ce807ec0": {
+    "headline": "Big Tex doll concept inspired by LeBron James' Mattel collaboration",
+    "summary": "A new Ken doll modeled after NBA star LeBron James has sparked creative ideas for other iconic figures, including Dallas' beloved Big Tex. The 55-foot cowboy statue, a symbol of the State Fair of Texas since 1952, represents a unique opportunity for merchandising beyond its current offerings. The conceptual Big Tex doll would capture the character's signature cowboy hat, boots, and friendly wave that greets thousands of fairgoers annually.\n\nSource: axios.com\nhttps://www.axios.com/local/dallas/2025/04/17/one-chatgpt-prompt-to-go",
+    "timestamp": 1744893308.5264719
+  },
+  "71526cc15de2ff483c438c213b7a288a": {
+    "headline": "Nvidia CEO makes surprise visit to Beijing amid U.S. chip restrictions",
+    "summary": "Jensen Huang, CEO of Nvidia, sparked attention with an unexpected visit to Beijing despite ongoing U.S. restrictions on advanced chip sales to China. During his trip, Huang reportedly met with the founder of Chinese AI company DeepSeek, raising questions about Nvidia's strategy in navigating geopolitical tensions. The visit comes as Nvidia faces strict export controls on its most powerful AI chips to Chinese customers, though the company continues to sell modified versions that comply with U.S. regulations. Nvidia maintains its position as the dominant supplier of AI accelerators globally while carefully balancing U.S. policy constraints and its commercial interests in the Chinese market.\n\nSource: The Guardian\nhttps://www.theguardian.com/technology/2025/apr/17/nvidias-ceo-surprise-visit-beijing-restricts-chip-sales-china",
+    "timestamp": 1744893315.101433
+  },
+  "0e0098463f0d0a147f4f2d69d690e7ee": {
+    "headline": "Nvidia CEO visits Beijing amid U.S. restrictions on AI chip sales",
+    "summary": "Jensen Huang, CEO of Nvidia Corp., arrived in Beijing on Thursday following the Trump administration's decision to block the company from selling its H20 AI chip to China. The visit comes at a critical moment in U.S.-China technology relations as Washington continues to tighten export controls on advanced semiconductors. Nvidia has been navigating complex geopolitical tensions while trying to maintain its business relationships in China, which represents a significant market for the chipmaker. The H20 chip was specifically designed to comply with earlier U.S. export restrictions.\n\nSource: Bloomberg https://www.bloomberg.com/news/articles/2025-04-17/nvidia-ceo-visits-beijing-after-us-bars-ai-chip-sales-to-china",
+    "timestamp": 1744893320.93982
+  },
+  "0d48b416d568c0a7047f75f653d50586": {
+    "headline": "Reid Hoffman urges leaders to integrate AI into their workflow",
+    "summary": "LinkedIn cofounder Reid Hoffman believes every leader should incorporate AI into their work, suggesting a simple management technique to ensure adoption. Hoffman recommends executives write a memo to themselves dated January 2025 describing how AI has transformed their work and organization. This forward-looking exercise helps leaders envision concrete applications of AI technology in their specific context rather than approaching it abstractly. Hoffman, who serves on OpenAI's board, practices this approach himself and has invested in numerous AI companies.\n\nSource: Business Insider\nhttps://www.businessinsider.com/reid-hoffman-ai-work-job-career-ceo-shopify-memo-openai-2025-4",
+    "timestamp": 1744893325.342398
+  },
+  "19567f1eb4d5a6bd28639c851925a4cd": {
+    "headline": "European Commission bans AI assistants from attending meetings",
+    "summary": "The European Commission has barred AI-powered assistants from joining online meetings, citing security and privacy concerns. Officials were instructed not to use AI tools like Microsoft's Copilot or Google's Duet AI to attend, record, or summarize meetings on their behalf. The decision reflects growing caution among European institutions regarding AI technologies, particularly as the EU implements its comprehensive AI Act. The Commission's IT department emphasized that the ban applies to both internal and external meetings, though it may be reconsidered once appropriate safeguards are developed.\n\nSource: politico.eu https://www.politico.eu/article/eu-ban-bot-european-commission-bar-ai-agent-join-online-meeting/",
+    "timestamp": 1744893330.6364532
   }
 }

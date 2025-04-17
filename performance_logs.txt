@@ -464,3 +464,7 @@
 2025-04-17 08:19:42 | process_cluster_summaries | Time: 768.66s | Memory: -73.94MB
 2025-04-17 08:19:42 | generate_html_output | Time: 0.01s | Memory: 0.11MB
 2025-04-17 08:19:42 | process_feeds | Time: 811.63s | Memory: 672.06MB
+2025-04-17 08:34:55 | _process_feed | Time: 0.17s | Memory: 1.41MB
+2025-04-17 08:35:30 | process_cluster_summaries | Time: 29.50s | Memory: 0.42MB
+2025-04-17 08:35:30 | generate_html_output | Time: 0.01s | Memory: 0.00MB
+2025-04-17 08:35:30 | process_feeds | Time: 35.18s | Memory: 645.97MB
