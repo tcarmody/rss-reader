@@ -1,5 +1,5 @@
 """
-FastArticleSummarizer with integrated parallel batch processing using the spawn method.
+FastArticleSummarizer with integrated parallel batch processing using enhanced isolation patterns.
 """
 
 import os
@@ -8,7 +8,6 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 import logging
 import asyncio
-import multiprocessing
 import concurrent.futures
 import time
 import traceback
@@ -18,11 +17,12 @@ from text_chunking import chunk_text, summarize_long_article
 from model_selection import estimate_complexity, auto_select_model
 from tiered_cache import TieredSummaryCache
 from rate_limiter import RateLimiter, adaptive_retry
+from enhanced_batch_processor import add_enhanced_batch_to_fast_summarizer
 
 class FastArticleSummarizer:
     """
     Optimized version of ArticleSummarizer with enhanced performance features
-    and integrated parallel batch processing using spawn method.
+    and integrated parallel batch processing using improved isolation.
     """
     
     def __init__(
@@ -64,6 +64,9 @@ class FastArticleSummarizer:
             f"FastArticleSummarizer initialized with {rpm_limit} RPM limit, "
             f"{cache_size} cache entries, {ttl_days} days TTL"
         )
+        
+        # Add enhanced batch processing capability
+        self = add_enhanced_batch_to_fast_summarizer(self)
     
     def _apply_retry_decorator(self):
         """Apply the enhanced retry decorator to the API call method."""
@@ -144,157 +147,60 @@ class FastArticleSummarizer:
                 temperature=temperature
             )
     
-    @staticmethod
-    def _process_article_worker(worker_data):
-        """
-        Worker function that runs in a separate process.
-        This isolates each process to avoid tokenizer conflicts.
-        
-        Args:
-            worker_data: Dictionary with all necessary data
-            
-        Returns:
-            Processing result
-        """
-        article = worker_data['article']
-        model = worker_data['model']
-        temperature = worker_data['temperature']
-        
-        try:
-            # Import inside worker to ensure clean environment
-            from summarizer import ArticleSummarizer
-            
-            # Create a fresh summarizer instance
-            summarizer = ArticleSummarizer()
-            
-            # Process the article
-            start_time = time.time()
-            summary = summarizer.summarize_article(
-                text=article['text'],
-                title=article['title'],
-                url=article['url'],
-                model=model,
-                temperature=temperature
-            )
-            elapsed = time.time() - start_time
-            
-            return {
-                'success': True,
-                'original': article,
-                'summary': summary,
-                'elapsed': elapsed
-            }
-        except Exception as e:
-            tb = traceback.format_exc()
-            return {
-                'success': False,
-                'original': article,
-                'error': str(e),
-                'traceback': tb
-            }
+    # Note: The batch_summarize method is now added by the enhanced_batch_processor
+    # and does not need to be defined directly in this class
     
-    def batch_summarize_sync(
+    async def batch_summarize_legacy(
         self,
         articles: List[Dict[str, str]],
+        max_concurrent: int = 3,
         model: Optional[str] = None,
-        max_workers: int = 3,
-        auto_select_model: bool = False,
-        temperature: float = 0.3
-    ) -> List[Dict]:
+        auto_select_model: bool = True,
+        temperature: float = 0.3,
+    ) -> List[Dict[str, Dict[str, str]]]:
         """
-        Process multiple articles in parallel using multiprocessing with spawn method.
-        This is a synchronous version.
+        Legacy batch processing method - kept for backward compatibility.
+        The enhanced version is added by add_enhanced_batch_to_fast_summarizer.
+        
+        This method is deprecated and will be removed in a future version.
         
         Args:
-            articles: List of articles to process
-            model: Model to use
-            max_workers: Maximum number of parallel workers
+            articles: List of article dicts with 'text', 'title', and 'url' keys
+            max_concurrent: Maximum number of concurrent processes
+            model: Claude model to use (shorthand name or full identifier)
             auto_select_model: Whether to auto-select model based on content
-            temperature: Temperature setting
+            temperature: Temperature setting for generation
             
         Returns:
-            List of processing results
+            List of article summaries with original metadata
         """
-        self.logger.info(f"Processing batch of {len(articles)} articles with {max_workers} workers")
-        start_time = time.time()
+        self.logger.warning(
+            "Using legacy batch processing method - this is deprecated. "
+            "The enhanced batch processing is now used by default."
+        )
         
-        # Prepare worker data with models selected if needed
-        worker_data_list = []
-        for article in articles:
-            if auto_select_model and not model:
-                # Import here to avoid circular imports
-                from model_selection import auto_select_model as select_model
-                selected_model = select_model(
-                    article['text'],
-                    self.original.AVAILABLE_MODELS,
-                    self.original.DEFAULT_MODEL,
-                    self.logger
-                )
-            else:
-                selected_model = self.original._get_model(model)
-            
-            worker_data = {
-                'article': article,
-                'model': selected_model,
-                'temperature': temperature
-            }
-            worker_data_list.append(worker_data)
+        from parallel_batch_processor import SpawnBatchProcessor
         
-        # Initialize multiprocessing with spawn context
-        ctx = multiprocessing.get_context('spawn')
+        # Create the batch processor
+        batch_processor = SpawnBatchProcessor()
         
-        # Process articles in parallel
-        results = []
-        with concurrent.futures.ProcessPoolExecutor(
-            max_workers=max_workers,
-            mp_context=ctx
-        ) as executor:
-            # Submit all jobs
-            future_to_index = {
-                executor.submit(self._process_article_worker, data): i
-                for i, data in enumerate(worker_data_list)
-            }
-            
-            # Process results as they complete
-            for future in concurrent.futures.as_completed(future_to_index):
-                idx = future_to_index[future]
-                try:
-                    result = future.result()
-                    if result['success']:
-                        self.logger.info(f"Processed article {idx+1}/{len(articles)}: {articles[idx]['url']}")
-                    else:
-                        self.logger.error(
-                            f"Error processing article {idx+1}/{len(articles)}: "
-                            f"{articles[idx]['url']} - {result['error']}"
-                        )
-                    results.append(result)
-                except Exception as e:
-                    self.logger.error(f"Worker exception for article {idx+1}: {str(e)}")
-                    results.append({
-                        'success': False,
-                        'original': articles[idx],
-                        'error': str(e)
-                    })
+        # Process the batch
+        results = await batch_processor.batch_process_async(
+            summarizer=self.original,
+            articles=articles,
+            model=model,
+            max_concurrent=max_concurrent,
+            auto_select_model=auto_select_model,
+            temperature=temperature
+        )
         
-        # Sort results to match input order
-        sorted_results = []
-        for i in range(len(articles)):
-            for result in results:
-                if result['original'] == articles[i]:
-                    sorted_results.append(result)
-                    break
-        
-        elapsed = time.time() - start_time
-        self.logger.info(f"Batch processing completed in {elapsed:.2f}s")
-        
-        # Format results for consistent API
+        # Format results
         formatted_results = []
-        for result in sorted_results:
+        for result in results:
             if result['success']:
                 formatted_results.append({
                     'original': result['original'],
-                    'summary': result['summary'],
-                    'elapsed': result.get('elapsed')
+                    'summary': result['summary']
                 })
             else:
                 formatted_results.append({
@@ -307,40 +213,95 @@ class FastArticleSummarizer:
                 })
         
         return formatted_results
+
+
+def create_fast_summarizer(
+    original_summarizer, 
+    rpm_limit=50, 
+    cache_size=256, 
+    cache_dir="./summary_cache", 
+    ttl_days=30,
+    max_batch_workers=3
+):
+    """
+    Factory function to create a FastArticleSummarizer with enhanced batch processing.
     
-    async def batch_summarize(
-        self,
-        articles: List[Dict[str, str]],
-        max_concurrent: int = 3,
-        model: Optional[str] = None,
-        auto_select_model: bool = True,
-        temperature: float = 0.3,
-    ) -> List[Dict[str, Dict[str, str]]]:
-        """
-        Process multiple articles in parallel batches using spawn method.
+    Args:
+        original_summarizer: Original ArticleSummarizer instance
+        rpm_limit: Requests per minute limit
+        cache_size: Size of in-memory cache
+        cache_dir: Directory for persistent cache
+        ttl_days: TTL for cache entries in days
+        max_batch_workers: Maximum number of worker processes for batch processing
         
-        Args:
-            articles: List of article dicts with 'text', 'title', and 'url' keys
-            max_concurrent: Maximum number of concurrent processes
-            model: Claude model to use (shorthand name or full identifier)
-            auto_select_model: Whether to auto-select model based on content
-            temperature: Temperature setting for generation
-            
-        Returns:
-            List of article summaries with original metadata
-        """
-        # Run the synchronous batch processing in a thread pool
-        loop = asyncio.get_event_loop()
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            result = await loop.run_in_executor(
-                pool,
-                lambda: self.batch_summarize_sync(
-                    articles=articles,
-                    model=model,
-                    max_workers=max_concurrent,
-                    auto_select_model=auto_select_model,
-                    temperature=temperature
-                )
-            )
+    Returns:
+        FastArticleSummarizer: The configured summarizer instance
+    """
+    summarizer = FastArticleSummarizer(
+        original_summarizer=original_summarizer,
+        rpm_limit=rpm_limit,
+        cache_size=cache_size,
+        cache_dir=cache_dir,
+        ttl_days=ttl_days
+    )
+    
+    # Configure with the specified number of batch workers
+    summarizer = add_enhanced_batch_to_fast_summarizer(
+        summarizer, 
+        max_workers=max_batch_workers
+    )
+    
+    return summarizer
+
+
+# Example usage
+if __name__ == "__main__":
+    # Set up logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # Create original summarizer
+    from summarizer import ArticleSummarizer
+    original = ArticleSummarizer()
+    
+    # Create fast summarizer with enhanced batch processing
+    fast = create_fast_summarizer(
+        original_summarizer=original,
+        rpm_limit=60,
+        max_batch_workers=3
+    )
+    
+    # Example articles
+    articles = [
+        {
+            'text': 'Sample article text about artificial intelligence.',
+            'title': 'AI Developments',
+            'url': 'https://example.com/ai'
+        },
+        {
+            'text': 'Sample article text about machine learning.',
+            'title': 'ML Advancements',
+            'url': 'https://example.com/ml'
+        }
+    ]
+    
+    # Run asynchronous batch processing
+    async def test_batch():
+        results = await fast.batch_summarize(
+            articles=articles,
+            auto_select_model=True
+        )
         
-        return result
+        for i, result in enumerate(results):
+            print(f"Result {i+1}:")
+            if 'error' in result:
+                print(f"Error: {result['error']}")
+            else:
+                print(f"Headline: {result['summary']['headline']}")
+                print(f"Summary: {result['summary']['summary'][:100]}...")
+    
+    # Run the test
+    import asyncio
+    asyncio.run(test_batch())
