@@ -44,6 +44,12 @@ def index():
     if 'paywall_bypass_enabled' not in session:
         session['paywall_bypass_enabled'] = False
     
+    # Initialize feeds_list and use_default in session if not already set
+    if 'feeds_list' not in session:
+        session['feeds_list'] = None
+    if 'use_default' not in session:
+        session['use_default'] = True
+    
     if latest_data['clusters']:
         return render_template(
             'feed-summary.html',
@@ -76,18 +82,29 @@ def toggle_paywall_bypass():
 def refresh_feeds():
     """Process RSS feeds and update the latest data."""
     try:
-        # Check if we should use default feeds
-        use_default = request.form.get('use_default', 'false').lower() == 'true'
+        # Check if form has a new feed submission
+        feeds_from_form = request.form.get('feeds', '').strip()
+        use_default_from_form = request.form.get('use_default', 'false').lower() == 'true'
         
-        # Get optional parameters from the form
-        feeds = request.form.get('feeds', '').strip()
-        feeds_list = None
+        # If there's form data for feeds, update the session
+        if feeds_from_form or 'use_default' in request.form:
+            # Store in session whether we're using default feeds or not
+            session['use_default'] = use_default_from_form
+            
+            # If using custom feeds, store the feed list in session
+            if not use_default_from_form and feeds_from_form:
+                feeds_list = [url.strip() for url in feeds_from_form.split('\n') if url.strip()]
+                session['feeds_list'] = feeds_list
+                logging.info(f"Storing {len(feeds_list)} custom feeds in session")
+            else:
+                # If using default feeds, clear any stored custom feeds
+                session['feeds_list'] = None
         
-        # If use_default is true, leave feeds_list as None to use default feeds
-        # Otherwise, parse the feeds from the textarea
-        if not use_default and feeds:
-            feeds_list = [url.strip() for url in feeds.split('\n') if url.strip()]
+        # Now use the stored feeds from session for processing
+        use_default = session.get('use_default', True)
+        feeds_list = session.get('feeds_list')
         
+        # Get optional parameters from the form or use defaults
         batch_size = request.form.get('batch_size', 25)
         try:
             batch_size = int(batch_size)
@@ -104,9 +121,10 @@ def refresh_feeds():
         if use_default:
             logging.info("Processing default feeds from rss_feeds.txt")
         elif feeds_list:
-            logging.info(f"Processing {len(feeds_list)} custom feeds")
+            logging.info(f"Processing {len(feeds_list)} custom feeds from session")
         else:
-            logging.info("No feeds specified, will use default feeds")
+            logging.info("No feeds specified and no session data, will use default feeds")
+            use_default = True
         
         # Set the environment variable for paywall bypass based on user preference
         if session.get('paywall_bypass_enabled', False):
@@ -118,7 +136,7 @@ def refresh_feeds():
         
         # Initialize and run RSS reader with paywall bypass setting from user preference
         reader = RSSReader(
-            feeds=feeds_list,
+            feeds=feeds_list if not use_default else None,
             batch_size=batch_size,
             batch_delay=batch_delay
         )
@@ -188,7 +206,9 @@ def status():
         'last_updated': latest_data['timestamp'],
         'article_count': sum(len(cluster) for cluster in latest_data['clusters']) if latest_data['clusters'] else 0,
         'cluster_count': len(latest_data['clusters']) if latest_data['clusters'] else 0,
-        'paywall_bypass_enabled': session.get('paywall_bypass_enabled', False)
+        'paywall_bypass_enabled': session.get('paywall_bypass_enabled', False),
+        'using_default_feeds': session.get('use_default', True),
+        'custom_feed_count': len(session.get('feeds_list', [])) if session.get('feeds_list') else 0
     })
 
 @app.route('/debug')
@@ -205,6 +225,8 @@ def debug():
         'timestamp': latest_data['timestamp'],
         'cluster_count': len(latest_data['clusters']),
         'paywall_bypass_enabled': session.get('paywall_bypass_enabled', False),
+        'using_default_feeds': session.get('use_default', True),
+        'custom_feed_count': len(session.get('feeds_list', [])) if session.get('feeds_list') else 0,
         'clusters': []
     }
     
