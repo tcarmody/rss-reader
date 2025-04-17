@@ -21,6 +21,7 @@ tqdm>=4.64.0
 umap-learn>=0.5.1       # For UMAP dimensionality reduction
 bertopic>=0.16.0        # For advanced topic modeling
 spacy>=3.0.0            # For NER and NLP tasks
+# After installing requirements, run: python -m spacy download en_core_web_sm
 bs4>=0.0.1              # For BeautifulSoup (HTML parsing)
 html5lib>=1.1           # BeautifulSoup parser dependency
 lxml>=4.9.0             # BeautifulSoup parser dependency
