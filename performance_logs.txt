@@ -457,3 +457,6 @@
 2025-04-17 07:16:56 | _process_feed | Time: 5.03s | Memory: 9.41MB
 2025-04-17 07:16:56 | _process_feed | Time: 5.45s | Memory: 9.47MB
 2025-04-17 07:17:21 | _process_feed | Time: 29.98s | Memory: 8.72MB
+2025-04-17 07:42:07 | process_cluster_summaries | Time: 1470.11s | Memory: -468.97MB
+2025-04-17 07:42:07 | generate_html_output | Time: 0.02s | Memory: 4.42MB
+2025-04-17 07:42:07 | process_feeds | Time: 1552.37s | Memory: -156.86MB
