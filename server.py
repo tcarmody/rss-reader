@@ -37,6 +37,83 @@ latest_data = {
     'raw_clusters': []  # Store the raw clusters for debugging
 }
 
+def sort_clusters(clusters):
+    """
+    Sort clusters in the following order:
+    1. Largest clusters first
+    2. Stories from Techmeme
+    3. Stories from reputable news sources
+    4. Stories from technology companies
+    5. Stories from everyone else
+    """
+    # Define lists of source domains for categorization
+    techmeme_sources = ['techmeme.com']
+    
+    reputable_news_sources = [
+        'nytimes.com', 'washingtonpost.com', 'wsj.com', 'reuters.com',
+        'bloomberg.com', 'ft.com', 'economist.com', 'bbc.com', 'bbc.co.uk',
+        'apnews.com', 'npr.org', 'cnn.com', 'cnbc.com', 'theverge.com',
+        'wired.com', 'arstechnica.com', 'techcrunch.com', 'engadget.com'
+    ]
+    
+    tech_company_sources = [
+        'blog.google', 'blog.microsoft.com', 'apple.com', 'amazon.com', 
+        'meta.com', 'facebook.com', 'engineering.fb.com', 'developer.apple.com',
+        'azure.microsoft.com', 'aws.amazon.com', 'blog.twitter.com',
+        'developer.android.com', 'developer.mozilla.org', 'netflix.com',
+        'engineering.linkedin.com', 'github.blog', 'medium.engineering',
+        'instagram-engineering.com', 'engineering.pinterest.com',
+        'slack.engineering', 'dropbox.tech', 'spotify.engineering'
+    ]
+    
+    # Define category scores (higher is more important)
+    def get_source_score(article):
+        if not article or 'feed_source' not in article:
+            return 0
+        
+        source = article.get('feed_source', '').lower()
+        
+        for techmeme in techmeme_sources:
+            if techmeme in source:
+                return 4
+        
+        for reputable in reputable_news_sources:
+            if reputable in source:
+                return 3
+        
+        for tech_company in tech_company_sources:
+            if tech_company in source:
+                return 2
+        
+        return 1  # Everyone else
+    
+    # Create a sorting function
+    def cluster_sort_key(cluster):
+        if not cluster:
+            return (-1, 0)  # Empty clusters go last
+        
+        # Primary sort by cluster size (descending)
+        cluster_size = len(cluster)
+        
+        # Secondary sort by source category
+        # Get the source from the first article in the cluster
+        source_score = get_source_score(cluster[0])
+        
+        return (-cluster_size, -source_score)  # Negative to sort in descending order
+    
+    # Sort the clusters using the sorting function
+    sorted_clusters = sorted(clusters, key=cluster_sort_key)
+    
+    # Log the sorting results for debugging
+    logging.info(f"Sorted {len(sorted_clusters)} clusters")
+    if sorted_clusters:
+        for i, cluster in enumerate(sorted_clusters[:5]):  # Log first 5 clusters
+            if cluster:
+                source = cluster[0].get('feed_source', 'Unknown')
+                logging.info(f"Cluster {i}: size={len(cluster)}, source={source}")
+    
+    return sorted_clusters
+
 @app.route('/')
 def index():
     """Render the main page with the latest summaries or a welcome page if none exist."""
@@ -51,9 +128,12 @@ def index():
         session['use_default'] = True
     
     if latest_data['clusters']:
+        # Sort the clusters before passing to the template
+        sorted_clusters = sort_clusters(latest_data['clusters'])
+        
         return render_template(
             'feed-summary.html',
-            clusters=latest_data['clusters'],
+            clusters=sorted_clusters,
             timestamp=latest_data['timestamp'],
             paywall_bypass_enabled=session.get('paywall_bypass_enabled', False)
         )
@@ -230,7 +310,10 @@ def debug():
         'clusters': []
     }
     
-    for i, cluster in enumerate(latest_data['clusters']):
+    # Use sorted clusters for debugging too
+    sorted_clusters = sort_clusters(latest_data['clusters'])
+    
+    for i, cluster in enumerate(sorted_clusters):
         cluster_info = {
             'id': i,
             'article_count': len(cluster),
