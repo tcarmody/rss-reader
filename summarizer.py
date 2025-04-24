@@ -5,6 +5,7 @@ import html
 import logging
 import time
 import anthropic
+import os
 from typing import Dict, List, Optional, Union, Generator, Callable, Any
 from datetime import datetime
 from functools import wraps
@@ -589,7 +590,7 @@ class ArticleSummarizer:
             result = self._parse_summary_response(summary_text, title, url, source_name)
             
             # Cache the result
-            self.summary_cache.set(cache_key, result)
+            self.summary_cache.set(cache_key, {'summary': result})
             
             self.logger.info(
                 "Summary generated successfully", 
@@ -619,84 +620,6 @@ class ArticleSummarizer:
         finally:
             # Clear context after the operation
             self.logger.clear_context()
-
-    def summarize_article(
-        self, 
-        text: str, 
-        title: str, 
-        url: str, 
-        model: Optional[str] = None,
-        force_refresh: bool = False,
-        temperature: float = 0.3,
-    ) -> Dict[str, str]:
-        """
-        Generate a concise summary of the article text.
-        
-        Args:
-            text: The article text to summarize
-            title: The article title
-            url: The article URL
-            model: Claude model to use (shorthand name or full identifier)
-            force_refresh: Whether to force a new summary instead of using cache
-            temperature: Temperature setting for generation (0.0-1.0)
-            
-        Returns:
-            dict: The summary with headline and text
-        """
-        # Clean the text first
-        text = self.clean_text(text)
-
-        # Generate cache key that includes model information
-        cache_key = f"{text}:{model or 'default'}"
-
-        # Check cache first
-        if not force_refresh:
-            cached_summary = self.summary_cache.get(cache_key)
-            if cached_summary:
-                self.logger.info(f"Using cached summary for {url}")
-                return cached_summary['summary']
-
-        try:
-            # Extract source from URL for attribution
-            source_name = self._extract_source_from_url(url)
-            
-            # Get the actual model identifier
-            model_id = self._get_model(model)
-            
-            # Create the prompt
-            prompt = self._create_summary_prompt(text, url, source_name)
-
-            # Log the request (without full text for brevity)
-            self.logger.info(f"Requesting summary for {url} using model {model_id}")
-
-            # Generate summary using Claude
-            response = self.client.messages.create(
-                model=model_id,
-                max_tokens=400,
-                temperature=temperature,
-                system=self._get_system_prompt(),
-                messages=[{
-                    "role": "user",
-                    "content": prompt
-                }]
-            )
-
-            summary_text = response.content[0].text
-            
-            # Parse the response
-            result = self._parse_summary_response(summary_text, title, url, source_name)
-            
-            # Cache the result
-            self.summary_cache.set(cache_key, result)
-            
-            return result
-
-        except Exception as e:
-            self.logger.error(f"Error generating summary: {str(e)}", exc_info=True)
-            return {
-                'headline': title,
-                'summary': "Summary generation failed. Please try again later."
-            }
 
     @retry_with_backoff(max_retries=3, initial_backoff=2)
     def _call_claude_api_streaming(self, model_id: str, prompt: str, temperature: float, max_tokens: int) -> Generator[str, None, None]:
@@ -846,131 +769,6 @@ class ArticleSummarizer:
             # Get the actual model identifier
             model_id = self._get_model(model)
             
-            # Create the prompt
-            prompt = self._create_summary_prompt(text, url, source_name)
-
-            # Log the request
-            self.logger.info(
-                "Requesting streaming summary", 
-                model=model_id,
-                source=source_name
-            )
-
-            # Collect the full text as we stream
-            full_text = ""
-            
-            # Generate summary using Claude with streaming
-            for text_chunk in self._call_claude_api_streaming(
-                model_id=model_id,
-                prompt=prompt,
-                temperature=temperature,
-                max_tokens=400
-            ):
-                # Append to full text
-                full_text += text_chunk
-                
-                # Yield the chunk
-                yield text_chunk
-                
-                # Call the callback if provided
-                if callback:
-                    try:
-                        callback(text_chunk)
-                    except Exception as callback_error:
-                        self.logger.warning(
-                            "Callback error (continuing streaming)", 
-                            error=str(callback_error)
-                        )
-            
-            # Parse the complete response
-            result = self._parse_summary_response(full_text, title, url, source_name)
-            
-            # Cache the result (using the same cache key format as non-streaming)
-            cache_key = f"{text}:{model_id}:{temperature}"
-            self.summary_cache.set(cache_key, result)
-            
-            self.logger.info(
-                "Streaming summary completed", 
-                headline_length=len(result['headline']),
-                summary_length=len(result['summary'])
-            )
-            
-            # Return the complete summary result
-            return result
-
-        except SummarizerError as e:
-            # Log and handle our custom exceptions
-            self.logger.exception(
-                f"Streaming summarization error: {str(e)}", 
-                error_type=type(e).__name__
-            )
-            error_message = f"Summary generation failed: {str(e)}. Please try again later."
-            yield error_message
-            if callback:
-                try:
-                    callback(error_message)
-                except:
-                    pass
-                    
-            return {
-                'headline': title,
-                'summary': error_message
-            }
-        except Exception as e:
-            # Log and handle unexpected exceptions
-            self.logger.exception(
-                f"Unexpected error in summarize_article_streaming: {str(e)}",
-                error_type=type(e).__name__
-            )
-            error_message = f"Summary generation failed: {str(e)}. Please try again later."
-            yield error_message
-            if callback:
-                try:
-                    callback(error_message)
-                except:
-                    pass
-                    
-            return {
-                'headline': title,
-                'summary': error_message
-            }
-        finally:
-            # Clear context after the operation
-            self.logger.clear_context()
-
-    @retry_with_backoff(max_retries=2, initial_backoff=1)
-    def generate_tags(
-        self, 
-        content: str,
-        model: Optional[str] = None,
-        temperature: float = 0.7
-    ) -> List[str]:
-        """
-        Generate tags for an article using Claude.
-        
-        Args:
-            content: Article content to extract tags from
-            model: Claude model to use (shorthand name or full identifier)
-            temperature: Temperature setting for generation (0.0-1.0)
-            
-        Returns:
-            list: Generated tags as strings
-        """
-        # Set up request-specific context for structured logging
-        self.logger.add_context(
-            operation="generate_tags",
-            content_length=len(content),
-            requested_model=model,
-            temperature=temperature
-        )
-        
-        try:
-            # Clean the text for better tag extraction
-            content = self.clean_text(content)
-            
-            # Get the actual model identifier
-            model_id = self._get_model(model)
-            
             self.logger.info("Generating tags", model=model_id)
             
             response = self.client.messages.create(
@@ -1014,6 +812,93 @@ class ArticleSummarizer:
         finally:
             # Clear context after the operation
             self.logger.clear_context()
+            
+    async def batch_summarize(
+        self,
+        articles: List[Dict[str, str]],
+        max_concurrent: int = 3,
+        auto_select_model: bool = True,
+        temperature: float = 0.3
+    ) -> List[Dict]:
+        """
+        Summarize a batch of articles concurrently.
+        
+        Args:
+            articles: List of article dicts with 'text', 'title', and 'url' keys
+            max_concurrent: Maximum number of concurrent API calls
+            auto_select_model: Whether to automatically select the appropriate model
+            temperature: Temperature setting for generation
+            
+        Returns:
+            List of dicts with original article and summary
+        """
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+        
+        self.logger.info(f"Starting batch summarization of {len(articles)} articles")
+        
+        # Queue for managing concurrent API calls
+        semaphore = asyncio.Semaphore(max_concurrent)
+        results = []
+        
+        async def process_article(article):
+            """Process a single article with concurrency control."""
+            async with semaphore:
+                try:
+                    # Select model based on content length if auto_select is enabled
+                    model = None
+                    if auto_select_model:
+                        text_length = len(article.get('text', ''))
+                        if text_length < 2000:
+                            model = "haiku"  # Use fastest model for short articles
+                        elif text_length > 10000:
+                            model = "sonnet-3.7"  # Use most capable model for long articles
+                        else:
+                            model = "sonnet"  # Use balanced model for medium articles
+                    
+                    title = article.get('title', 'No Title')
+                    url = article.get('url', '#')
+                    text = article.get('text', '')
+                    
+                    self.logger.info(f"Processing article: {title} with model {model or 'default'}")
+                    
+                    # Use a thread to run the synchronous summarize_article method
+                    with ThreadPoolExecutor() as executor:
+                        summary = await asyncio.get_event_loop().run_in_executor(
+                            executor, 
+                            lambda: self.summarize_article(
+                                text=text,
+                                title=title,
+                                url=url,
+                                model=model,
+                                temperature=temperature
+                            )
+                        )
+                    
+                    return {
+                        'original': article,
+                        'summary': summary
+                    }
+                except Exception as e:
+                    self.logger.error(f"Error processing article {article.get('title')}: {str(e)}")
+                    return {
+                        'original': article,
+                        'error': str(e)
+                    }
+        
+        # Create tasks for all articles
+        tasks = [process_article(article) for article in articles]
+        
+        # Process all tasks and collect results
+        completed_results = await asyncio.gather(*tasks)
+        results.extend(completed_results)
+        
+        # Log completion
+        success_count = sum(1 for r in results if 'summary' in r)
+        error_count = sum(1 for r in results if 'error' in r)
+        self.logger.info(f"Batch summarization completed: {success_count} successes, {error_count} errors")
+        
+        return results
 
 
 # Usage examples
@@ -1156,3 +1041,128 @@ if __name__ == "__main__":
     
     print("\n=== Error Handling Example ===")
     example_error_handling()
+            model_id = self._get_model(model)
+            
+            # Create the prompt
+            prompt = self._create_summary_prompt(text, url, source_name)
+
+            # Log the request
+            self.logger.info(
+                "Requesting streaming summary", 
+                model=model_id,
+                source=source_name
+            )
+
+            # Collect the full text as we stream
+            full_text = ""
+            
+            # Generate summary using Claude with streaming
+            for text_chunk in self._call_claude_api_streaming(
+                model_id=model_id,
+                prompt=prompt,
+                temperature=temperature,
+                max_tokens=400
+            ):
+                # Append to full text
+                full_text += text_chunk
+                
+                # Yield the chunk
+                yield text_chunk
+                
+                # Call the callback if provided
+                if callback:
+                    try:
+                        callback(text_chunk)
+                    except Exception as callback_error:
+                        self.logger.warning(
+                            "Callback error (continuing streaming)", 
+                            error=str(callback_error)
+                        )
+            
+            # Parse the complete response
+            result = self._parse_summary_response(full_text, title, url, source_name)
+            
+            # Cache the result (using the same cache key format as non-streaming)
+            cache_key = f"{text}:{model_id}:{temperature}"
+            self.summary_cache.set(cache_key, {'summary': result})
+            
+            self.logger.info(
+                "Streaming summary completed", 
+                headline_length=len(result['headline']),
+                summary_length=len(result['summary'])
+            )
+            
+            # Return the complete summary result
+            return result
+
+        except SummarizerError as e:
+            # Log and handle our custom exceptions
+            self.logger.exception(
+                f"Streaming summarization error: {str(e)}", 
+                error_type=type(e).__name__
+            )
+            error_message = f"Summary generation failed: {str(e)}. Please try again later."
+            yield error_message
+            if callback:
+                try:
+                    callback(error_message)
+                except:
+                    pass
+                    
+            return {
+                'headline': title,
+                'summary': error_message
+            }
+        except Exception as e:
+            # Log and handle unexpected exceptions
+            self.logger.exception(
+                f"Unexpected error in summarize_article_streaming: {str(e)}",
+                error_type=type(e).__name__
+            )
+            error_message = f"Summary generation failed: {str(e)}. Please try again later."
+            yield error_message
+            if callback:
+                try:
+                    callback(error_message)
+                except:
+                    pass
+                    
+            return {
+                'headline': title,
+                'summary': error_message
+            }
+        finally:
+            # Clear context after the operation
+            self.logger.clear_context()
+
+    @retry_with_backoff(max_retries=2, initial_backoff=1)
+    def generate_tags(
+        self, 
+        content: str,
+        model: Optional[str] = None,
+        temperature: float = 0.7
+    ) -> List[str]:
+        """
+        Generate tags for an article using Claude.
+        
+        Args:
+            content: Article content to extract tags from
+            model: Claude model to use (shorthand name or full identifier)
+            temperature: Temperature setting for generation (0.0-1.0)
+            
+        Returns:
+            list: Generated tags as strings
+        """
+        # Set up request-specific context for structured logging
+        self.logger.add_context(
+            operation="generate_tags",
+            content_length=len(content),
+            requested_model=model,
+            temperature=temperature
+        )
+        
+        try:
+            # Clean the text for better tag extraction
+            content = self.clean_text(content)
+            
+            # Get the actual model identifier
