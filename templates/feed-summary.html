@@ -370,7 +370,12 @@
         </a>
         
         <div class="nav-actions">
-          <a href="{{ url_for('index') }}" class="button outline">Home</a>
+          <!-- FIXED: Changed from index to welcome route -->
+          <a href="{{ url_for('welcome') }}" class="button outline">Home</a>
+          
+          <!-- NEW: Added Clear Data button -->
+          <a href="{{ url_for('clear') }}" class="button outline">Clear Data</a>
+          
           <form action="/refresh" method="post" style="display: inline;">
             <button type="submit" class="button">Refresh Feeds</button>
           </form>
