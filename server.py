@@ -339,6 +339,11 @@ def debug():
     
     return jsonify(debug_info)
 
+@app.route('/test_route')
+def test_route():
+    """Test route to verify routing is working."""
+    return "Routing is working correctly!"
+
 def initialize_data():
     """Initialize the latest data by running the RSS reader once at startup."""
     try:

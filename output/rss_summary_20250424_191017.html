@@ -361,7 +361,7 @@
   <div class="app-container">
     <nav class="nav">
       <div class="nav-container">
-        <a href="{{ url_for('index') }}" class="logo">
+        <a href="/" class="logo">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <path d="M12 6v6l4 2"></path>
@@ -370,7 +370,7 @@
         </a>
         
         <div class="nav-actions">
-          <a href="{{ url_for('index') }}" class="button outline">Home</a>
+          <a href="/" class="button outline">Home</a>
           <form action="/refresh" method="post" style="display: inline;">
             <button type="submit" class="button">Refresh Feeds</button>
           </form>
@@ -385,14 +385,10 @@
                 Paywall
               </span>
               <label class="toggle-switch">
-                <input type="checkbox" {% if paywall_bypass_enabled %}checked{% endif %} onChange="this.form.submit()">
+                <input type="checkbox"  onChange="this.form.submit()">
                 <span class="toggle-slider"></span>
               </label>
-              {% if paywall_bypass_enabled %}
-              <div class="warning-tooltip">
-                Warning: Bypassing paywalls may violate some sites' terms of service
-              </div>
-              {% endif %}
+              
             </div>
           </form>
         </div>
@@ -402,41 +398,118 @@
     <main class="main">
       <div class="page-header">
         <h1 class="page-title">AI News Digest</h1>
-        <span class="timestamp">Generated on {{ timestamp }}</span>
+        <span class="timestamp">Generated on 2025-04-24 19:10:17</span>
       </div>
       
-      {% for cluster in clusters %}
+      
       <div class="cluster">
         <div class="cluster-header">
-          {% if cluster[0].summary.headline %}
-            <h2 class="cluster-title">{{ cluster[0].summary.headline }}</h2>
-          {% else %}
-            <h2 class="cluster-title">{{ cluster[0].title }}</h2>
-          {% endif %}
-          <span class="cluster-info">{{ cluster|length }} related articles</span>
+          
+            <h2 class="cluster-title">OpenAI faces growing opposition to nonprofit-to-profit transition plan</h2>
+          
+          <span class="cluster-info">3 related articles</span>
         </div>
 
-        {% if cluster[0].summary.summary %}
+        
           <div class="article-summary">
-            {{ cluster[0].summary.summary|replace('\n\n', '<br><br>')|replace('\n', '<br>')|safe }}
+            A diverse coalition including consumer advocates, labor groups, law professors, and Elon Musk is challenging OpenAI's plan to shed its nonprofit status. Legal scholars and former employees have asked attorneys general in California and Delaware to block the restructuring, arguing it would remove powerful AI technology from oversight meant to benefit humanity rather than chase profits. California's attorney general must approve any conversion of a nonprofit with significant assets to a for-profit entity. OpenAI maintains the restructuring would strengthen its nonprofit mission while securing necessary investment to compete with rivals like Google and Meta, who are spending tens of billions on AI infrastructure.<br><br>Source: The Washington Post<br>https://www.washingtonpost.com/technology/2025/04/24/trump-trump-memecoin-cryto/
           </div>
-        {% endif %}
+        
 
         <div class="articles-container">
-          {% for article in cluster %}
+          
             <div class="article">
               <h3 class="article-title">
-                <a href="{{ article.link }}" target="_blank">{{ article.title }}</a>
-                <span class="article-source">{{ article.feed_source }}</span>
+                <a href="https://www.washingtonpost.com/technology/2025/04/24/trump-trump-memecoin-cryto/" target="_blank">How Trump team turned a dinner invite into a crypto boon worth millions</a>
+                <span class="article-source">Technology</span>
               </h3>
               <div class="article-meta">
-                Published: {{ article.published }}
+                Published: Thu, 24 Apr 2025 22:50:57 +0000
               </div>
             </div>
-          {% endfor %}
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.washingtonpost.com/business/2025/04/24/elon-musk-doge-scott-bessent-tesla/" target="_blank">Elon Musk had the government in his grasp. Then it unraveled.</a>
+                <span class="article-source">Technology</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 10:00:17 +0000
+              </div>
+            </div>
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.washingtonpost.com/technology/2025/04/23/openai-restructuring-opposition-elon-musk/" target="_blank">A growing coalition joins Elon Musk’s war on OpenAI</a>
+                <span class="article-source">Technology</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 23 Apr 2025 09:00:00 +0000
+              </div>
+            </div>
+          
         </div>
       </div>
-      {% endfor %}
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Thrifting apps see surge in downloads as tariffs on Chinese goods drive shoppers to secondhand market</h2>
+          
+          <span class="cluster-info">4 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Americans are increasingly turning to resale platforms like Poshmark, Depop, and eBay as tariffs on Chinese imports threaten to raise prices on new goods. Downloads of thrifting and resale apps jumped 18 percent in the first quarter compared to the previous quarter, with Depop seeing a 68 percent increase. The secondhand market benefits from having inventory already in the U.S., insulating it from tariff impacts that affect overseas retailers. Industry experts suggest this economic pressure could drive more significant consumer behavior changes than previous economic disruptions like the pandemic or inflation.<br><br>Source: Washington Post<br>https://www.washingtonpost.com/technology/2025/04/24/intel-cuts-manufacturing-trump/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.washingtonpost.com/technology/2025/04/24/intel-cuts-manufacturing-trump/" target="_blank">Intel cuts spending after receiving $7.9 billion in federal grants</a>
+                <span class="article-source">Technology</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 21:12:06 +0000
+              </div>
+            </div>
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.washingtonpost.com/technology/2025/04/23/meta-oversight-board-trans-content-moderation-hate-speech/" target="_blank">Videos disparaging trans women aren’t hate speech, Meta board says</a>
+                <span class="article-source">Technology</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 23 Apr 2025 19:47:14 +0000
+              </div>
+            </div>
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.washingtonpost.com/technology/2025/04/23/eu-says-apple-meta-broke-competition-law-imposes-hefty-fines/" target="_blank">E.U. says Apple and Meta broke competition law, imposes hefty fines</a>
+                <span class="article-source">Technology</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 23 Apr 2025 13:49:16 +0000
+              </div>
+            </div>
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.washingtonpost.com/technology/2025/04/23/tariffs-thrifting-used-clothes-prices/" target="_blank">Thrifting apps see rush of traffic as tariffs hit</a>
+                <span class="article-source">Technology</span>
+              </h3>
+              <div class="article-meta">
+                Published: Wed, 23 Apr 2025 13:00:00 +0000
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
     </main>
     
     <footer class="footer">
