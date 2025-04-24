@@ -46,3 +46,6 @@ Thumbs.db
 CACHEDIR.TAG
 .DS_Store
 .DS_Store
+performance_logs.txt
+performance_logs.txt
+.cache/summary_cache.json

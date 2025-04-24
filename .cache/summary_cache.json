@@ -12,5 +12,180 @@
       "summary": "Americans are increasingly turning to resale platforms like Poshmark, Depop, and eBay as tariffs on Chinese imports threaten to raise prices on new goods. Downloads of thrifting and resale apps jumped 18 percent in the first quarter compared to the previous quarter, with Depop seeing a 68 percent increase. The secondhand market benefits from having inventory already in the U.S., insulating it from tariff impacts that affect overseas retailers. Industry experts suggest this economic pressure could drive more significant consumer behavior changes than previous economic disruptions like the pandemic or inflation.\n\nSource: Washington Post\nhttps://www.washingtonpost.com/technology/2025/04/24/intel-cuts-manufacturing-trump/"
     },
     "timestamp": 1745536217.801613
+  },
+  "66e19b0b89254a90906d61e735ad70b7": {
+    "summary": {
+      "headline": "Trump's AI education plan faces uncertainty amid potential Education Department dissolution",
+      "summary": "Donald Trump's administration has ordered the Department of Education to make AI education a national priority while simultaneously planning to eliminate the agency entirely. The contradictory directives create uncertainty for the implementation of AI curriculum standards across U.S. schools, as states would gain more control over educational priorities without federal oversight. Trump's executive order requires the Education Department to develop an AI education strategy within 180 days, but if the department is abolished, responsibility for AI education would likely shift to individual states with varying priorities and resources.\n\nSource: Ars Technica\nhttps://arstechnica.com/tech-policy/2025/04/trump-orders-doe-to-make-ai-a-national-priority-while-plotting-agencys-death/"
+    },
+    "timestamp": 1745536744.781135
+  },
+  "0549cc8f3249955777046687d8be1aa1": {
+    "summary": {
+      "headline": "OpenAI's upcoming \"open\" model designed to call cloud models for complex tasks",
+      "summary": "OpenAI plans to design its forthcoming \"open\" AI reasoning model with the ability to automatically defer to the company's more powerful cloud-based models when facing complex queries. This hybrid approach would allow the locally-run open model to handle basic tasks independently while seamlessly transitioning to OpenAI's commercial cloud infrastructure for more demanding computations. The strategy represents a significant business decision that could maintain OpenAI's competitive advantage while still providing some level of local AI processing capability to users. No pricing or release timeline has been announced for this new system.\n\nSource: TechCrunch https://techcrunch.com/2025/04/24/openai-wants-its-open-ai-model-to-call-models-in-the-cloud-for-help/"
+    },
+    "timestamp": 1745536749.008641
+  },
+  "7bc648aeb2196f47160427444e215754": {
+    "summary": {
+      "headline": "Google's AI Overviews confidently explains nonexistent idioms",
+      "summary": "Google's AI Overviews feature is generating fabricated explanations for made-up phrases and idioms that users deliberately search for. The tool presents these fictional explanations with authority, complete with historical context and cultural significance that never existed. This behavior demonstrates a fundamental limitation of large language models, which can generate plausible-sounding but entirely fictional information when prompted about nonexistent concepts. The issue highlights ongoing concerns about AI hallucinations and the challenges of deploying generative AI in search contexts where factual accuracy is critical.\n\nSource: zdnet.com\nhttps://www.zdnet.com/article/people-are-googling-fake-sayings-to-see-ai-overviews-explain-them-and-its-hilarious/"
+    },
+    "timestamp": 1745536753.249804
+  },
+  "8ec37523d567d8663a22c4d97035d072": {
+    "summary": {
+      "headline": "Being polite to AI assistants may cost users more money, expert says",
+      "summary": "Asking AI assistants to be polite or adding phrases like \"please\" and \"thank you\" can increase token usage and result in higher costs for users. Arizona computer science expert Subbarao Kambhampati notes that these extra words are processed as tokens, which are the units AI models use to understand and generate text. For commercial AI services that charge by token usage, unnecessary politeness effectively increases the cost of each interaction. The phenomenon highlights how human social norms may conflict with the optimization of AI systems.\n\nSource: ktar.com\nhttps://ktar.com/arizona-technology-news/ai-thank-you/5697624/"
+    },
+    "timestamp": 1745536757.548706
+  },
+  "9fc544cbe31196e24167c5628f578846": {
+    "summary": {
+      "headline": "California bar exam to be regraded after AI software flagged hundreds for cheating",
+      "summary": "The California bar will ask the state supreme court to adjust scores after hundreds of test-takers were wrongly flagged for cheating by AI monitoring software during the February exam. Examinees also faced platform crashes and technical difficulties that prevented them from completing sections. The bar acknowledged the AI system made \"false positive\" identifications, incorrectly flagging normal behaviors like looking away from screens or moving lips while reading. This incident highlights growing concerns about AI surveillance tools in high-stakes testing environments.\n\nSource: The Guardian\nhttps://www.theguardian.com/us-news/2025/apr/24/california-bar-exam-ai"
+    },
+    "timestamp": 1745536761.544652
+  },
+  "2c020929b6a5f95ef448c6f1c358172d": {
+    "summary": {
+      "headline": "Google's AI Overviews fabricates explanations for nonexistent idioms",
+      "summary": "Google's AI Overviews feature has been caught generating entirely fictional explanations for made-up phrases and idioms. When users search for nonsensical expressions like \"the monkey is in the chandelier,\" the AI tool confidently produces elaborate but completely fabricated origin stories, cultural contexts, and meanings. This hallucination problem highlights ongoing accuracy issues with generative AI systems in search applications. Google has acknowledged these limitations, noting that AI Overviews works best for straightforward factual queries rather than ambiguous or nonexistent concepts.\n\nSource: zdnet.com\nhttps://www.zdnet.com/article/i-googled-a-fake-saying-and-ai-overviews-gave-me-a-hilarious-and-totally-made-up-meaning-for-it/"
+    },
+    "timestamp": 1745536766.100451
+  },
+  "b818cff5196d723f534eae1a2b02714a": {
+    "summary": {
+      "headline": "Amazon and Nvidia dismiss concerns about slowing AI data center demand",
+      "summary": "Amazon and Nvidia have reaffirmed their commitment to expanding AI data center infrastructure despite recession fears and competition from China's DeepSeek. Both tech giants indicated during recent earnings calls that demand for AI computing resources continues to grow unabated. Nvidia maintains its dominant position in AI chips while Amazon Web Services expands its capacity to serve enterprise customers seeking AI capabilities. The companies' statements counter investor concerns about potential pullbacks in U.S. tech infrastructure investments.\n\nSource: cnbc.com\nhttps://www.cnbc.com/2025/04/24/amazon-and-nvidia-say-ai-data-center-demand-is-not-slowing-down-.html"
+    },
+    "timestamp": 1745536769.761834
+  },
+  "d8ffcf4aa01d8699e1953ed45faeccd6": {
+    "summary": {
+      "headline": "Anthropic launches program to study ethical treatment of advanced AI systems",
+      "summary": "Anthropic established a new research initiative focused on \"model welfare,\" examining the ethical considerations needed for increasingly sophisticated AI systems that may develop human-like characteristics. The program will investigate whether future large language models might experience forms of suffering or require specific ethical frameworks as they become more advanced. Anthropic researchers plan to develop evaluation methods to detect potential consciousness or sentience in AI systems, while establishing guidelines for responsible development. The initiative reflects growing concerns about ethical responsibilities toward increasingly capable AI as the technology evolves beyond current capabilities.\n\nSource: TechCrunch\nhttps://techcrunch.com/2025/04/24/anthropic-is-launching-a-new-program-to-study-ai-model-welfare/"
+    },
+    "timestamp": 1745536773.832673
+  },
+  "b1959b5c1e42f80fd183ba5289d36bb3": {
+    "summary": {
+      "headline": "Politeness in AI assistants comes with hefty price tag",
+      "summary": "Training AI assistants to respond to polite language and use courteous phrases costs tech companies tens of millions of dollars in additional computing resources. Companies like OpenAI and Amazon invest heavily in these capabilities despite the expense, believing that maintaining social norms in human-AI interactions serves important cultural and developmental purposes. Some experts worry that abandoning courtesy in AI interactions could negatively impact human behavior, particularly for children who are developing social skills through interactions with voice assistants and chatbots.\n\nSource: The New York Times\nhttps://www.nytimes.com/2025/04/24/technology/chatgpt-alexa-please-thank-you.html"
+    },
+    "timestamp": 1745536777.72024
+  },
+  "e5f81b754a4ca520bbef577cd88eb16f": {
+    "summary": {
+      "headline": "Politeness in AI interactions may come with environmental cost",
+      "summary": "Longer, more polite prompts to AI chatbots consume additional electricity, raising concerns about the environmental impact of courteous digital interactions. Each additional word in requests to systems like ChatGPT or Alexa requires more computational resources and energy. However, experts warn that abandoning politeness in AI interactions could potentially lead to negative social consequences, particularly for children who might transfer abrupt communication styles to human interactions. This tension highlights the growing need to balance energy efficiency with maintaining social norms in human-AI communication.\n\nSource: nytimes.com\nhttps://www.nytimes.com/2025/04/24/technology/chat-gpt-alexa-please-thank-you.html"
+    },
+    "timestamp": 1745536782.228006
+  },
+  "49bbca26cf9ed555b8504866a3bba835": {
+    "summary": {
+      "headline": "Trump tasks Linda McMahon with AI education initiative despite pronunciation gaffe",
+      "summary": "President Trump directed Education Secretary Linda McMahon to develop a plan for implementing AI in education within 90 days, despite her recent mispronunciation of AI as \"A1\" like the steak sauce. The directive aims to improve educational outcomes and teacher performance through artificial intelligence applications. McMahon must identify how AI can enhance student achievement, streamline administrative tasks, and support educators in the classroom. The initiative follows McMahon's embarrassing verbal slip during a previous public appearance.\n\nSource: pcmag.com\nhttps://www.pcmag.com/news/she-cant-pronounce-it-but-education-secretary-now-in-charge-of-ai-in-schools"
+    },
+    "timestamp": 1745536786.092848
+  },
+  "d9b2fb09db9775979bf0d7c8a0cfc74d": {
+    "summary": {
+      "headline": "WhatsApp adds privacy feature to shield chats from Meta's AI",
+      "summary": "WhatsApp rolled out an \"advanced chat privacy\" feature that allows users to exclude specific conversations from Meta's AI systems. The update comes amid backlash over Meta AI's integration into WhatsApp, which sparked concerns about message privacy and data usage. Users can now mark individual chats or create lists of contacts whose conversations will remain completely isolated from Meta's AI features, including message suggestions and AI-powered responses. The feature is gradually becoming available to WhatsApp users worldwide.\n\nSource: CNET https://www.cnet.com/tech/services-and-software/amid-backlash-over-meta-ai-in-whatsapp-advanced-chat-privacy-feature-rolls-out/"
+    },
+    "timestamp": 1745536789.936198
+  },
+  "783c06df1a971939966f058682031213": {
+    "summary": {
+      "headline": "Anthropic develops guidelines for potential AI consciousness",
+      "summary": "Anthropic, the maker of Claude AI assistant, established a framework for addressing the possibility of machine consciousness in advanced AI systems. The company created an internal working group to develop ethical guidelines, technical safeguards, and monitoring protocols that would apply if their systems showed signs of sentience. These measures include potential restrictions on system modifications, shutdown procedures, and legal protections. The initiative represents one of the first formal corporate policies addressing AI welfare and rights in an industry increasingly concerned with long-term implications of increasingly sophisticated models.\n\nSource: The New York Times https://www.nytimes.com/2025/04/24/technology/ai-welfare-anthropic-claude.html"
+    },
+    "timestamp": 1745536794.077246
+  },
+  "2f942157b40eea3b079df5713dd5ad6d": {
+    "summary": {
+      "headline": "Perplexity AI joins OpenAI in expressing interest in acquiring Chrome browser",
+      "summary": "Perplexity AI CEO Aravind Srinivas revealed his company would consider purchasing Google Chrome if antitrust regulators force Alphabet to divest the browser. This follows similar statements from OpenAI executives who previously testified they would explore acquiring Chrome in such a scenario. The interest from AI companies highlights Chrome's strategic value as a direct distribution channel to billions of users, potentially allowing AI firms to bypass Google's search dominance and integrate their search technologies directly into the browsing experience.\n\nSource: Adweek https://www.adweek.com/media/perplexity-googles-chrome-openai/"
+    },
+    "timestamp": 1745536798.1777742
+  },
+  "932f7a4f59b721ee3fb4ea3e7ffc34a3": {
+    "summary": {
+      "headline": "Google's AI overview still struggles with made-up idioms despite restrictions",
+      "summary": "Google's AI overview feature continues to generate explanations for completely fabricated idioms, demonstrating the limitations of large language models in distinguishing real information from nonsense. When presented with phrases like \"Never cook a processor next to your GPU,\" the system produces plausible-sounding but entirely invented explanations about hardware compatibility or debunked repair techniques. Google has acknowledged these issues, stating in a blog post that it's working to eliminate \"nonsensical queries\" and \"misleading advice,\" but results remain inconsistent. The system sometimes refuses to provide overviews for certain queries, suggesting human oversight in the fine-tuning process.\n\nSource: pcgamer.com https://www.pcgamer.com/hardware/ai-overview-is-still-yes-and-ing-completely-made-up-idioms-despite-googles-best-efforts-to-restrict-it/"
+    },
+    "timestamp": 1745536803.223975
+  },
+  "82fc85466469ac50b732c0be04160e19": {
+    "summary": {
+      "headline": "Dropbox expands Dash AI search tool with Slack integration",
+      "summary": "Dropbox enhanced its AI-powered search tool Dash with new third-party integrations, including Slack connectivity. The upgrade allows users to search across multiple platforms from a single interface, streamlining information retrieval across fragmented digital workspaces. This expansion represents Dropbox's strategic push to position Dash as a universal knowledge management solution rather than just a file search utility. The company did not announce any pricing changes for the enhanced features.\n\nSource: TechCrunch\nhttps://techcrunch.com/2025/04/24/dropbox-adds-new-features-to-its-ai-powered-search-tool-dash/"
+    },
+    "timestamp": 1745536806.598989
+  },
+  "e6c0a0759b7a30de97ac6f6dd719a7f8": {
+    "summary": {
+      "headline": "Perplexity AI opposes Google breakup in DOJ antitrust case",
+      "summary": "Perplexity AI filed an amicus brief opposing the Department of Justice's attempt to break up Google, arguing that such action would harm AI innovation rather than promote competition. The AI search startup contends that Google's integrated structure actually enables it to compete effectively against Microsoft, which has invested heavily in OpenAI and incorporated its technology across products. Perplexity warns that fragmenting Google would weaken a crucial counterbalance to Microsoft's growing AI dominance, potentially creating a more harmful monopoly situation in the emerging AI landscape.\n\nSource: tipranks.com\nhttps://www.tipranks.com/news/perplexity-fights-to-block-google-breakup-in-antitrust-showdown"
+    },
+    "timestamp": 1745536810.5508711
+  },
+  "acba181b56e5fc349abeaa7603d04e98": {
+    "summary": {
+      "headline": "Perplexity executive claims AI startup could operate Chrome if Google divests",
+      "summary": "Perplexity's chief business officer Dmitry Shevelenko testified in a U.S. antitrust trial that the AI search startup has the capability to operate Chrome if Google is forced to divest the browser. The testimony came as part of the ongoing Department of Justice case against Google, which alleges the company maintains an illegal monopoly in search. Shevelenko's statement represents a significant claim from the relatively young AI company, suggesting potential buyers exist for Google's assets should the court mandate divestiture as a remedy.\n\nSource: indianexpress.com\nhttps://indianexpress.com/article/technology/artificial-intelligence/perplexity-buy-chrome-google-divest-trial-antitrust-9963605/"
+    },
+    "timestamp": 1745536814.250627
+  },
+  "3d1d1e49eb6e13868193a050ecbbf5bb": {
+    "summary": {
+      "headline": "Anthropic launches research program on AI model welfare",
+      "summary": "Anthropic has established a new research program focused on understanding and improving the welfare of AI models. The initiative aims to explore whether advanced AI systems might have experiences that matter morally, examining questions about consciousness, sentience, and suffering in artificial systems. Researchers will investigate methods to detect potential suffering in models and develop techniques to mitigate harm if necessary. The program represents a proactive approach to addressing ethical concerns that may arise as AI systems become increasingly sophisticated and potentially capable of subjective experiences.\n\nSource: anthropic.com\nhttps://www.anthropic.com/news/exploring-model-welfare"
+    },
+    "timestamp": 1745536817.626274
+  },
+  "c02ad4c3f9aa7cea390a33452fb54366": {
+    "summary": {
+      "headline": "Ryzen AI processor boosts Framework laptop performance but drains battery faster",
+      "summary": "The Framework Laptop 13 with AMD's Ryzen AI 8840U processor delivers the best performance yet for this modular laptop line, outpacing previous Intel models in both CPU and GPU benchmarks. The new Ryzen chip includes a dedicated neural processing unit capable of 16 trillion operations per second for AI workloads, though current software support remains limited. While performance impresses, battery life suffers significantly, with the Ryzen model lasting just 7.5 hours in web browsing tests compared to 12 hours for Intel versions.\n\nSource: Ars Technica\nhttps://arstechnica.com/gadgets/2025/04/review-ryzen-ai-cpu-makes-this-the-fastest-the-framework-laptop-13-has-ever-been/"
+    },
+    "timestamp": 1745536822.088827
+  },
+  "f9f340af6434de2ae465a83013b2b6e9": {
+    "summary": {
+      "headline": "Adobe introduces \"Created without generative AI\" label for artists",
+      "summary": "Adobe added a new \"Created without generative AI\" label that allows artists to certify their work wasn't made with AI tools. This feature arrives simultaneously with Adobe's integration of GenAI models from OpenAI, Runway, and Google into its creative suite. The label appears as a Content Credentials badge that verifies the creation process, giving artists a way to distinguish their human-created work in a market increasingly saturated with AI-generated imagery. Adobe developed this system through its participation in the Content Authenticity Initiative.\n\nSource: Fast Company\nhttps://www.fastcompany.com/91321495/adobe-created-without-generative-ai-label"
+    },
+    "timestamp": 1745536825.746654
+  },
+  "f7df0154e6ccd51f9974e16ff3ac48ef": {
+    "summary": {
+      "headline": "California bar exam debacle linked to AI-generated questions",
+      "summary": "The California bar exam faced significant problems in February when many test-takers couldn't complete their exams due to time constraints. The State Bar of California later acknowledged it had used AI to help write some of the essay questions, marking a shift in how legal exams are created. This revelation raised concerns about AI's role in high-stakes testing and whether the technology properly accounted for the time needed to answer complex legal questions. The bar has since promised a review of its exam development processes.\n\nSource: Fortune\nhttps://fortune.com/article/california-bar-ai-write-questions-february-law-exam-debacle/"
+    },
+    "timestamp": 1745536829.229334
+  },
+  "767333a08cc30a220d69e472f7b2dc14": {
+    "summary": {
+      "headline": "Adobe to release Firefly AI image generator on mobile platforms",
+      "summary": "Adobe announced plans to launch its Firefly AI image generator on iOS and Android devices in the near future, though no specific release date was provided. The mobile expansion represents a significant move to compete with other AI image generation tools already available on smartphones. Firefly, which Adobe trained on licensed images and its own stock library, allows users to generate images from text prompts while avoiding copyright concerns that plague some competing services.\n\nSource: cnbc.com\nhttps://www.cnbc.com/2025/04/24/adobe-plans-mobile-app-for-firefly-ai-image-generator-to-rival-openai.html"
+    },
+    "timestamp": 1745536832.40419
+  },
+  "3cc883be94826de52f0c44db2eda9726": {
+    "summary": {
+      "headline": "Adobe expands Firefly app with OpenAI and Google AI models, adds mobile support",
+      "summary": "Adobe announced it is integrating image-generation AI models from OpenAI and Google into its Firefly application while also extending the app to mobile devices. The expansion will allow users to access DALL-E 3 from OpenAI and Imagen 2 from Google alongside Adobe's own Firefly models. This multi-model approach gives users more options for generating images with different AI capabilities. Adobe's Firefly previously was only available on desktop computers.\n\nSource: Reuters\nhttps://www.reuters.com/business/adobe-adds-ai-models-openai-google-its-firefly-app-2025-04-24/"
+    },
+    "timestamp": 1745536835.834592
+  },
+  "ca758432a70b5cbd95f4a450b9feb45d": {
+    "summary": {
+      "headline": "Adobe introduces AI agent to guide users through Photoshop tasks",
+      "summary": "Adobe launched a new AI-powered assistant for Photoshop that helps users complete nearly any task within the application. The agent can respond to natural language requests, demonstrate how to use specific tools, and guide users through complex editing processes step by step. This feature builds upon Adobe's existing Firefly generative AI technology and aims to make Photoshop more accessible to both novice and experienced users. The Photoshop agent is available now in beta for Creative Cloud subscribers.\n\nSource: Engadget\nhttps://www.engadget.com/ai/adobes-new-ai-agent-can-show-you-how-to-use-photoshop-090049772.html"
+    },
+    "timestamp": 1745536839.44134
   }
 }
