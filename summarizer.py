@@ -200,7 +200,8 @@ class ArticleSummarizer:
                 raise APIAuthError("Anthropic API key not found")
                 
             self.client = anthropic.Anthropic(api_key=api_key)
-            self.summary_cache = SummaryCache()
+            cache_dir = os.path.join(os.path.dirname(__file__), '.cache')
+            self.summary_cache = SummaryCache(cache_dir=cache_dir)
             self.logger = StructuredLogger("ArticleSummarizer")
         except Exception as e:
             # Convert to our custom exception type
