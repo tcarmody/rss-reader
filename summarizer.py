@@ -769,6 +769,131 @@ class ArticleSummarizer:
             # Get the actual model identifier
             model_id = self._get_model(model)
             
+            # Create the prompt
+            prompt = self._create_summary_prompt(text, url, source_name)
+
+            # Log the request
+            self.logger.info(
+                "Requesting streaming summary", 
+                model=model_id,
+                source=source_name
+            )
+
+            # Collect the full text as we stream
+            full_text = ""
+            
+            # Generate summary using Claude with streaming
+            for text_chunk in self._call_claude_api_streaming(
+                model_id=model_id,
+                prompt=prompt,
+                temperature=temperature,
+                max_tokens=400
+            ):
+                # Append to full text
+                full_text += text_chunk
+                
+                # Yield the chunk
+                yield text_chunk
+                
+                # Call the callback if provided
+                if callback:
+                    try:
+                        callback(text_chunk)
+                    except Exception as callback_error:
+                        self.logger.warning(
+                            "Callback error (continuing streaming)", 
+                            error=str(callback_error)
+                        )
+            
+            # Parse the complete response
+            result = self._parse_summary_response(full_text, title, url, source_name)
+            
+            # Cache the result (using the same cache key format as non-streaming)
+            cache_key = f"{text}:{model_id}:{temperature}"
+            self.summary_cache.set(cache_key, {'summary': result})
+            
+            self.logger.info(
+                "Streaming summary completed", 
+                headline_length=len(result['headline']),
+                summary_length=len(result['summary'])
+            )
+            
+            # Return the complete summary result
+            return result
+
+        except SummarizerError as e:
+            # Log and handle our custom exceptions
+            self.logger.exception(
+                f"Streaming summarization error: {str(e)}", 
+                error_type=type(e).__name__
+            )
+            error_message = f"Summary generation failed: {str(e)}. Please try again later."
+            yield error_message
+            if callback:
+                try:
+                    callback(error_message)
+                except:
+                    pass
+                    
+            return {
+                'headline': title,
+                'summary': error_message
+            }
+        except Exception as e:
+            # Log and handle unexpected exceptions
+            self.logger.exception(
+                f"Unexpected error in summarize_article_streaming: {str(e)}",
+                error_type=type(e).__name__
+            )
+            error_message = f"Summary generation failed: {str(e)}. Please try again later."
+            yield error_message
+            if callback:
+                try:
+                    callback(error_message)
+                except:
+                    pass
+                    
+            return {
+                'headline': title,
+                'summary': error_message
+            }
+        finally:
+            # Clear context after the operation
+            self.logger.clear_context()
+
+    @retry_with_backoff(max_retries=2, initial_backoff=1)
+    def generate_tags(
+        self, 
+        content: str,
+        model: Optional[str] = None,
+        temperature: float = 0.7
+    ) -> List[str]:
+        """
+        Generate tags for an article using Claude.
+        
+        Args:
+            content: Article content to extract tags from
+            model: Claude model to use (shorthand name or full identifier)
+            temperature: Temperature setting for generation (0.0-1.0)
+            
+        Returns:
+            list: Generated tags as strings
+        """
+        # Set up request-specific context for structured logging
+        self.logger.add_context(
+            operation="generate_tags",
+            content_length=len(content),
+            requested_model=model,
+            temperature=temperature
+        )
+        
+        try:
+            # Clean the text for better tag extraction
+            content = self.clean_text(content)
+            
+            # Get the actual model identifier
+            model_id = self._get_model(model)
+            
             self.logger.info("Generating tags", model=model_id)
             
             response = self.client.messages.create(
@@ -890,7 +1015,7 @@ class ArticleSummarizer:
         tasks = [process_article(article) for article in articles]
         
         # Process all tasks and collect results
-        completed_results = await asyncio.gather(*tasks)
+        completed_results = await asyncio.gather(*tasks, return_exceptions=True)
         results.extend(completed_results)
         
         # Log completion
@@ -1041,128 +1166,3 @@ if __name__ == "__main__":
     
     print("\n=== Error Handling Example ===")
     example_error_handling()
-            model_id = self._get_model(model)
-            
-            # Create the prompt
-            prompt = self._create_summary_prompt(text, url, source_name)
-
-            # Log the request
-            self.logger.info(
-                "Requesting streaming summary", 
-                model=model_id,
-                source=source_name
-            )
-
-            # Collect the full text as we stream
-            full_text = ""
-            
-            # Generate summary using Claude with streaming
-            for text_chunk in self._call_claude_api_streaming(
-                model_id=model_id,
-                prompt=prompt,
-                temperature=temperature,
-                max_tokens=400
-            ):
-                # Append to full text
-                full_text += text_chunk
-                
-                # Yield the chunk
-                yield text_chunk
-                
-                # Call the callback if provided
-                if callback:
-                    try:
-                        callback(text_chunk)
-                    except Exception as callback_error:
-                        self.logger.warning(
-                            "Callback error (continuing streaming)", 
-                            error=str(callback_error)
-                        )
-            
-            # Parse the complete response
-            result = self._parse_summary_response(full_text, title, url, source_name)
-            
-            # Cache the result (using the same cache key format as non-streaming)
-            cache_key = f"{text}:{model_id}:{temperature}"
-            self.summary_cache.set(cache_key, {'summary': result})
-            
-            self.logger.info(
-                "Streaming summary completed", 
-                headline_length=len(result['headline']),
-                summary_length=len(result['summary'])
-            )
-            
-            # Return the complete summary result
-            return result
-
-        except SummarizerError as e:
-            # Log and handle our custom exceptions
-            self.logger.exception(
-                f"Streaming summarization error: {str(e)}", 
-                error_type=type(e).__name__
-            )
-            error_message = f"Summary generation failed: {str(e)}. Please try again later."
-            yield error_message
-            if callback:
-                try:
-                    callback(error_message)
-                except:
-                    pass
-                    
-            return {
-                'headline': title,
-                'summary': error_message
-            }
-        except Exception as e:
-            # Log and handle unexpected exceptions
-            self.logger.exception(
-                f"Unexpected error in summarize_article_streaming: {str(e)}",
-                error_type=type(e).__name__
-            )
-            error_message = f"Summary generation failed: {str(e)}. Please try again later."
-            yield error_message
-            if callback:
-                try:
-                    callback(error_message)
-                except:
-                    pass
-                    
-            return {
-                'headline': title,
-                'summary': error_message
-            }
-        finally:
-            # Clear context after the operation
-            self.logger.clear_context()
-
-    @retry_with_backoff(max_retries=2, initial_backoff=1)
-    def generate_tags(
-        self, 
-        content: str,
-        model: Optional[str] = None,
-        temperature: float = 0.7
-    ) -> List[str]:
-        """
-        Generate tags for an article using Claude.
-        
-        Args:
-            content: Article content to extract tags from
-            model: Claude model to use (shorthand name or full identifier)
-            temperature: Temperature setting for generation (0.0-1.0)
-            
-        Returns:
-            list: Generated tags as strings
-        """
-        # Set up request-specific context for structured logging
-        self.logger.add_context(
-            operation="generate_tags",
-            content_length=len(content),
-            requested_model=model,
-            temperature=temperature
-        )
-        
-        try:
-            # Clean the text for better tag extraction
-            content = self.clean_text(content)
-            
-            # Get the actual model identifier
