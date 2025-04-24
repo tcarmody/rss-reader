@@ -7,7 +7,7 @@ import psutil
 from datetime import datetime
 
 
-def track_performance():
+def track_performance(func):
     """
     Decorator to track function performance.
     
