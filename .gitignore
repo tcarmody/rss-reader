@@ -49,3 +49,7 @@ CACHEDIR.TAG
 performance_logs.txt
 performance_logs.txt
 .cache/summary_cache.json
+.cache/summary_cache.json
+performance_logs.txt
+output/rss_summary_20250424_193643.html
+performance_logs.txt
