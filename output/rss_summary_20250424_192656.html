@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Points AI - Smart RSS Reader</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --neutral-50: #f9fafb;
+      --neutral-100: #f3f4f6;
+      --neutral-200: #e5e7eb;
+      --neutral-300: #d1d5db;
+      --neutral-400: #9ca3af;
+      --neutral-500: #6b7280;
+      --neutral-600: #4b5563;
+      --neutral-700: #374151;
+      --neutral-800: #1f2937;
+      --neutral-900: #111827;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --radius-sm: 0.125rem;
+      --radius: 0.25rem;
+      --radius-md: 0.375rem;
+      --radius-lg: 0.5rem;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.5;
+      color: var(--neutral-800);
+      background-color: var(--neutral-100);
+    }
+
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .nav {
+      background-color: white;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: var(--neutral-900);
+      text-decoration: none;
+    }
+
+    .logo svg {
+      margin-right: 0.5rem;
+      color: var(--primary);
+    }
+
+    .logo-text {
+      background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .button {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      font-weight: 500;
+      font-size: 0.875rem;
+      color: white;
+      background-color: var(--primary);
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    .button:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .button:active {
+      transform: translateY(1px);
+    }
+
+    .button.outline {
+      background-color: transparent;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+
+    .button.outline:hover {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--neutral-300);
+      transition: .4s;
+      border-radius: 34px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .toggle-slider {
+      background-color: var(--danger);
+    }
+
+    input:checked + .toggle-slider:before {
+      transform: translateX(22px);
+    }
+
+    .paywall-container {
+      display: flex;
+      align-items: center;
+      position: relative;
+      gap: 0.5rem;
+    }
+
+    .paywall-label {
+      font-size: 0.75rem;
+      color: var(--neutral-600);
+      display: flex;
+      align-items: center;
+    }
+
+    .paywall-label svg {
+      margin-right: 0.25rem;
+    }
+
+    .warning-tooltip {
+      position: absolute;
+      bottom: -40px;
+      right: 0;
+      background-color: #fee2e2;
+      color: var(--danger);
+      padding: 0.5rem;
+      border-radius: var(--radius);
+      font-size: 0.75rem;
+      width: 200px;
+      box-shadow: var(--shadow);
+      display: none;
+      z-index: 10;
+    }
+
+    .paywall-container:hover .warning-tooltip {
+      display: block;
+    }
+
+    .main {
+      flex: 1;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+      width: 100%;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .page-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--neutral-900);
+    }
+
+    .timestamp {
+      font-size: 0.875rem;
+      color: var(--neutral-500);
+    }
+
+    .cluster {
+      background-color: white;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+
+    .cluster-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--neutral-200);
+    }
+
+    .cluster-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--neutral-900);
+      margin-bottom: 0.5rem;
+    }
+
+    .cluster-info {
+      display: inline-block;
+      font-size: 0.75rem;
+      background-color: var(--primary);
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: var(--radius);
+    }
+
+    .article-summary {
+      padding: 1.5rem;
+      background-color: var(--neutral-50);
+      border-bottom: 1px solid var(--neutral-200);
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      color: var(--neutral-700);
+    }
+
+    .articles-container {
+      padding: 0.5rem 0;
+    }
+
+    .article {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--neutral-200);
+    }
+
+    .article:last-child {
+      border-bottom: none;
+    }
+
+    .article-title {
+      font-size: 1rem;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+
+    .article-title a {
+      color: var(--neutral-800);
+      text-decoration: none;
+      transition: color 0.2s;
+      flex: 1;
+    }
+
+    .article-title a:hover {
+      color: var(--primary);
+    }
+
+    .article-source {
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--neutral-500);
+      padding: 0.125rem 0.375rem;
+      background-color: var(--neutral-100);
+      border-radius: var(--radius);
+      margin-left: 0.5rem;
+      white-space: nowrap;
+    }
+
+    .article-meta {
+      font-size: 0.75rem;
+      color: var(--neutral-500);
+    }
+
+    .footer {
+      background-color: white;
+      border-top: 1px solid var(--neutral-200);
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .footer p {
+      color: var(--neutral-600);
+      font-size: 0.875rem;
+    }
+
+    @media (max-width: 768px) {
+      .nav-container {
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 0.75rem;
+      }
+      
+      .nav-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+      
+      .article-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+      }
+      
+      .article-source {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <nav class="nav">
+      <div class="nav-container">
+        <a href="/" class="logo">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 6v6l4 2"></path>
+          </svg>
+          <span class="logo-text">Data Points AI</span>
+        </a>
+        
+        <div class="nav-actions">
+          <a href="/" class="button outline">Home</a>
+          <form action="/refresh" method="post" style="display: inline;">
+            <button type="submit" class="button">Refresh Feeds</button>
+          </form>
+          
+          <form action="/toggle_paywall_bypass" method="post" style="display: inline;">
+            <div class="paywall-container">
+              <span class="paywall-label">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                Paywall
+              </span>
+              <label class="toggle-switch">
+                <input type="checkbox"  onChange="this.form.submit()">
+                <span class="toggle-slider"></span>
+              </label>
+              
+            </div>
+          </form>
+        </div>
+      </div>
+    </nav>
+    
+    <main class="main">
+      <div class="page-header">
+        <h1 class="page-title">AI News Digest</h1>
+        <span class="timestamp">Generated on 2025-04-24 19:26:56</span>
+      </div>
+      
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Trump&#39;s AI education plan faces uncertainty amid potential Education Department dissolution</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Donald Trump's administration has ordered the Department of Education to make AI education a national priority while simultaneously planning to eliminate the agency entirely. The contradictory directives create uncertainty for the implementation of AI curriculum standards across U.S. schools, as states would gain more control over educational priorities without federal oversight. Trump's executive order requires the Education Department to develop an AI education strategy within 180 days, but if the department is abolished, responsibility for AI education would likely shift to individual states with varying priorities and resources.<br><br>Source: Ars Technica<br>https://arstechnica.com/tech-policy/2025/04/trump-orders-doe-to-make-ai-a-national-priority-while-plotting-agencys-death/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://arstechnica.com/tech-policy/2025/04/trump-orders-doe-to-make-ai-a-national-priority-while-plotting-agencys-death/" target="_blank">Trump orders DOE to make AI a national priority while plotting agency’s death</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 20:56:41 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">OpenAI&#39;s upcoming &#34;open&#34; model designed to call cloud models for complex tasks</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            OpenAI plans to design its forthcoming "open" AI reasoning model with the ability to automatically defer to the company's more powerful cloud-based models when facing complex queries. This hybrid approach would allow the locally-run open model to handle basic tasks independently while seamlessly transitioning to OpenAI's commercial cloud infrastructure for more demanding computations. The strategy represents a significant business decision that could maintain OpenAI's competitive advantage while still providing some level of local AI processing capability to users. No pricing or release timeline has been announced for this new system.<br><br>Source: TechCrunch https://techcrunch.com/2025/04/24/openai-wants-its-open-ai-model-to-call-models-in-the-cloud-for-help/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://techcrunch.com/2025/04/24/openai-wants-its-open-ai-model-to-call-models-in-the-cloud-for-help/" target="_blank">OpenAI wants its &#39;open&#39; AI model to call models in the cloud for help</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 19:58:03 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Google&#39;s AI Overviews confidently explains nonexistent idioms</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Google's AI Overviews feature is generating fabricated explanations for made-up phrases and idioms that users deliberately search for. The tool presents these fictional explanations with authority, complete with historical context and cultural significance that never existed. This behavior demonstrates a fundamental limitation of large language models, which can generate plausible-sounding but entirely fictional information when prompted about nonexistent concepts. The issue highlights ongoing concerns about AI hallucinations and the challenges of deploying generative AI in search contexts where factual accuracy is critical.<br><br>Source: zdnet.com<br>https://www.zdnet.com/article/people-are-googling-fake-sayings-to-see-ai-overviews-explain-them-and-its-hilarious/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.zdnet.com/article/people-are-googling-fake-sayings-to-see-ai-overviews-explain-them-and-its-hilarious/" target="_blank">People are Googling fake sayings to see AI Overviews explain them</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 17:30:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Being polite to AI assistants may cost users more money, expert says</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Asking AI assistants to be polite or adding phrases like "please" and "thank you" can increase token usage and result in higher costs for users. Arizona computer science expert Subbarao Kambhampati notes that these extra words are processed as tokens, which are the units AI models use to understand and generate text. For commercial AI services that charge by token usage, unnecessary politeness effectively increases the cost of each interaction. The phenomenon highlights how human social norms may conflict with the optimization of AI systems.<br><br>Source: ktar.com<br>https://ktar.com/arizona-technology-news/ai-thank-you/5697624/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://ktar.com/arizona-technology-news/ai-thank-you/5697624/" target="_blank">Arizona expert explains why saying thanks to AI is costly</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 17:22:12 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">California bar exam to be regraded after AI software flagged hundreds for cheating</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            The California bar will ask the state supreme court to adjust scores after hundreds of test-takers were wrongly flagged for cheating by AI monitoring software during the February exam. Examinees also faced platform crashes and technical difficulties that prevented them from completing sections. The bar acknowledged the AI system made "false positive" identifications, incorrectly flagging normal behaviors like looking away from screens or moving lips while reading. This incident highlights growing concerns about AI surveillance tools in high-stakes testing environments.<br><br>Source: The Guardian<br>https://www.theguardian.com/us-news/2025/apr/24/california-bar-exam-ai
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.theguardian.com/us-news/2025/apr/24/california-bar-exam-ai" target="_blank">AI helped write bar exam questions, California state bar admits</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 17:07:44 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Google&#39;s AI Overviews fabricates explanations for nonexistent idioms</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Google's AI Overviews feature has been caught generating entirely fictional explanations for made-up phrases and idioms. When users search for nonsensical expressions like "the monkey is in the chandelier," the AI tool confidently produces elaborate but completely fabricated origin stories, cultural contexts, and meanings. This hallucination problem highlights ongoing accuracy issues with generative AI systems in search applications. Google has acknowledged these limitations, noting that AI Overviews works best for straightforward factual queries rather than ambiguous or nonexistent concepts.<br><br>Source: zdnet.com<br>https://www.zdnet.com/article/i-googled-a-fake-saying-and-ai-overviews-gave-me-a-hilarious-and-totally-made-up-meaning-for-it/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.zdnet.com/article/i-googled-a-fake-saying-and-ai-overviews-gave-me-a-hilarious-and-totally-made-up-meaning-for-it/" target="_blank">I Googled a fake saying and AI Overviews gave me a hilarious (and totally made-up) meaning for it</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 17:04:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Amazon and Nvidia dismiss concerns about slowing AI data center demand</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Amazon and Nvidia have reaffirmed their commitment to expanding AI data center infrastructure despite recession fears and competition from China's DeepSeek. Both tech giants indicated during recent earnings calls that demand for AI computing resources continues to grow unabated. Nvidia maintains its dominant position in AI chips while Amazon Web Services expands its capacity to serve enterprise customers seeking AI capabilities. The companies' statements counter investor concerns about potential pullbacks in U.S. tech infrastructure investments.<br><br>Source: cnbc.com<br>https://www.cnbc.com/2025/04/24/amazon-and-nvidia-say-ai-data-center-demand-is-not-slowing-down-.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.cnbc.com/2025/04/24/amazon-and-nvidia-say-ai-data-center-demand-is-not-slowing-down-.html" target="_blank">Amazon and Nvidia say AI data center demand is not slowing down</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 16:49:11 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Anthropic launches program to study ethical treatment of advanced AI systems</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Anthropic established a new research initiative focused on "model welfare," examining the ethical considerations needed for increasingly sophisticated AI systems that may develop human-like characteristics. The program will investigate whether future large language models might experience forms of suffering or require specific ethical frameworks as they become more advanced. Anthropic researchers plan to develop evaluation methods to detect potential consciousness or sentience in AI systems, while establishing guidelines for responsible development. The initiative reflects growing concerns about ethical responsibilities toward increasingly capable AI as the technology evolves beyond current capabilities.<br><br>Source: TechCrunch<br>https://techcrunch.com/2025/04/24/anthropic-is-launching-a-new-program-to-study-ai-model-welfare/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://techcrunch.com/2025/04/24/anthropic-is-launching-a-new-program-to-study-ai-model-welfare/" target="_blank">Anthropic is launching a new program to study AI &#39;model welfare&#39;</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 15:57:45 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Politeness in AI assistants comes with hefty price tag</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Training AI assistants to respond to polite language and use courteous phrases costs tech companies tens of millions of dollars in additional computing resources. Companies like OpenAI and Amazon invest heavily in these capabilities despite the expense, believing that maintaining social norms in human-AI interactions serves important cultural and developmental purposes. Some experts worry that abandoning courtesy in AI interactions could negatively impact human behavior, particularly for children who are developing social skills through interactions with voice assistants and chatbots.<br><br>Source: The New York Times<br>https://www.nytimes.com/2025/04/24/technology/chatgpt-alexa-please-thank-you.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.nytimes.com/2025/04/24/technology/chatgpt-alexa-please-thank-you.html" target="_blank">Saying ‘Thank You’ to ChatGPT Is Costly. But Maybe It’s Worth the Price.</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 15:44:09 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Politeness in AI interactions may come with environmental cost</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Longer, more polite prompts to AI chatbots consume additional electricity, raising concerns about the environmental impact of courteous digital interactions. Each additional word in requests to systems like ChatGPT or Alexa requires more computational resources and energy. However, experts warn that abandoning politeness in AI interactions could potentially lead to negative social consequences, particularly for children who might transfer abrupt communication styles to human interactions. This tension highlights the growing need to balance energy efficiency with maintaining social norms in human-AI communication.<br><br>Source: nytimes.com<br>https://www.nytimes.com/2025/04/24/technology/chat-gpt-alexa-please-thank-you.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.nytimes.com/2025/04/24/technology/chat-gpt-alexa-please-thank-you.html" target="_blank">Saying ‘Thank You’ to Chat GPT Is Costly. Should You Do It Anyway?</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 15:44:09 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Trump tasks Linda McMahon with AI education initiative despite pronunciation gaffe</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            President Trump directed Education Secretary Linda McMahon to develop a plan for implementing AI in education within 90 days, despite her recent mispronunciation of AI as "A1" like the steak sauce. The directive aims to improve educational outcomes and teacher performance through artificial intelligence applications. McMahon must identify how AI can enhance student achievement, streamline administrative tasks, and support educators in the classroom. The initiative follows McMahon's embarrassing verbal slip during a previous public appearance.<br><br>Source: pcmag.com<br>https://www.pcmag.com/news/she-cant-pronounce-it-but-education-secretary-now-in-charge-of-ai-in-schools
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.pcmag.com/news/she-cant-pronounce-it-but-education-secretary-now-in-charge-of-ai-in-schools" target="_blank">She Can&#39;t Pronounce It, But Education Secretary Now in Charge of AI in Schools</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 15:23:15 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">WhatsApp adds privacy feature to shield chats from Meta&#39;s AI</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            WhatsApp rolled out an "advanced chat privacy" feature that allows users to exclude specific conversations from Meta's AI systems. The update comes amid backlash over Meta AI's integration into WhatsApp, which sparked concerns about message privacy and data usage. Users can now mark individual chats or create lists of contacts whose conversations will remain completely isolated from Meta's AI features, including message suggestions and AI-powered responses. The feature is gradually becoming available to WhatsApp users worldwide.<br><br>Source: CNET https://www.cnet.com/tech/services-and-software/amid-backlash-over-meta-ai-in-whatsapp-advanced-chat-privacy-feature-rolls-out/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.cnet.com/tech/services-and-software/amid-backlash-over-meta-ai-in-whatsapp-advanced-chat-privacy-feature-rolls-out/" target="_blank">Amid Backlash Over Meta AI in WhatsApp, Advanced Chat Privacy Feature Rolls Out</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 15:23:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Anthropic develops guidelines for potential AI consciousness</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Anthropic, the maker of Claude AI assistant, established a framework for addressing the possibility of machine consciousness in advanced AI systems. The company created an internal working group to develop ethical guidelines, technical safeguards, and monitoring protocols that would apply if their systems showed signs of sentience. These measures include potential restrictions on system modifications, shutdown procedures, and legal protections. The initiative represents one of the first formal corporate policies addressing AI welfare and rights in an industry increasingly concerned with long-term implications of increasingly sophisticated models.<br><br>Source: The New York Times https://www.nytimes.com/2025/04/24/technology/ai-welfare-anthropic-claude.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.nytimes.com/2025/04/24/technology/ai-welfare-anthropic-claude.html" target="_blank">Should We Start Taking the Welfare of A.I. Seriously?</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 15:09:53 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Perplexity AI joins OpenAI in expressing interest in acquiring Chrome browser</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Perplexity AI CEO Aravind Srinivas revealed his company would consider purchasing Google Chrome if antitrust regulators force Alphabet to divest the browser. This follows similar statements from OpenAI executives who previously testified they would explore acquiring Chrome in such a scenario. The interest from AI companies highlights Chrome's strategic value as a direct distribution channel to billions of users, potentially allowing AI firms to bypass Google's search dominance and integrate their search technologies directly into the browsing experience.<br><br>Source: Adweek https://www.adweek.com/media/perplexity-googles-chrome-openai/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.adweek.com/media/perplexity-googles-chrome-openai/" target="_blank">Perplexity Would Also Consider Buying Google’s Chrome, Raises Concerns About OpenAI&#39;s Bid</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 14:14:06 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Google&#39;s AI overview still struggles with made-up idioms despite restrictions</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Google's AI overview feature continues to generate explanations for completely fabricated idioms, demonstrating the limitations of large language models in distinguishing real information from nonsense. When presented with phrases like "Never cook a processor next to your GPU," the system produces plausible-sounding but entirely invented explanations about hardware compatibility or debunked repair techniques. Google has acknowledged these issues, stating in a blog post that it's working to eliminate "nonsensical queries" and "misleading advice," but results remain inconsistent. The system sometimes refuses to provide overviews for certain queries, suggesting human oversight in the fine-tuning process.<br><br>Source: pcgamer.com https://www.pcgamer.com/hardware/ai-overview-is-still-yes-and-ing-completely-made-up-idioms-despite-googles-best-efforts-to-restrict-it/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.pcgamer.com/hardware/ai-overview-is-still-yes-and-ing-completely-made-up-idioms-despite-googles-best-efforts-to-restrict-it/" target="_blank">AI Overview is still &#39;yes, and&#39;-ing completely made up idioms despite Google&#39;s best efforts to restrict it</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 13:56:28 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Dropbox expands Dash AI search tool with Slack integration</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Dropbox enhanced its AI-powered search tool Dash with new third-party integrations, including Slack connectivity. The upgrade allows users to search across multiple platforms from a single interface, streamlining information retrieval across fragmented digital workspaces. This expansion represents Dropbox's strategic push to position Dash as a universal knowledge management solution rather than just a file search utility. The company did not announce any pricing changes for the enhanced features.<br><br>Source: TechCrunch<br>https://techcrunch.com/2025/04/24/dropbox-adds-new-features-to-its-ai-powered-search-tool-dash/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://techcrunch.com/2025/04/24/dropbox-adds-new-features-to-its-ai-powered-search-tool-dash/" target="_blank">Dropbox adds new features to Dash, its AI-powered search tool</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 13:00:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Perplexity AI opposes Google breakup in DOJ antitrust case</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Perplexity AI filed an amicus brief opposing the Department of Justice's attempt to break up Google, arguing that such action would harm AI innovation rather than promote competition. The AI search startup contends that Google's integrated structure actually enables it to compete effectively against Microsoft, which has invested heavily in OpenAI and incorporated its technology across products. Perplexity warns that fragmenting Google would weaken a crucial counterbalance to Microsoft's growing AI dominance, potentially creating a more harmful monopoly situation in the emerging AI landscape.<br><br>Source: tipranks.com<br>https://www.tipranks.com/news/perplexity-fights-to-block-google-breakup-in-antitrust-showdown
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.tipranks.com/news/perplexity-fights-to-block-google-breakup-in-antitrust-showdown" target="_blank">Perplexity Fights to Block Google Breakup in Antitrust Showdown</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 12:28:41 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Perplexity executive claims AI startup could operate Chrome if Google divests</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Perplexity's chief business officer Dmitry Shevelenko testified in a U.S. antitrust trial that the AI search startup has the capability to operate Chrome if Google is forced to divest the browser. The testimony came as part of the ongoing Department of Justice case against Google, which alleges the company maintains an illegal monopoly in search. Shevelenko's statement represents a significant claim from the relatively young AI company, suggesting potential buyers exist for Google's assets should the court mandate divestiture as a remedy.<br><br>Source: indianexpress.com<br>https://indianexpress.com/article/technology/artificial-intelligence/perplexity-buy-chrome-google-divest-trial-antitrust-9963605/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://indianexpress.com/article/technology/artificial-intelligence/perplexity-buy-chrome-google-divest-trial-antitrust-9963605/" target="_blank">Perplexity says it would buy Chrome if Google is forced to divest over antitrust ruling</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 12:08:55 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Anthropic launches research program on AI model welfare</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Anthropic has established a new research program focused on understanding and improving the welfare of AI models. The initiative aims to explore whether advanced AI systems might have experiences that matter morally, examining questions about consciousness, sentience, and suffering in artificial systems. Researchers will investigate methods to detect potential suffering in models and develop techniques to mitigate harm if necessary. The program represents a proactive approach to addressing ethical concerns that may arise as AI systems become increasingly sophisticated and potentially capable of subjective experiences.<br><br>Source: anthropic.com<br>https://www.anthropic.com/news/exploring-model-welfare
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.anthropic.com/news/exploring-model-welfare" target="_blank">Exploring model welfare</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 12:00:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Ryzen AI processor boosts Framework laptop performance but drains battery faster</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            The Framework Laptop 13 with AMD's Ryzen AI 8840U processor delivers the best performance yet for this modular laptop line, outpacing previous Intel models in both CPU and GPU benchmarks. The new Ryzen chip includes a dedicated neural processing unit capable of 16 trillion operations per second for AI workloads, though current software support remains limited. While performance impresses, battery life suffers significantly, with the Ryzen model lasting just 7.5 hours in web browsing tests compared to 12 hours for Intel versions.<br><br>Source: Ars Technica<br>https://arstechnica.com/gadgets/2025/04/review-ryzen-ai-cpu-makes-this-the-fastest-the-framework-laptop-13-has-ever-been/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://arstechnica.com/gadgets/2025/04/review-ryzen-ai-cpu-makes-this-the-fastest-the-framework-laptop-13-has-ever-been/" target="_blank">Review: Ryzen AI CPU makes this the fastest the Framework Laptop 13 has ever been</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 10:30:40 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Adobe introduces &#34;Created without generative AI&#34; label for artists</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Adobe added a new "Created without generative AI" label that allows artists to certify their work wasn't made with AI tools. This feature arrives simultaneously with Adobe's integration of GenAI models from OpenAI, Runway, and Google into its creative suite. The label appears as a Content Credentials badge that verifies the creation process, giving artists a way to distinguish their human-created work in a market increasingly saturated with AI-generated imagery. Adobe developed this system through its participation in the Content Authenticity Initiative.<br><br>Source: Fast Company<br>https://www.fastcompany.com/91321495/adobe-created-without-generative-ai-label
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.fastcompany.com/91321495/adobe-created-without-generative-ai-label" target="_blank">Adobe releases ‘created without generative AI’ tag to label human-generated art</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 10:00:00 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">California bar exam debacle linked to AI-generated questions</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            The California bar exam faced significant problems in February when many test-takers couldn't complete their exams due to time constraints. The State Bar of California later acknowledged it had used AI to help write some of the essay questions, marking a shift in how legal exams are created. This revelation raised concerns about AI's role in high-stakes testing and whether the technology properly accounted for the time needed to answer complex legal questions. The bar has since promised a review of its exam development processes.<br><br>Source: Fortune<br>https://fortune.com/article/california-bar-ai-write-questions-february-law-exam-debacle/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://fortune.com/article/california-bar-ai-write-questions-february-law-exam-debacle/" target="_blank">California Bar admits it used AI to write questions in February law exam debacle</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 09:17:31 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Adobe to release Firefly AI image generator on mobile platforms</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Adobe announced plans to launch its Firefly AI image generator on iOS and Android devices in the near future, though no specific release date was provided. The mobile expansion represents a significant move to compete with other AI image generation tools already available on smartphones. Firefly, which Adobe trained on licensed images and its own stock library, allows users to generate images from text prompts while avoiding copyright concerns that plague some competing services.<br><br>Source: cnbc.com<br>https://www.cnbc.com/2025/04/24/adobe-plans-mobile-app-for-firefly-ai-image-generator-to-rival-openai.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.cnbc.com/2025/04/24/adobe-plans-mobile-app-for-firefly-ai-image-generator-to-rival-openai.html" target="_blank">Adobe to launch mobile app for AI image generation tool as OpenAI steps up rivalry</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 09:02:02 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Adobe expands Firefly app with OpenAI and Google AI models, adds mobile support</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Adobe announced it is integrating image-generation AI models from OpenAI and Google into its Firefly application while also extending the app to mobile devices. The expansion will allow users to access DALL-E 3 from OpenAI and Imagen 2 from Google alongside Adobe's own Firefly models. This multi-model approach gives users more options for generating images with different AI capabilities. Adobe's Firefly previously was only available on desktop computers.<br><br>Source: Reuters<br>https://www.reuters.com/business/adobe-adds-ai-models-openai-google-its-firefly-app-2025-04-24/
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.reuters.com/business/adobe-adds-ai-models-openai-google-its-firefly-app-2025-04-24/" target="_blank">Adobe adds AI models from OpenAI, Google to its Firefly app</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 09:01:32 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+      <div class="cluster">
+        <div class="cluster-header">
+          
+            <h2 class="cluster-title">Adobe introduces AI agent to guide users through Photoshop tasks</h2>
+          
+          <span class="cluster-info">1 related articles</span>
+        </div>
+
+        
+          <div class="article-summary">
+            Adobe launched a new AI-powered assistant for Photoshop that helps users complete nearly any task within the application. The agent can respond to natural language requests, demonstrate how to use specific tools, and guide users through complex editing processes step by step. This feature builds upon Adobe's existing Firefly generative AI technology and aims to make Photoshop more accessible to both novice and experienced users. The Photoshop agent is available now in beta for Creative Cloud subscribers.<br><br>Source: Engadget<br>https://www.engadget.com/ai/adobes-new-ai-agent-can-show-you-how-to-use-photoshop-090049772.html
+          </div>
+        
+
+        <div class="articles-container">
+          
+            <div class="article">
+              <h3 class="article-title">
+                <a href="https://www.engadget.com/ai/adobes-new-ai-agent-can-show-you-how-to-use-photoshop-090049772.html" target="_blank">Adobe&#39;s new AI agent can show you how to use Photoshop</a>
+                <span class="article-source">Artificial Intelligence</span>
+              </h3>
+              <div class="article-meta">
+                Published: Thu, 24 Apr 2025 09:00:49 GMT
+              </div>
+            </div>
+          
+        </div>
+      </div>
+      
+    </main>
+    
+    <footer class="footer">
+      <p>Powered by Data Points AI with Anthropic Claude API</p>
+    </footer>
+  </div>
+</body>
+</html>
