@@ -94,7 +94,7 @@ class RSSReader:
             logging.error(f"Error loading feed URLs: {str(e)}")
             return []
 
-    @track_performance()
+    @track_performance
     def process_cluster_summaries(self, clusters):
         """
         Process and generate summaries for article clusters.
@@ -279,7 +279,7 @@ class RSSReader:
         
         return content
 
-    @track_performance()
+    @track_performance
     def process_feeds(self):
         """
         Process all RSS feeds and generate summaries.
@@ -360,7 +360,7 @@ class RSSReader:
             logging.error(f"Error processing feeds: {str(e)}", exc_info=True)
             return None
 
-    @track_performance()
+    @track_performance
     def _process_feed(self, feed_url):
         """
         Process a single RSS feed.
@@ -456,7 +456,7 @@ class RSSReader:
                 'feeds': self.feeds[start_idx:end_idx]
             }
             
-    @track_performance()
+    @track_performance
     def generate_html_output(self, clusters):
         """
         Generate HTML output from the processed clusters.
