@@ -144,6 +144,16 @@ def index():
             paywall_bypass_enabled=session.get('paywall_bypass_enabled', False)
         )
 
+# NEW ROUTE: Add a specific route for the welcome page
+@app.route('/welcome')
+def welcome():
+    """Explicitly render the welcome page regardless of data state."""
+    return render_template(
+        'welcome.html',
+        has_default_feeds=os.path.exists(os.path.join(os.path.dirname(__file__), 'rss_feeds.txt')),
+        paywall_bypass_enabled=session.get('paywall_bypass_enabled', False)
+    )
+
 @app.route('/toggle_paywall_bypass', methods=['POST'])
 def toggle_paywall_bypass():
     """Toggle the paywall bypass setting."""
@@ -278,6 +288,20 @@ def refresh_feeds():
                               message=f"Error: {str(e)}",
                               paywall_bypass_enabled=session.get('paywall_bypass_enabled', False))
 
+# NEW ROUTE: Added a route to clear all data and return to welcome page
+@app.route('/clear', methods=['GET', 'POST'])
+def clear_data():
+    """Clear all data and return to welcome page."""
+    global latest_data
+    latest_data = {
+        'clusters': [],
+        'timestamp': None,
+        'output_file': None,
+        'raw_clusters': []
+    }
+    logging.info("Data cleared by user")
+    return redirect(url_for('welcome'))
+
 @app.route('/status')
 def status():
     """Return the current status of the RSS reader."""
@@ -338,6 +362,11 @@ def debug():
         debug_info['clusters'].append(cluster_info)
     
     return jsonify(debug_info)
+
+@app.route('/test_route')
+def test_route():
+    """Test route to verify routing is working."""
+    return "Routing is working correctly!"
 
 def initialize_data():
     """Initialize the latest data by running the RSS reader once at startup."""
