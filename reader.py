@@ -459,38 +459,114 @@ class RSSReader:
     @track_performance
     def generate_html_output(self, clusters):
         """
-        Generate HTML output from the processed clusters.
+        Generate HTML output from the processed clusters with improved error handling.
         
         Args:
             clusters: List of article clusters with summaries
             
         Returns:
-            str: Path to generated HTML file or False if generation failed
+            str: Path to generated HTML file or None if generation failed
         """
         try:
-            # Create output directory if it doesn't exist
-            output_dir = os.path.join(os.path.dirname(__file__), 'output')
+            # Create output directory if it doesn't exist (using absolute path)
+            output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
             os.makedirs(output_dir, exist_ok=True)
-
+            
             # Generate timestamp and filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_file = os.path.join(output_dir, f'rss_summary_{timestamp}.html')
-
-            app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
-
+            
+            # Explicitly log where we're looking for templates
+            template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
+            if not os.path.exists(template_dir):
+                logging.error(f"Template directory not found: {template_dir}")
+                os.makedirs(template_dir, exist_ok=True)
+                logging.info(f"Created template directory: {template_dir}")
+            
+            logging.info(f"Using template directory: {template_dir}")
+            
+            # Check if the template file exists
+            template_file = os.path.join(template_dir, 'feed-summary.html')
+            if not os.path.exists(template_file):
+                logging.error(f"Template file not found: {template_file}")
+                # Create a basic fallback template if the template is missing
+                return self._generate_fallback_html(clusters, output_file)
+            
+            app = Flask(__name__, template_folder=template_dir)
+            
             with app.app_context():
-                html_content = render_template(
-                    'feed-summary.html',
-                    clusters=clusters,
-                    timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                )
-
-                with open(output_file, 'w', encoding='utf-8') as f:
-                    f.write(html_content)
-
-                logging.info(f"Successfully wrote HTML output to {output_file}")
-                return output_file
-
+                try:
+                    html_content = render_template(
+                        'feed-summary.html',
+                        clusters=clusters,
+                        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    )
+                    
+                    # Ensure we're writing with UTF-8 encoding
+                    with open(output_file, 'w', encoding='utf-8') as f:
+                        f.write(html_content)
+                    
+                    logging.info(f"Successfully wrote HTML output to {output_file}")
+                    return output_file
+                except Exception as render_error:
+                    logging.error(f"Error rendering template: {str(render_error)}")
+                    # Try fallback method if template rendering fails
+                    return self._generate_fallback_html(clusters, output_file)
         except Exception as e:
             logging.error(f"Error generating HTML output: {str(e)}", exc_info=True)
-            return False
+            return None
+            
+    def _generate_fallback_html(self, clusters, output_file):
+        """
+        Generate a basic HTML output without using templates as a fallback.
+        
+        Args:
+            clusters: List of article clusters
+            output_file: Path to output file
+            
+        Returns:
+            str: Path to generated HTML file or None if generation failed
+        """
+        try:
+            html = ['<!DOCTYPE html><html><head><title>RSS Summary</title>',
+                    '<meta charset="UTF-8">',
+                    '<style>body{font-family:sans-serif;max-width:1200px;margin:0 auto;padding:20px}',
+                    '.cluster{border:1px solid #ddd;margin-bottom:20px;padding:15px;border-radius:5px}',
+                    '.article{border-bottom:1px solid #eee;padding:10px 0}',
+                    '.article:last-child{border-bottom:none}',
+                    '.article-title a{color:#2563eb;text-decoration:none}',
+                    '.article-title a:hover{text-decoration:underline}',
+                    '.timestamp{color:#666;font-style:italic}</style></head><body>',
+                    f'<h1>RSS Summary</h1>',
+                    f'<p class="timestamp">Generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>']
+            
+            for cluster in clusters:
+                html.append('<div class="cluster">')
+                if cluster and len(cluster) > 0:
+                    # Get headline from the first article's summary if available
+                    headline = cluster[0].get('summary', {}).get('headline', cluster[0].get('title', 'Untitled'))
+                    html.append(f'<h2>{headline}</h2>')
+                    
+                    # Add summary if available
+                    summary = cluster[0].get('summary', {}).get('summary', '')
+                    if summary:
+                        html.append(f'<div class="summary">{summary}</div>')
+                    
+                    # Add all articles in the cluster
+                    for article in cluster:
+                        html.append('<div class="article">')
+                        html.append(f'<h3 class="article-title"><a href="{article.get("link", "#")}" target="_blank">{article.get("title", "No title")}</a></h3>')
+                        html.append(f'<p class="article-meta">Source: {article.get("feed_source", "Unknown")} | Published: {article.get("published", "Unknown date")}</p>')
+                        html.append('</div>')
+                html.append('</div>')
+            
+            html.append('</body></html>')
+            
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(html))
+            
+            logging.info(f"Successfully wrote fallback HTML output to {output_file}")
+            return output_file
+        except Exception as e:
+            logging.error(f"Error generating fallback HTML: {str(e)}", exc_info=True)
+            return None
