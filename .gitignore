@@ -3,8 +3,11 @@
 
 # Python
 __pycache__/
+**/__pycache__/
 *.py[cod]
+**/*.py[cod]
 *$py.class
+**/*$py.class
 *.so
 .Python
 env/
@@ -55,6 +58,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 # Cache directories
 .cache/
 caches/
@@ -66,6 +70,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 .env
 # Cache directories
 .cache/
@@ -78,6 +83,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 
 # Cache directories
 .cache/
@@ -90,6 +96,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 # Python
 # Cache directories
 .cache/
@@ -102,6 +109,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 __pycache__/
 # Cache directories
 .cache/
@@ -114,6 +122,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 *.py[cod]
 # Cache directories
 .cache/
@@ -126,6 +135,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 *$py.class
 # Cache directories
 .cache/
@@ -138,6 +148,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 *.so
 # Cache directories
 .cache/
@@ -150,6 +161,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 .Python
 # Cache directories
 .cache/
@@ -162,6 +174,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 env/
 # Cache directories
 .cache/
@@ -174,6 +187,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 build/
 # Cache directories
 .cache/
@@ -186,6 +200,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 develop-eggs/
 # Cache directories
 .cache/
@@ -198,6 +213,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 dist/
 # Cache directories
 .cache/
@@ -210,6 +226,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 downloads/
 # Cache directories
 .cache/
@@ -222,6 +239,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 eggs/
 # Cache directories
 .cache/
@@ -234,6 +252,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 .eggs/
 # Cache directories
 .cache/
@@ -246,6 +265,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 lib/
 # Cache directories
 .cache/
@@ -258,6 +278,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 lib64/
 # Cache directories
 .cache/
@@ -270,6 +291,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 parts/
 # Cache directories
 .cache/
@@ -282,6 +304,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 sdist/
 # Cache directories
 .cache/
@@ -294,6 +317,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 var/
 # Cache directories
 .cache/
@@ -306,6 +330,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 *.egg-info/
 # Cache directories
 .cache/
@@ -318,6 +343,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 .installed.cfg
 # Cache directories
 .cache/
@@ -330,6 +356,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 *.egg
 # Cache directories
 .cache/
@@ -342,6 +369,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 
 # Cache directories
 .cache/
@@ -354,6 +382,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 # Virtual Environment
 # Cache directories
 .cache/
@@ -366,6 +395,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 venv/
 # Cache directories
 .cache/
@@ -378,6 +408,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 ENV/
 # Cache directories
 .cache/
@@ -390,6 +421,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 env/
 # Cache directories
 .cache/
@@ -402,6 +434,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 
 # Cache directories
 .cache/
@@ -414,6 +447,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 # IDE files
 # Cache directories
 .cache/
@@ -426,6 +460,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 .idea/
 # Cache directories
 .cache/
@@ -438,6 +473,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 .vscode/
 # Cache directories
 .cache/
@@ -450,6 +486,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 *.swp
 # Cache directories
 .cache/
@@ -462,6 +499,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 *.swo
 # Cache directories
 .cache/
@@ -474,6 +512,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 
 # Cache directories
 .cache/
@@ -486,6 +525,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 # OS specific files
 # Cache directories
 .cache/
@@ -498,6 +538,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 .DS_Store
 # Cache directories
 .cache/
@@ -510,6 +551,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 .DS_Store?
 # Cache directories
 .cache/
@@ -522,6 +564,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 ._*
 # Cache directories
 .cache/
@@ -534,6 +577,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 .Spotlight-V100
 # Cache directories
 .cache/
@@ -546,6 +590,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 .Trashes
 # Cache directories
 .cache/
@@ -558,6 +603,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 ehthumbs.db
 # Cache directories
 .cache/
@@ -570,6 +616,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 Thumbs.db
 # Cache directories
 .cache/
@@ -582,6 +629,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 .DS_Store
 # Cache directories
 .cache/
@@ -594,6 +642,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 CACHEDIR.TAG
 # Cache directories
 .cache/
@@ -606,6 +655,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 .DS_Store
 # Cache directories
 .cache/
@@ -618,6 +668,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 .DS_Store
 # Cache directories
 .cache/
@@ -630,6 +681,7 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
 .DS_Store
 # Cache directories
 .cache/
@@ -642,3 +694,4 @@ outputs/
 *.html
 *.log
 *.txt
+!requirements.txt
