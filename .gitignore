@@ -26,7 +26,6 @@ var/
 # Virtual Environment
 venv/
 ENV/
-env/
 
 # IDE files
 .idea/
@@ -42,8 +41,604 @@ env/
 .Trashes
 ehthumbs.db
 Thumbs.db
-.DS_Store
 CACHEDIR.TAG
+
+# ---- Project Caches and Outputs ----
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories and files
+output/
+outputs/
+*.html
+*.log
+*.txt
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+.env
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+# Python
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+__pycache__/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+*.py[cod]
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+*$py.class
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+*.so
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+.Python
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+env/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+build/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+develop-eggs/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+dist/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+downloads/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+eggs/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+.eggs/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+lib/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+lib64/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+parts/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+sdist/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+var/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+*.egg-info/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+.installed.cfg
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+*.egg
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+# Virtual Environment
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+venv/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+ENV/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+env/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+# IDE files
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+.idea/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+.vscode/
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+*.swp
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+*.swo
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+# OS specific files
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
 .DS_Store
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+.DS_Store?
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+._*
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+.Spotlight-V100
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+.Trashes
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+ehthumbs.db
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+Thumbs.db
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
 .DS_Store
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+CACHEDIR.TAG
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
 .DS_Store
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+.DS_Store
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
+.DS_Store
+# Cache directories
+.cache/
+caches/
+cache/
+
+# Output directories
+output/
+outputs/
+*.html
+*.log
+*.txt
