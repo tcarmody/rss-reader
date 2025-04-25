@@ -1,16 +1,20 @@
-# Environment variables
+# Environment variables and secrets
 .env
+*.env
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv/
+.ENV/
 
 # Python
 __pycache__/
-**/__pycache__/
 *.py[cod]
-**/*.py[cod]
 *$py.class
-**/*$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -26,15 +30,33 @@ var/
 .installed.cfg
 *.egg
 
-# Virtual Environment
-venv/
-ENV/
+# Caches
+.cache/
+caches/
+cache/
+*/.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Generated output
+output/
+outputs/
+*.html
+*.log
+*.txt
+!requirements.txt
 
 # IDE files
 .idea/
 .vscode/
 *.swp
 *.swo
+*.sublime-*
+.project
+.pydevproject
+.settings/
 
 # OS specific files
 .DS_Store
@@ -44,654 +66,32 @@ ENV/
 .Trashes
 ehthumbs.db
 Thumbs.db
-CACHEDIR.TAG
+Desktop.ini
+.directory
+*~
 
-# ---- Project Caches and Outputs ----
-# Cache directories
-.cache/
-caches/
-cache/
+# Project-specific
+performance_logs.txt
+summary_cache.json
+benchmark_results/
+*_cache/
+.summary_cache/
+rss_summary_*.html
 
-# Output directories and files
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-# Cache directories
-.cache/
-caches/
-cache/
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
 
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-.env
-# Cache directories
-.cache/
-caches/
-cache/
+# Language model files
+*.ckpt
+*.pt
+*.bin
+*.safetensors
+*.pth
 
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-# Python
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-__pycache__/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-*.py[cod]
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-*$py.class
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-*.so
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-.Python
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-env/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-build/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-develop-eggs/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-dist/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-downloads/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-eggs/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-.eggs/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-lib/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-lib64/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-parts/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-sdist/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-var/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-*.egg-info/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-.installed.cfg
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-*.egg
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-# Virtual Environment
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-venv/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-ENV/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-env/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-# IDE files
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-.idea/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-.vscode/
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-*.swp
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-*.swo
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-# OS specific files
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-.DS_Store
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-.DS_Store?
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-._*
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-.Spotlight-V100
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-.Trashes
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-ehthumbs.db
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-Thumbs.db
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-.DS_Store
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-CACHEDIR.TAG
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-.DS_Store
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-.DS_Store
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
-.DS_Store
-# Cache directories
-.cache/
-caches/
-cache/
-
-# Output directories
-output/
-outputs/
-*.html
-*.log
-*.txt
-!requirements.txt
+# Test data
+test_*.csv
+test_*.json
+test_*.xml
