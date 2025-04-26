@@ -501,6 +501,17 @@
           <p><strong>No summaries available yet.</strong> Use default feeds or add your own custom sources below.</p>
         </div>
         
+        <!-- Single URL Summarization Section (New) -->
+        <div class="feed-section">
+          <h3>Summarize a Single URL</h3>
+          <p>Generate an AI-powered summary of any webpage or article.</p>
+          <p><span class="strong">Note:</span> This will process just one URL and generate a summary.</p>
+          
+          <a href="{{ url_for('summarize_single') }}" class="button large" style="margin-top: 1rem; display: block; text-align: center;">
+            Summarize URL
+          </a>
+        </div>
+        
         <!-- Feed Processing Section -->
         <div class="tabs">
           <div class="tab active" data-tab="default-feeds">Default Feeds</div>

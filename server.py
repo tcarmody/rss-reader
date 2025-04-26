@@ -6,13 +6,17 @@ import os
 import logging
 import sys
 from datetime import datetime
+from urllib.parse import urlparse
 from flask import Flask, render_template, redirect, url_for, request, jsonify, session
 
 # Import in a try/except block to provide better error messages
 try:
     from reader import RSSReader
+    from utils.http import create_http_session
+    from utils.archive import fetch_article_content
+    from summarizer import ArticleSummarizer
 except ImportError:
-    print("Error: Could not import RSSReader. Make sure reader.py is in the same directory.")
+    print("Error: Could not import required modules. Make sure all files are in the correct directory.")
     sys.exit(1)
 
 # Configure logging
@@ -301,6 +305,86 @@ def clear_data():
     }
     logging.info("Data cleared by user")
     return redirect(url_for('welcome'))
+
+# NEW ROUTE: Add ability to summarize a single URL
+@app.route('/summarize', methods=['GET', 'POST'])
+def summarize_single():
+    """Handle summarization of a single URL."""
+    if request.method == 'POST':
+        url = request.form.get('url', '').strip()
+        
+        if not url:
+            return render_template('error.html', 
+                                  message="Please provide a valid URL to summarize.",
+                                  paywall_bypass_enabled=session.get('paywall_bypass_enabled', False))
+        
+        # Add http:// if missing
+        if not url.startswith('http'):
+            url = 'https://' + url
+        
+        try:
+            # Initialize summarizer (reusing existing code)
+            summarizer = ArticleSummarizer()
+            
+            # Fetch the article content
+            session_obj = create_http_session()
+            
+            # Set paywall bypass environment variable based on user preference
+            if session.get('paywall_bypass_enabled', False):
+                os.environ['ENABLE_PAYWALL_BYPASS'] = 'true'
+                logging.info("Using paywall bypass as per user setting")
+            else:
+                os.environ['ENABLE_PAYWALL_BYPASS'] = 'false'
+                logging.info("Paywall bypass disabled as per user setting")
+            
+            # Fetch article content (reusing existing code)
+            content = fetch_article_content(url, session_obj)
+            
+            if not content or len(content) < 100:
+                return render_template('error.html', 
+                                      message="Could not extract sufficient content from the provided URL.",
+                                      paywall_bypass_enabled=session.get('paywall_bypass_enabled', False))
+            
+            # Extract title from URL as a fallback
+            domain = urlparse(url).netloc
+            title = f"Article from {domain}"
+            
+            # Generate summary
+            summary = summarizer.summarize_article(
+                text=content,
+                title=title,
+                url=url
+            )
+            
+            # Create a fake "cluster" for template compatibility
+            fake_cluster = [{
+                'title': summary.get('headline', title),
+                'link': url,
+                'feed_source': domain,
+                'published': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'summary': summary
+            }]
+            
+            # Render the result using existing template
+            return render_template(
+                'single-summary.html',
+                url=url,
+                cluster=fake_cluster,
+                timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                paywall_bypass_enabled=session.get('paywall_bypass_enabled', False)
+            )
+            
+        except Exception as e:
+            logging.error(f"Error summarizing URL: {str(e)}", exc_info=True)
+            return render_template('error.html', 
+                                  message=f"Error summarizing URL: {str(e)}",
+                                  paywall_bypass_enabled=session.get('paywall_bypass_enabled', False))
+    
+    # GET request - show form
+    return render_template(
+        'summarize-form.html',
+        paywall_bypass_enabled=session.get('paywall_bypass_enabled', False)
+    )
 
 @app.route('/status')
 def status():
