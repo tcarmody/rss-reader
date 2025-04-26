@@ -1,452 +1,218 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Data Points AI - Smart RSS Reader</title>
-  <style>
-    :root {
-      --primary: #2563eb;
-      --primary-dark: #1d4ed8;
-      --danger: #dc2626;
-      --success: #16a34a;
-      --neutral-50: #f9fafb;
-      --neutral-100: #f3f4f6;
-      --neutral-200: #e5e7eb;
-      --neutral-300: #d1d5db;
-      --neutral-400: #9ca3af;
-      --neutral-500: #6b7280;
-      --neutral-600: #4b5563;
-      --neutral-700: #374151;
-      --neutral-800: #1f2937;
-      --neutral-900: #111827;
-      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-      --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-      --radius-sm: 0.125rem;
-      --radius: 0.25rem;
-      --radius-md: 0.375rem;
-      --radius-lg: 0.5rem;
-    }
+.articles-container {
+  padding: 0.5rem 0;
+}
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+.article {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--neutral-200);
+}
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      line-height: 1.5;
-      color: var(--neutral-800);
-      background-color: var(--neutral-100);
-    }
+.article:last-child {
+  border-bottom: none;
+}
 
-    .app-container {
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
+.article-title {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
 
-    .nav {
-      background-color: white;
-      box-shadow: var(--shadow);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
+.article-title a {
+  color: var(--neutral-800);
+  text-decoration: none;
+  transition: color 0.2s;
+  flex: 1;
+}
 
-    .nav-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0.75rem 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+.article-title a:hover {
+  color: var(--primary);
+}
 
-    .logo {
-      display: flex;
-      align-items: center;
-      font-weight: 700;
-      font-size: 1.25rem;
-      color: var(--neutral-900);
-      text-decoration: none;
-    }
+.article-source {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--neutral-500);
+  padding: 0.125rem 0.375rem;
+  background-color: var(--neutral-100);
+  border-radius: var(--radius);
+  margin-left: 0.5rem;
+  white-space: nowrap;
+}
 
-    .logo svg {
-      margin-right: 0.5rem;
-      color: var(--primary);
-    }
+.article-meta {
+  font-size: 0.75rem;
+  color: var(--neutral-500);
+}
 
-    .logo-text {
-      background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
-      background-clip: text;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
+.footer {
+  background-color: white;
+  border-top: 1px solid var(--neutral-200);
+  padding: 1.5rem;
+  text-align: center;
+}
 
-    .nav-actions {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
+.footer p {
+  color: var(--neutral-600);
+  font-size: 0.875rem;
+}
 
-    .button {
-      display: inline-block;
-      padding: 0.5rem 1rem;
-      font-weight: 500;
-      font-size: 0.875rem;
-      color: white;
-      background-color: var(--primary);
-      border: none;
-      border-radius: var(--radius);
-      cursor: pointer;
-      text-decoration: none;
-      transition: background-color 0.2s, transform 0.1s;
-    }
+/* Single URL summarization styles */
+.summary-url-container {
+  margin-bottom: 1.5rem;
+}
 
-    .button:hover {
-      background-color: var(--primary-dark);
-    }
+.summary-url {
+  background-color: var(--neutral-50);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
 
-    .button:active {
-      transform: translateY(1px);
-    }
+.summary-url-label {
+  font-weight: 500;
+  color: var(--neutral-600);
+}
 
-    .button.outline {
-      background-color: transparent;
-      color: var(--primary);
-      border: 1px solid var(--primary);
-    }
+.summary-url-link {
+  font-family: monospace;
+  word-break: break-all;
+}
 
-    .button.outline:hover {
-      background-color: var(--primary);
-      color: white;
-    }
+.summary-actions {
+  padding: 1.5rem;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
 
-    .toggle-switch {
-      position: relative;
-      display: inline-block;
-      width: 46px;
-      height: 24px;
-    }
+.mb-4 {
+  margin-bottom: 1rem;
+}
 
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
+.mt-6 {
+  margin-top: 1.5rem;
+}
 
-    .toggle-slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: var(--neutral-300);
-      transition: .4s;
-      border-radius: 34px;
-    }
-
-    .toggle-slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: .4s;
-      border-radius: 50%;
-    }
-
-    input:checked + .toggle-slider {
-      background-color: var(--danger);
-    }
-
-    input:checked + .toggle-slider:before {
-      transform: translateX(22px);
-    }
-
-    .paywall-container {
-      display: flex;
-      align-items: center;
-      position: relative;
-      gap: 0.5rem;
-    }
-
-    .paywall-label {
-      font-size: 0.75rem;
-      color: var(--neutral-600);
-      display: flex;
-      align-items: center;
-    }
-
-    .paywall-label svg {
-      margin-right: 0.25rem;
-    }
-
-    .warning-tooltip {
-      position: absolute;
-      bottom: -40px;
-      right: 0;
-      background-color: #fee2e2;
-      color: var(--danger);
-      padding: 0.5rem;
-      border-radius: var(--radius);
-      font-size: 0.75rem;
-      width: 200px;
-      box-shadow: var(--shadow);
-      display: none;
-      z-index: 10;
-    }
-
-    .paywall-container:hover .warning-tooltip {
-      display: block;
-    }
-
-    .main {
-      flex: 1;
-      max-width: 1000px;
-      margin: 0 auto;
-      padding: 2rem 1rem;
-      width: 100%;
-    }
-
-    .page-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.5rem;
-    }
-
-    .page-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--neutral-900);
-    }
-
-    .timestamp {
-      font-size: 0.875rem;
-      color: var(--neutral-500);
-    }
-
-    .cluster {
-      background-color: white;
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-md);
-      margin-bottom: 1.5rem;
-      overflow: hidden;
-    }
-
-    .cluster-header {
-      padding: 1.5rem;
-      border-bottom: 1px solid var(--neutral-200);
-    }
-
-    .cluster-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--neutral-900);
-      margin-bottom: 0.5rem;
-    }
-
-    .cluster-info {
-      display: inline-block;
-      font-size: 0.75rem;
-      background-color: var(--primary);
-      color: white;
-      padding: 0.25rem 0.5rem;
-      border-radius: var(--radius);
-    }
-
-    .article-summary {
-      padding: 1.5rem;
-      background-color: var(--neutral-50);
-      border-bottom: 1px solid var(--neutral-200);
-      font-size: 0.9375rem;
-      line-height: 1.6;
-      color: var(--neutral-700);
-    }
-
-    .articles-container {
-      padding: 0.5rem 0;
-    }
-
-    .article {
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid var(--neutral-200);
-    }
-
-    .article:last-child {
-      border-bottom: none;
-    }
-
-    .article-title {
-      font-size: 1rem;
-      font-weight: 500;
-      margin-bottom: 0.25rem;
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-    }
-
-    .article-title a {
-      color: var(--neutral-800);
-      text-decoration: none;
-      transition: color 0.2s;
-      flex: 1;
-    }
-
-    .article-title a:hover {
-      color: var(--primary);
-    }
-
-    .article-source {
-      font-size: 0.75rem;
-      font-weight: 400;
-      color: var(--neutral-500);
-      padding: 0.125rem 0.375rem;
-      background-color: var(--neutral-100);
-      border-radius: var(--radius);
-      margin-left: 0.5rem;
-      white-space: nowrap;
-    }
-
-    .article-meta {
-      font-size: 0.75rem;
-      color: var(--neutral-500);
-    }
-
-    .footer {
-      background-color: white;
-      border-top: 1px solid var(--neutral-200);
-      padding: 1.5rem;
-      text-align: center;
-    }
-
-    .footer p {
-      color: var(--neutral-600);
-      font-size: 0.875rem;
-    }
-
-    @media (max-width: 768px) {
-      .nav-container {
-        flex-direction: column;
-        gap: 0.75rem;
-        padding: 0.75rem;
-      }
-      
-      .nav-actions {
-        width: 100%;
-        justify-content: space-between;
-      }
-      
-      .article-title {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.25rem;
-      }
-      
-      .article-source {
-        margin-left: 0;
-      }
-    }
-  </style>
+@media (max-width: 768px) {
+  .nav-container {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+  
+  .nav-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .article-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  
+  .article-source {
+    margin-left: 0;
+  }
+}
+</style>
 </head>
 <body>
-  <div class="app-container">
-    <nav class="nav">
-      <div class="nav-container">
-        <a href="{{ url_for('index') }}" class="logo">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M12 6v6l4 2"></path>
-          </svg>
-          <span class="logo-text">Data Points AI</span>
-        </a>
-        
-        <div class="nav-actions">
-          <!-- FIXED: Changed from index to welcome route -->
-          <a href="{{ url_for('welcome') }}" class="button outline">Home</a>
-          
-          <!-- NEW: Added Clear Data button -->
-          <a href="{{ url_for('clear_data') }}" class="button outline">Clear Data</a>
-          
-          <form action="/refresh" method="post" style="display: inline;">
-            <button type="submit" class="button">Refresh Feeds</button>
-          </form>
-          
-          <form action="/toggle_paywall_bypass" method="post" style="display: inline;">
-            <div class="paywall-container">
-              <span class="paywall-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                </svg>
-                Paywall
-              </span>
-              <label class="toggle-switch">
-                <input type="checkbox" {% if paywall_bypass_enabled %}checked{% endif %} onChange="this.form.submit()">
-                <span class="toggle-slider"></span>
-              </label>
-              {% if paywall_bypass_enabled %}
-              <div class="warning-tooltip">
-                Warning: Bypassing paywalls may violate some sites' terms of service
-              </div>
-              {% endif %}
-            </div>
-          </form>
-        </div>
-      </div>
-    </nav>
+<div class="app-container">
+<nav class="nav">
+  <div class="nav-container">
+    <a href="{{ url_for('index') }}" class="logo">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M12 6v6l4 2"></path>
+      </svg>
+      <span class="logo-text">Data Points AI</span>
+    </a>
     
-    <main class="main">
-      <div class="page-header">
-        <h1 class="page-title">AI News Digest</h1>
-        <span class="timestamp">Generated on {{ timestamp }}</span>
-      </div>
+    <div class="nav-actions">
+      <!-- Fixed: Changed from 'clear' to 'clear_data' -->
+      <a href="{{ url_for('welcome') }}" class="button outline">Home</a>
+      <a href="{{ url_for('summarize_single') }}" class="button outline">Summarize URL</a>
+      <a href="{{ url_for('clear_data') }}" class="button outline">Clear Data</a>
       
-      {% for cluster in clusters %}
-      <div class="cluster">
-        <div class="cluster-header">
-          {% if cluster[0].summary.headline %}
-            <h2 class="cluster-title">{{ cluster[0].summary.headline }}</h2>
-          {% else %}
-            <h2 class="cluster-title">{{ cluster[0].title }}</h2>
-          {% endif %}
-          <span class="cluster-info">{{ cluster|length }} related articles</span>
-        </div>
-
-        {% if cluster[0].summary.summary %}
-          <div class="article-summary">
-            {{ cluster[0].summary.summary|replace('\n\n', '<br><br>')|replace('\n', '<br>')|safe }}
+      <form action="/refresh" method="post" style="display: inline;">
+        <button type="submit" class="button">Refresh Feeds</button>
+      </form>
+      
+      <form action="/toggle_paywall_bypass" method="post" style="display: inline;">
+        <div class="paywall-container">
+          <span class="paywall-label">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            Paywall
+          </span>
+          <label class="toggle-switch">
+            <input type="checkbox" {% if paywall_bypass_enabled %}checked{% endif %} onChange="this.form.submit()">
+            <span class="toggle-slider"></span>
+          </label>
+          {% if paywall_bypass_enabled %}
+          <div class="warning-tooltip">
+            Warning: Bypassing paywalls may violate some sites' terms of service
           </div>
-        {% endif %}
-
-        <div class="articles-container">
-          {% for article in cluster %}
-            <div class="article">
-              <h3 class="article-title">
-                <a href="{{ article.link }}" target="_blank">{{ article.title }}</a>
-                <span class="article-source">{{ article.feed_source }}</span>
-              </h3>
-              <div class="article-meta">
-                Published: {{ article.published }}
-              </div>
-            </div>
-          {% endfor %}
+          {% endif %}
         </div>
-      </div>
-      {% endfor %}
-    </main>
-    
-    <footer class="footer">
-      <p>Powered by Data Points AI with Anthropic Claude API</p>
-    </footer>
+      </form>
+    </div>
   </div>
+</nav>
+
+<main class="main">
+  <div class="page-header">
+    <h1 class="page-title">AI News Digest</h1>
+    <span class="timestamp">Generated on {{ timestamp }}</span>
+  </div>
+  
+  {% for cluster in clusters %}
+  <div class="cluster">
+    <div class="cluster-header">
+      {% if cluster[0].summary.headline %}
+        <h2 class="cluster-title">{{ cluster[0].summary.headline }}</h2>
+      {% else %}
+        <h2 class="cluster-title">{{ cluster[0].title }}</h2>
+      {% endif %}
+      <span class="cluster-info">{{ cluster|length }} related articles</span>
+    </div>
+
+    {% if cluster[0].summary.summary %}
+      <div class="article-summary">
+        {{ cluster[0].summary.summary|replace('\n\n', '<br><br>')|replace('\n', '<br>')|safe }}
+      </div>
+    {% endif %}
+
+    <div class="articles-container">
+      {% for article in cluster %}
+        <div class="article">
+          <h3 class="article-title">
+            <a href="{{ article.link }}" target="_blank">{{ article.title }}</a>
+            <span class="article-source">{{ article.feed_source }}</span>
+          </h3>
+          <div class="article-meta">
+            Published: {{ article.published }}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</main>
+
+<footer class="footer">
+  <p>Powered by Data Points AI with Anthropic Claude API</p>
+</footer>
+</div>
 </body>
 </html>
