@@ -43,7 +43,6 @@ htmlcov/
 # Generated output
 output/
 outputs/
-*.html
 *.log
 *.txt
 !requirements.txt
