@@ -47,6 +47,9 @@ outputs/
 *.log
 *.txt
 !requirements.txt
+!essential_requirements.txt
+!templates/
+!static/
 
 # IDE files
 .idea/
