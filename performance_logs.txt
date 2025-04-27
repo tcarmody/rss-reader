@@ -501,3 +501,7 @@
 2025-04-27 11:37:24 | process_cluster_summaries | Time: 3.76s | Memory: 0.19MB
 2025-04-27 11:37:24 | generate_html_output | Time: 0.01s | Memory: 1.11MB
 2025-04-27 11:37:24 | process_feeds | Time: 83.66s | Memory: 764.11MB
+2025-04-27 12:23:15 | _process_feed | Time: 120.83s | Memory: 145.39MB
+2025-04-27 12:23:36 | process_cluster_summaries | Time: 4.51s | Memory: 0.53MB
+2025-04-27 12:23:36 | generate_html_output | Time: 0.00s | Memory: 0.02MB
+2025-04-27 12:23:36 | process_feeds | Time: 141.32s | Memory: 818.30MB

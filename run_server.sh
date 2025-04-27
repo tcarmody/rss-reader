@@ -4,7 +4,6 @@ set -e  # Exit immediately if a command exits with a non-zero status
 # Script settings - easily modifiable variables
 PYTHON_VERSION="3.11"
 PORT=5005
-REQUIRED_PKGS=("flask" "feedparser" "requests" "beautifulsoup4" "python-dotenv" "anthropic")
 
 # Color codes for pretty output
 GREEN='\033[0;32m'
@@ -38,9 +37,51 @@ check_command() {
     command -v "$1" &> /dev/null
 }
 
-check_dependency() {
-    python -c "import $1" 2> /dev/null
-    return $?
+check_dependencies() {
+    # Fix: Use specific import names that match how the packages are imported in the code
+    log_info "Checking critical dependencies..."
+    
+    # For beautifulsoup4, the import is 'bs4'
+    python -c "import bs4" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        log_error "beautifulsoup4 package missing - try installing it manually with: pip install beautifulsoup4"
+        return 1
+    fi
+    
+    # Check for python-dotenv using the actual import name
+    python -c "import dotenv" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        log_error "python-dotenv package missing - try installing it manually with: pip install python-dotenv"
+        return 1
+    fi
+    
+    # Check other critical packages
+    python -c "import flask" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        log_error "flask package missing - try installing it manually with: pip install flask"
+        return 1
+    fi
+    
+    python -c "import anthropic" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        log_error "anthropic package missing - try installing it manually with: pip install anthropic"
+        return 1
+    fi
+    
+    python -c "import feedparser" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        log_error "feedparser package missing - try installing it manually with: pip install feedparser"
+        return 1
+    fi
+    
+    python -c "import requests" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        log_error "requests package missing - try installing it manually with: pip install requests"
+        return 1
+    fi
+    
+    log_success "All critical dependencies installed successfully!"
+    return 0
 }
 
 setup_environment() {
@@ -107,41 +148,31 @@ EOF
 
     # Upgrade pip
     log_info "Upgrading pip..."
-    pip install --upgrade pip &> /dev/null
+    pip install --upgrade pip
 
     # Install dependencies
     install_dependencies
 }
 
 install_dependencies() {
-    # Install core dependencies first
+    # Install core dependencies first with verbose output to debug issues
     log_info "Installing core dependencies..."
-    pip install -r essential_requirements.txt &> /dev/null || {
-        log_error "Failed to install essential dependencies."
-        exit 1
-    }
-
-    # Install all dependencies
-    log_info "Installing additional dependencies..."
-    pip install -r requirements.txt &> /dev/null || {
-        log_warning "Some dependencies could not be installed, but we'll continue anyway."
-    }
-
-    # Verify critical dependencies
-    local missing_deps=()
-    for pkg in "${REQUIRED_PKGS[@]}"; do
-        if ! check_dependency "$pkg"; then
-            missing_deps+=("$pkg")
-        fi
-    done
-
-    if [ ${#missing_deps[@]} -ne 0 ]; then
-        log_error "Critical dependencies missing: ${missing_deps[*]}"
-        log_error "Please install these packages and try again."
-        exit 1
-    fi
+    pip install -v -r essential_requirements.txt
     
-    log_success "All critical dependencies installed successfully!"
+    # Install all dependencies with more verbose output
+    log_info "Installing all dependencies..."
+    pip install -v -r requirements.txt || {
+        log_warning "Some dependencies could not be installed, but we'll continue if critical ones are present."
+    }
+    
+    # Give the system a moment to finalize installations
+    sleep 2
+    
+    # Verify critical dependencies
+    check_dependencies || {
+        log_error "Critical dependencies are missing. Please fix the issues above."
+        exit 1
+    }
 }
 
 check_environment_variables() {
@@ -162,7 +193,7 @@ run_server() {
     log_info "Starting Data Points AI server on port $PORT..."
     log_info "Press Ctrl+C to stop the server"
     echo "---------------------------------------------------------------"
-    python server.py --port $PORT
+    python server.py
 }
 
 # Main execution
