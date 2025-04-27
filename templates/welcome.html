@@ -185,11 +185,15 @@
     }
 
     input:checked + .toggle-slider {
-      background-color: var(--danger);
+      background-color: var(--primary);
     }
 
     input:checked + .toggle-slider:before {
       transform: translateX(22px);
+    }
+
+    .danger-toggle input:checked + .toggle-slider {
+      background-color: var(--danger);
     }
 
     .toggle-container {
@@ -275,6 +279,14 @@
 
     .button.success:hover {
       background-color: #15803d;
+    }
+
+    .button.danger {
+      background-color: var(--danger);
+    }
+
+    .button.danger:hover {
+      background-color: #b91c1c;
     }
 
     .button.large {
@@ -407,6 +419,63 @@
       display: block;
     }
 
+    .form-input-number {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid var(--neutral-300);
+      border-radius: var(--radius);
+      font-size: 1rem;
+    }
+
+    .form-input-number:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .clustering-settings-container {
+      margin-top: 1.5rem;
+      padding: 1.5rem;
+      background-color: #eef2ff;
+      border: 1px solid #c7d2fe;
+      border-radius: var(--radius);
+    }
+
+    .clustering-settings-title {
+      display: flex;
+      align-items: center;
+      color: #4f46e5;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .clustering-settings-title svg {
+      margin-right: 0.5rem;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+    }
+
+    .setting-name {
+      font-weight: 500;
+    }
+
+    .setting-description {
+      color: var(--neutral-600);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+
+    .buttons-container {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
     @media (max-width: 768px) {
       .settings-grid {
         grid-template-columns: 1fr;
@@ -415,6 +484,10 @@
       .input-group {
         flex-direction: column;
         gap: 0.5rem;
+      }
+
+      .buttons-container {
+        flex-direction: column;
       }
     }
   </style>
@@ -453,7 +526,7 @@
             <p class="setting-description">Enable to attempt reading articles behind paywalls.</p>
             
             <form action="/toggle_paywall_bypass" method="post">
-              <div class="toggle-container">
+              <div class="toggle-container danger-toggle">
                 <span class="toggle-label">
                   {% if paywall_bypass_enabled %}
                     Enabled
@@ -495,6 +568,65 @@
               </div>
             </form>
           </div>
+        </div>
+        
+        <!-- Clustering Settings Section (New) -->
+        <div class="clustering-settings-container">
+          <div class="clustering-settings-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+            Article Clustering Settings
+          </div>
+          
+          <form action="/update_clustering_settings" method="post">
+            <div class="setting-row">
+              <div>
+                <div class="setting-name">Multi-Article Clustering</div>
+                <div class="setting-description">Enable Claude to analyze multiple articles at once</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" name="enable_multi_article" {% if clustering_settings.enable_multi_article %}checked{% endif %}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            
+            <div class="setting-row">
+              <div>
+                <div class="setting-name">Enhanced Clustering</div>
+                <div class="setting-description">Use advanced clustering algorithms</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" name="use_enhanced_clustering" {% if clustering_settings.use_enhanced_clustering %}checked{% endif %}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            
+            <div class="setting-row">
+              <div>
+                <div class="setting-name">Similarity Threshold</div>
+                <div class="setting-description">Minimum similarity score to group articles (0.0-1.0)</div>
+              </div>
+              <input type="number" name="similarity_threshold" class="form-input-number" value="{{ clustering_settings.similarity_threshold }}" min="0" max="1" step="0.1" style="max-width: 70px;">
+            </div>
+            
+            <div class="setting-row">
+              <div>
+                <div class="setting-name">Max Articles Per Batch</div>
+                <div class="setting-description">Maximum articles to analyze at once</div>
+              </div>
+              <input type="number" name="max_articles_per_batch" class="form-input-number" value="{{ clustering_settings.max_articles_per_batch }}" min="1" max="10" style="max-width: 70px;">
+            </div>
+            
+            <div class="buttons-container">
+              <button type="submit" class="button">Save Clustering Settings</button>
+              <button type="submit" class="button" formaction="/reset_clustering_settings">Reset to Defaults</button>
+            </div>
+          </form>
         </div>
         
         <div class="info-banner">
