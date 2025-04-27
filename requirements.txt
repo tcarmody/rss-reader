@@ -1,33 +1,47 @@
+# Core dependencies
 anthropic>=0.7.0
 beautifulsoup4>=4.11.0
 feedparser>=6.0.0
-Flask>=2.0.0
+flask>=2.0.0
+python-dotenv>=0.19.0
+requests>=2.27.0
+tqdm>=4.64.0
+psutil>=5.9.0
+
+# NLP and Processing
+spacy>=3.0.0
 fasttext>=0.9.3
-hdbscan>=0.8.40
-langdetect>=1.0.9
 numpy>=1.20.0
 python-dateutil>=2.9.0
-python-dotenv>=0.19.0
-psutil>=5.9.0
-requests>=2.27.0
-ratelimit>=2.2.0
 scikit-learn>=1.0.0
+langdetect>=1.0.9
+
+# Caching and optimization
+ratelimit>=2.2.0
+
+# ML Dependencies
+torch>=1.10.0
 safetensors>=0.3.0
 sentence-transformers>=2.2.0
-torch>=1.10.0
 transformers>=4.30.0
-tqdm>=4.64.0
-# Additional dependencies from imports
-umap-learn>=0.5.1       # For UMAP dimensionality reduction
-bertopic>=0.16.0        # For advanced topic modeling
-spacy>=3.0.0            # For NER and NLP tasks
-# After installing requirements, run: python -m spacy download en_core_web_sm
-bs4>=0.0.1              # For BeautifulSoup (HTML parsing)
-html5lib>=1.1           # BeautifulSoup parser dependency
-lxml>=4.9.0             # BeautifulSoup parser dependency
-pynndescent>=0.5        # UMAP dependency
-numba>=0.51.2           # UMAP dependency
-llvmlite>=0.44.0        # UMAP/numba dependency
-joblib>=1.4.2           # UMAP/scikit-learn dependency
-threadpoolctl>=3.1.0    # scikit-learn dependency
-scipy>=1.3.1            # UMAP/scikit-learn dependency
+
+# Clustering Dependencies
+hdbscan>=0.8.40
+umap-learn>=0.5.1
+
+# Topic modeling
+bertopic>=0.16.0
+
+# HTML/XML parsing
+lxml>=4.9.0
+html5lib>=1.1
+
+# Required by dependencies
+scipy>=1.3.1
+joblib>=1.4.2
+threadpoolctl>=3.1.0
+pynndescent>=0.5
+numba>=0.51.2
+llvmlite>=0.44.0
+
+# Post-install command: python -m spacy download en_core_web_sm

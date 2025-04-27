@@ -79,6 +79,11 @@ check_dependencies() {
         log_error "requests package missing - try installing it manually with: pip install requests"
         return 1
     fi
+
+    python -c "import spacy" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        log_warning "spacy package missing - entity recognition will use fallback method"
+    fi
     
     log_success "All critical dependencies installed successfully!"
     return 0
@@ -88,22 +93,72 @@ setup_environment() {
     # Change to the script directory
     cd "$SCRIPT_DIR"
 
-    # Check if requirements.txt exists
+    # Check if requirements.txt exists - use the updated one from the artifacts
     if [ ! -f "requirements.txt" ]; then
-        log_error "requirements.txt not found. Please create it first."
-        exit 1
+        log_warning "requirements.txt not found. Creating a new one..."
+        cat > requirements.txt << 'EOF'
+# Core dependencies
+anthropic>=0.7.0
+beautifulsoup4>=4.11.0
+feedparser>=6.0.0
+flask>=2.0.0
+python-dotenv>=0.19.0
+requests>=2.27.0
+tqdm>=4.64.0
+psutil>=5.9.0
+
+# NLP and Processing
+spacy>=3.0.0
+fasttext>=0.9.3
+numpy>=1.20.0
+python-dateutil>=2.9.0
+scikit-learn>=1.0.0
+langdetect>=1.0.9
+
+# Caching and optimization
+ratelimit>=2.2.0
+
+# ML Dependencies
+torch>=1.10.0
+safetensors>=0.3.0
+sentence-transformers>=2.2.0
+transformers>=4.30.0
+
+# Clustering Dependencies
+hdbscan>=0.8.40
+umap-learn>=0.5.1
+
+# Topic modeling
+bertopic>=0.16.0
+
+# HTML/XML parsing
+lxml>=4.9.0
+html5lib>=1.1
+
+# Required by dependencies
+scipy>=1.3.1
+joblib>=1.4.2
+threadpoolctl>=3.1.0
+pynndescent>=0.5
+numba>=0.51.2
+llvmlite>=0.44.0
+EOF
     fi
 
     # Check if essential_requirements.txt exists, create if not
     if [ ! -f "essential_requirements.txt" ]; then
         log_info "Creating essential_requirements.txt"
-        cat > essential_requirements.txt << EOF
-anthropic
-requests
-beautifulsoup4
-feedparser
-flask
-python-dotenv
+        cat > essential_requirements.txt << 'EOF'
+# Core dependencies required for basic functionality
+anthropic>=0.7.0
+beautifulsoup4>=4.11.0
+feedparser>=6.0.0
+flask>=2.0.0
+python-dotenv>=0.19.0
+requests>=2.27.0
+spacy>=3.0.0
+tqdm>=4.64.0
+psutil>=5.9.0
 EOF
     fi
 
@@ -160,9 +215,15 @@ install_dependencies() {
     pip install -v -r essential_requirements.txt
     
     # Install all dependencies with more verbose output
-    log_info "Installing all dependencies..."
+    log_info "Installing additional dependencies..."
     pip install -v -r requirements.txt || {
         log_warning "Some dependencies could not be installed, but we'll continue if critical ones are present."
+    }
+    
+    # Install SpaCy model for NER (Named Entity Recognition)
+    log_info "Installing SpaCy language model for entity recognition..."
+    python -m spacy download en_core_web_sm || {
+        log_warning "Could not install SpaCy language model. Entity recognition will use fallback method."
     }
     
     # Give the system a moment to finalize installations
@@ -182,7 +243,15 @@ check_environment_variables() {
             log_success "Found Anthropic API key in .env file"
         else
             log_warning "No Anthropic API key found in environment or .env file"
-            log_info "You will need to provide your API key to use the application"
+            log_info "Checking if .env file exists..."
+            
+            if [ ! -f .env ]; then
+                log_info "Creating .env file template - you'll need to add your API key"
+                echo "ANTHROPIC_API_KEY=your_api_key_here" > .env
+                echo "# Add other environment variables below as needed" >> .env
+            fi
+            
+            log_info "You will need to add your Anthropic API key to the .env file"
         fi
     else
         log_success "Found Anthropic API key in environment"
