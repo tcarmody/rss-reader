@@ -1,4 +1,4 @@
-"""Main RSS Reader class for fetching and processing feeds."""
+"""Main RSS Reader class for fetching and processing feeds with enhanced clustering."""
 
 import os
 import time
@@ -19,6 +19,7 @@ from utils.source_extractor import is_aggregator_link, extract_original_source_u
 from batch import BatchProcessor
 from summarizer import ArticleSummarizer
 from clustering import ArticleClusterer
+from enhanced_clustering import create_enhanced_clusterer
 
 
 class RSSReader:
@@ -28,12 +29,12 @@ class RSSReader:
     This class orchestrates the entire process of:
     1. Fetching and parsing RSS feeds
     2. Generating AI-powered summaries
-    3. Clustering similar articles
+    3. Clustering similar articles using advanced techniques
     4. Generating HTML output
 
-    The class uses Claude API for high-quality summaries and semantic similarity
-    for clustering related articles. It implements caching to avoid redundant
-    API calls and includes fallback options for summarization.
+    The class uses Claude API for high-quality summaries and a two-phase
+    clustering approach for better grouping of related articles. It implements
+    caching to avoid redundant API calls and includes fallback options for summarization.
     
     Example:
         reader = RSSReader()
@@ -57,7 +58,10 @@ class RSSReader:
         self.client = anthropic.Anthropic(api_key=get_env_var('ANTHROPIC_API_KEY'))
         self.batch_processor = BatchProcessor(batch_size=5)  # Process 5 API calls at a time
         self.summarizer = ArticleSummarizer()
-        self.clusterer = ArticleClusterer()
+        
+        # Use the enhanced clusterer instead of the basic one
+        self.clusterer = create_enhanced_clusterer(summarizer=self.summarizer)
+        
         self.last_processed_clusters = []  # Store the last processed clusters for web server access
 
     def _load_default_feeds(self):
@@ -286,7 +290,7 @@ class RSSReader:
         
         This is the main method that orchestrates the full process:
         1. Fetch and parse feeds
-        2. Cluster articles
+        2. Cluster articles using enhanced clustering
         3. Generate summaries
         4. Create HTML output
         
@@ -324,15 +328,15 @@ class RSSReader:
                 logging.error("No articles collected from any feeds")
                 return None
 
-            # First cluster the articles
-            logging.info("Clustering similar articles...")
-            clusters = self.clusterer.cluster_articles(all_articles)
+            # Cluster the articles using the enhanced clusterer
+            logging.info("Clustering similar articles using enhanced clustering...")
+            clusters = self.clusterer.cluster_with_summaries(all_articles)
 
             if not clusters:
                 logging.error("No clusters created")
                 return None
 
-            logging.info(f"Created {len(clusters)} clusters")
+            logging.info(f"Created {len(clusters)} clusters with enhanced clustering")
 
             # Now generate summaries for each cluster
             logging.info("Generating summaries for article clusters...")
