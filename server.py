@@ -1,5 +1,6 @@
 """
 Web server for RSS Reader that displays summarized articles in a browser.
+Enhanced with controls for clustering settings.
 """
 
 import os
@@ -15,6 +16,7 @@ try:
     from utils.http import create_http_session
     from utils.archive import fetch_article_content
     from summarizer import ArticleSummarizer
+    from lm_cluster_analyzer import create_cluster_analyzer
 except ImportError:
     print("Error: Could not import required modules. Make sure all files are in the correct directory.")
     sys.exit(1)
@@ -39,6 +41,14 @@ latest_data = {
     'timestamp': None,
     'output_file': None,
     'raw_clusters': []  # Store the raw clusters for debugging
+}
+
+# Default clustering settings
+DEFAULT_CLUSTERING_SETTINGS = {
+    'enable_multi_article': True,
+    'similarity_threshold': 0.7,
+    'max_articles_per_batch': 5,
+    'use_enhanced_clustering': True
 }
 
 def sort_clusters(clusters):
@@ -118,6 +128,12 @@ def sort_clusters(clusters):
     
     return sorted_clusters
 
+def get_clustering_settings():
+    """Get current clustering settings from session or use defaults."""
+    if 'clustering_settings' not in session:
+        session['clustering_settings'] = DEFAULT_CLUSTERING_SETTINGS.copy()
+    return session['clustering_settings']
+
 @app.route('/')
 def index():
     """Render the main page with the latest summaries or a welcome page if none exist."""
@@ -131,6 +147,9 @@ def index():
     if 'use_default' not in session:
         session['use_default'] = True
     
+    # Initialize clustering settings if not already set
+    clustering_settings = get_clustering_settings()
+    
     if latest_data['clusters']:
         # Sort the clusters before passing to the template
         sorted_clusters = sort_clusters(latest_data['clusters'])
@@ -139,23 +158,29 @@ def index():
             'feed-summary.html',
             clusters=sorted_clusters,
             timestamp=latest_data['timestamp'],
-            paywall_bypass_enabled=session.get('paywall_bypass_enabled', False)
+            paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
+            clustering_settings=clustering_settings
         )
     else:
         return render_template(
             'welcome.html',
             has_default_feeds=os.path.exists(os.path.join(os.path.dirname(__file__), 'rss_feeds.txt')),
-            paywall_bypass_enabled=session.get('paywall_bypass_enabled', False)
+            paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
+            clustering_settings=clustering_settings
         )
 
-# NEW ROUTE: Add a specific route for the welcome page
+# Route for the welcome page
 @app.route('/welcome')
 def welcome():
     """Explicitly render the welcome page regardless of data state."""
+    # Get current clustering settings
+    clustering_settings = get_clustering_settings()
+    
     return render_template(
         'welcome.html',
         has_default_feeds=os.path.exists(os.path.join(os.path.dirname(__file__), 'rss_feeds.txt')),
-        paywall_bypass_enabled=session.get('paywall_bypass_enabled', False)
+        paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
+        clustering_settings=clustering_settings
     )
 
 @app.route('/toggle_paywall_bypass', methods=['POST'])
@@ -170,6 +195,46 @@ def toggle_paywall_bypass():
     else:
         logging.info("Paywall bypass disabled by user")
     
+    return redirect(request.referrer or url_for('index'))
+
+@app.route('/update_clustering_settings', methods=['POST'])
+def update_clustering_settings():
+    """Update clustering settings from form submission."""
+    # Get current settings
+    clustering_settings = get_clustering_settings()
+    
+    # Update settings from form
+    clustering_settings['enable_multi_article'] = request.form.get('enable_multi_article') == 'on'
+    clustering_settings['use_enhanced_clustering'] = request.form.get('use_enhanced_clustering') == 'on'
+    
+    # Parse numeric values with error handling
+    try:
+        similarity = float(request.form.get('similarity_threshold', 0.7))
+        clustering_settings['similarity_threshold'] = max(0.0, min(1.0, similarity))
+    except (ValueError, TypeError):
+        # Keep existing value on error
+        pass
+        
+    try:
+        max_articles = int(request.form.get('max_articles_per_batch', 5))
+        clustering_settings['max_articles_per_batch'] = max(1, min(10, max_articles))
+    except (ValueError, TypeError):
+        # Keep existing value on error
+        pass
+    
+    # Store updated settings in session
+    session['clustering_settings'] = clustering_settings
+    
+    # Log the settings update
+    logging.info(f"Updated clustering settings: {clustering_settings}")
+    
+    return redirect(request.referrer or url_for('index'))
+
+@app.route('/reset_clustering_settings', methods=['POST'])
+def reset_clustering_settings():
+    """Reset clustering settings to defaults."""
+    session['clustering_settings'] = DEFAULT_CLUSTERING_SETTINGS.copy()
+    logging.info("Reset clustering settings to defaults")
     return redirect(request.referrer or url_for('index'))
 
 @app.route('/refresh', methods=['POST'])
@@ -211,6 +276,15 @@ def refresh_feeds():
         except ValueError:
             batch_delay = 15
         
+        # Get clustering settings
+        clustering_settings = get_clustering_settings()
+        
+        # Set environment variables for clustering options
+        os.environ['ENABLE_MULTI_ARTICLE_CLUSTERING'] = 'true' if clustering_settings['enable_multi_article'] else 'false'
+        os.environ['MIN_SIMILARITY_THRESHOLD'] = str(clustering_settings['similarity_threshold'])
+        os.environ['MAX_ARTICLES_PER_BATCH'] = str(clustering_settings['max_articles_per_batch'])
+        os.environ['USE_ENHANCED_CLUSTERING'] = 'true' if clustering_settings['use_enhanced_clustering'] else 'false'
+        
         # Log what we're doing
         if use_default:
             logging.info("Processing default feeds from rss_feeds.txt")
@@ -228,19 +302,23 @@ def refresh_feeds():
             os.environ['ENABLE_PAYWALL_BYPASS'] = 'false'
             logging.info("Paywall bypass disabled as per user setting")
         
-        # Initialize and run RSS reader with paywall bypass setting from user preference
-        reader = RSSReader(
+        # Import the enhanced RSS reader with multi-article clustering
+        from main import EnhancedRSSReader
+        
+        # Initialize and run RSS reader with clustering settings
+        reader = EnhancedRSSReader(
             feeds=feeds_list if not use_default else None,
             batch_size=batch_size,
             batch_delay=batch_delay
         )
         
         # Process feeds and get output file
-        output_file = reader.process_feeds()
+        import asyncio
+        output_file = asyncio.run(reader.process_feeds())
         
         if output_file:
             # Get the clusters from the reader
-            clusters = reader.last_processed_clusters
+            clusters = reader.reader.last_processed_clusters
             
             # Fix: Ensure every cluster has proper summaries attached to the first article
             for cluster in clusters:
@@ -284,15 +362,17 @@ def refresh_feeds():
             logging.warning("No articles found or processed")
             return render_template('error.html', 
                                   message="No articles found or processed. Check the logs for details.",
-                                  paywall_bypass_enabled=session.get('paywall_bypass_enabled', False))
+                                  paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
+                                  clustering_settings=clustering_settings)
     
     except Exception as e:
         logging.error(f"Error refreshing feeds: {str(e)}", exc_info=True)
         return render_template('error.html', 
                               message=f"Error: {str(e)}",
-                              paywall_bypass_enabled=session.get('paywall_bypass_enabled', False))
+                              paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
+                              clustering_settings=get_clustering_settings())
 
-# NEW ROUTE: Added a route to clear all data and return to welcome page
+# Route to clear all data and return to welcome page
 @app.route('/clear', methods=['GET', 'POST'])
 def clear_data():
     """Clear all data and return to welcome page."""
@@ -306,17 +386,21 @@ def clear_data():
     logging.info("Data cleared by user")
     return redirect(url_for('welcome'))
 
-# NEW ROUTE: Add ability to summarize a single URL
+# Route for summarizing a single URL
 @app.route('/summarize', methods=['GET', 'POST'])
 def summarize_single():
     """Handle summarization of a single URL."""
+    # Get clustering settings
+    clustering_settings = get_clustering_settings()
+    
     if request.method == 'POST':
         url = request.form.get('url', '').strip()
         
         if not url:
             return render_template('error.html', 
                                   message="Please provide a valid URL to summarize.",
-                                  paywall_bypass_enabled=session.get('paywall_bypass_enabled', False))
+                                  paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
+                                  clustering_settings=clustering_settings)
         
         # Add http:// if missing
         if not url.startswith('http'):
@@ -343,7 +427,8 @@ def summarize_single():
             if not content or len(content) < 100:
                 return render_template('error.html', 
                                       message="Could not extract sufficient content from the provided URL.",
-                                      paywall_bypass_enabled=session.get('paywall_bypass_enabled', False))
+                                      paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
+                                      clustering_settings=clustering_settings)
             
             # Extract title from URL as a fallback
             domain = urlparse(url).netloc
@@ -371,24 +456,29 @@ def summarize_single():
                 url=url,
                 cluster=fake_cluster,
                 timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                paywall_bypass_enabled=session.get('paywall_bypass_enabled', False)
+                paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
+                clustering_settings=clustering_settings
             )
             
         except Exception as e:
             logging.error(f"Error summarizing URL: {str(e)}", exc_info=True)
             return render_template('error.html', 
                                   message=f"Error summarizing URL: {str(e)}",
-                                  paywall_bypass_enabled=session.get('paywall_bypass_enabled', False))
+                                  paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
+                                  clustering_settings=clustering_settings)
     
     # GET request - show form
     return render_template(
         'summarize-form.html',
-        paywall_bypass_enabled=session.get('paywall_bypass_enabled', False)
+        paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
+        clustering_settings=clustering_settings
     )
 
 @app.route('/status')
 def status():
     """Return the current status of the RSS reader."""
+    clustering_settings = get_clustering_settings()
+    
     return jsonify({
         'has_data': bool(latest_data['clusters']),
         'last_updated': latest_data['timestamp'],
@@ -396,7 +486,8 @@ def status():
         'cluster_count': len(latest_data['clusters']) if latest_data['clusters'] else 0,
         'paywall_bypass_enabled': session.get('paywall_bypass_enabled', False),
         'using_default_feeds': session.get('use_default', True),
-        'custom_feed_count': len(session.get('feeds_list', [])) if session.get('feeds_list') else 0
+        'custom_feed_count': len(session.get('feeds_list', [])) if session.get('feeds_list') else 0,
+        'clustering_settings': clustering_settings
     })
 
 @app.route('/debug')
@@ -415,6 +506,7 @@ def debug():
         'paywall_bypass_enabled': session.get('paywall_bypass_enabled', False),
         'using_default_feeds': session.get('use_default', True),
         'custom_feed_count': len(session.get('feeds_list', [])) if session.get('feeds_list') else 0,
+        'clustering_settings': get_clustering_settings(),
         'clusters': []
     }
     
@@ -442,6 +534,10 @@ def debug():
                 # Truncate summary for display
                 summary = article['summary'].get('summary', 'None')
                 cluster_info['sample_article']['summary_preview'] = summary[:100] + '...' if len(summary) > 100 else summary
+            
+            # Add topics if available
+            if 'cluster_topics' in article:
+                cluster_info['topics'] = article.get('cluster_topics', [])
         
         debug_info['clusters'].append(cluster_info)
     
@@ -458,13 +554,25 @@ def initialize_data():
         # Default to paywall bypass disabled
         os.environ['ENABLE_PAYWALL_BYPASS'] = 'false'
         
-        logging.info("Initializing RSS reader (paywall bypass disabled by default)...")
-        reader = RSSReader()
-        output_file = reader.process_feeds()
+        # Set default clustering settings
+        os.environ['ENABLE_MULTI_ARTICLE_CLUSTERING'] = 'true'
+        os.environ['MIN_SIMILARITY_THRESHOLD'] = '0.7'
+        os.environ['MAX_ARTICLES_PER_BATCH'] = '5'
+        os.environ['USE_ENHANCED_CLUSTERING'] = 'true'
+        
+        logging.info("Initializing RSS reader with enhanced multi-article clustering...")
+        
+        # Import the enhanced reader
+        from main import EnhancedRSSReader
+        reader = EnhancedRSSReader()
+        
+        # Process feeds asynchronously
+        import asyncio
+        output_file = asyncio.run(reader.process_feeds())
         
         if output_file:
             # Get the clusters from the reader
-            clusters = reader.last_processed_clusters
+            clusters = reader.reader.last_processed_clusters
             
             # Fix: Ensure every cluster has proper summaries
             for cluster in clusters:
