@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Enhanced RSS reader with FastArticleSummarizer integration.
-This script integrates the improved parallel batch processing for article summarization.
+Enhanced RSS reader with improved clustering and summarization.
+This script integrates the multi-article clustering system for better content organization.
 """
 
 import os
@@ -69,10 +69,49 @@ def setup_summarization_engine():
         raise RuntimeError(f"Failed to initialize summarization engine: {e}")
 
 
+def setup_clustering_engine(summarizer=None):
+    """
+    Set up the enhanced clustering engine with multi-article comparison capabilities.
+    
+    Args:
+        summarizer: The summarizer instance that provides access to LLM
+        
+    Returns:
+        EnhancedArticleClusterer: Configured clustering engine
+    """
+    logging.info("Setting up enhanced clustering engine...")
+    
+    try:
+        # Import required modules
+        from enhanced_clustering import create_enhanced_clusterer
+        from lm_cluster_analyzer import create_cluster_analyzer
+        
+        # Create the enhanced clusterer that uses LM-based multi-article clustering
+        clusterer = create_enhanced_clusterer(summarizer=summarizer)
+        
+        # Also create a cluster analyzer for advanced cluster operations
+        analyzer = create_cluster_analyzer(summarizer=summarizer)
+        
+        # Store the analyzer in the clusterer for convenience
+        clusterer.analyzer = analyzer
+        
+        logging.info("Clustering engine successfully configured with multi-article capabilities")
+        
+        return clusterer
+        
+    except Exception as e:
+        logging.error(f"Error setting up clustering engine: {e}")
+        logging.error(traceback.format_exc())
+        # Fall back to the original clustering if enhanced fails
+        from clustering import ArticleClusterer
+        logging.warning("Using fallback clustering engine without multi-article capabilities")
+        return ArticleClusterer()
+
+
 class EnhancedRSSReader:
     """
-    Enhanced RSS reader with improved parallel batch processing for article summarization.
-    Extends the core functionality with more efficient handling of article batches.
+    Enhanced RSS reader with improved parallel batch processing for article summarization
+    and multi-article clustering for better content organization.
     """
     
     def __init__(self, feeds=None, batch_size=25, batch_delay=15, max_workers=3):
@@ -96,8 +135,11 @@ class EnhancedRSSReader:
         # Replace the standard summarizer with our enhanced version
         self.reader.summarizer = setup_summarization_engine()
         
+        # Replace the standard clusterer with our enhanced version
+        self.reader.clusterer = setup_clustering_engine(summarizer=self.reader.summarizer)
+        
         # Log initialization
-        logging.info(f"Enhanced RSS Reader initialized with {max_workers} summarization workers")
+        logging.info(f"Enhanced RSS Reader initialized with {max_workers} summarization workers and multi-article clustering")
         
     async def batch_summarize_articles(self, articles):
         """
@@ -163,9 +205,9 @@ class EnhancedRSSReader:
     
     async def process_feeds(self):
         """
-        Process RSS feeds with enhanced summarization.
+        Process RSS feeds with enhanced summarization and multi-article clustering.
         This method extends the original RSSReader's process_feeds method
-        with more efficient parallel summarization.
+        with more efficient parallel summarization and improved clustering.
         
         Returns:
             str: Path to the output HTML file or None if processing failed
@@ -201,15 +243,28 @@ class EnhancedRSSReader:
                 logging.error("No articles collected from any feeds")
                 return None
 
-            # First cluster the articles (using the original implementation)
-            logging.info("Clustering similar articles...")
-            clusters = self.reader.clusterer.cluster_articles(all_articles)
+            # Use the enhanced clustering with multi-article capabilities
+            logging.info("Clustering similar articles with enhanced multi-article clustering...")
+            clusters = self.reader.clusterer.cluster_with_summaries(all_articles)
 
             if not clusters:
                 logging.error("No clusters created")
                 return None
 
             logging.info(f"Created {len(clusters)} clusters")
+            
+            # Extract topics for each cluster using the LM-based analyzer
+            if hasattr(self.reader.clusterer, 'analyzer'):
+                for cluster in clusters:
+                    try:
+                        if cluster and len(cluster) > 0:
+                            topics = self.reader.clusterer.analyzer.extract_cluster_topics(cluster)
+                            if topics:
+                                # Add topics to each article in the cluster
+                                for article in cluster:
+                                    article['cluster_topics'] = topics
+                    except Exception as e:
+                        logging.warning(f"Error extracting topics for cluster: {str(e)}")
             
             # Now process each cluster with enhanced summarization
             import asyncio
@@ -335,19 +390,25 @@ def main():
     
     Example:
         # Run directly
-        python -m updated_main
+        python -m main
     """
-    parser = argparse.ArgumentParser(description="Enhanced RSS Reader and Summarizer")
+    parser = argparse.ArgumentParser(description="Enhanced RSS Reader and Summarizer with Multi-Article Clustering")
     parser.add_argument("--feeds", nargs="+", help="List of feed URLs to process")
     parser.add_argument("--batch-size", type=int, default=25, help="Number of feeds to process in a batch")
     parser.add_argument("--batch-delay", type=int, default=15, help="Delay between batches in seconds")
     parser.add_argument("--workers", type=int, default=3, help="Number of worker processes for summarization")
+    parser.add_argument("--disable-multi-article", action="store_true", help="Disable multi-article clustering")
     
     args = parser.parse_args()
     
+    # Apply multi-article clustering setting to environment if specified
+    if args.disable_multi_article:
+        os.environ['ENABLE_MULTI_ARTICLE_CLUSTERING'] = 'false'
+        logging.info("Multi-article clustering disabled by command line argument")
+    
     try:
         # Print welcome message
-        print("\n===== Enhanced RSS Reader with Parallel Processing =====")
+        print("\n===== Enhanced RSS Reader with Multi-Article Clustering =====")
         print(f"Starting at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"Using {args.workers} worker processes for summarization")
         print("========================================================\n")

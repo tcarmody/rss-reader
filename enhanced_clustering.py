@@ -8,6 +8,7 @@ import logging
 import torch
 import numpy as np
 import re
+import json
 from typing import List, Dict, Optional, Union, Any
 from collections import defaultdict
 
@@ -75,65 +76,168 @@ class EnhancedArticleClusterer(ArticleClusterer):
             
         self.logger.info(f"Starting LM-based enhancement of {len(initial_clusters)} initial clusters")
         
+        # Group small clusters (1-2 articles) for potential merging
+        small_clusters = []
         refined_clusters = []
-        candidates_for_merging = []
         
         # First, identify very small clusters (1-2 articles) that might need to be merged
         for i, cluster in enumerate(initial_clusters):
             if len(cluster) <= 2:
-                candidates_for_merging.append((i, cluster))
+                small_clusters.extend(cluster)
             else:
                 refined_clusters.append(cluster)
         
-        self.logger.info(f"Found {len(candidates_for_merging)} small clusters as candidates for merging")
+        self.logger.info(f"Found {len(small_clusters)} articles in small clusters as candidates for merging")
                 
-        # If we have candidates for merging, use LM to check if they should be merged with existing clusters
-        if candidates_for_merging and self.summarizer:
+        # If we have articles from small clusters, use the multi-article clustering
+        if small_clusters and self.summarizer and len(small_clusters) >= 2:
+            # Maximum batch size for LM processing
+            max_batch_size = 5
             merged_count = 0
             
-            for idx, candidate_cluster in candidates_for_merging:
-                best_match = None
-                best_score = 0
+            # Process small clusters in batches
+            for i in range(0, len(small_clusters), max_batch_size):
+                batch = small_clusters[i:i+max_batch_size]
                 
-                # For each article in the candidate cluster
-                for candidate_article in candidate_cluster:
-                    candidate_text = f"{candidate_article.get('title', '')} {candidate_article.get('content', '')}"
+                # Get text representation for each article
+                article_texts = []
+                for article in batch:
+                    text = f"{article.get('title', '')} {article.get('content', '')}"
+                    # Truncate to reasonable length
+                    article_texts.append(text[:1000])
+                
+                # Use the LM to cluster these articles
+                try:
+                    cluster_assignments = self._compare_multiple_texts_with_lm(article_texts)
                     
-                    # Compare with each existing refined cluster
-                    for i, refined_cluster in enumerate(refined_clusters):
-                        # Skip empty clusters (shouldn't happen, but safety check)
-                        if not refined_cluster:
-                            continue
+                    # Create new clusters based on LM assignments
+                    batch_clusters = [[] for _ in range(len(cluster_assignments))]
+                    for cluster_idx, article_indices in enumerate(cluster_assignments):
+                        for idx in article_indices:
+                            # Adjust for 0-based indexing
+                            article_idx = idx - 1
+                            if 0 <= article_idx < len(batch):
+                                batch_clusters[cluster_idx].append(batch[article_idx])
+                    
+                    # Remove empty clusters
+                    batch_clusters = [c for c in batch_clusters if c]
+                    
+                    # For each LM-created cluster, find the best matching existing cluster to merge with
+                    for lm_cluster in batch_clusters:
+                        # If the cluster has multiple articles, it's a valid cluster on its own
+                        if len(lm_cluster) > 1:
+                            refined_clusters.append(lm_cluster)
+                            merged_count += len(lm_cluster)
+                        else:
+                            # For single articles, try to find the best existing cluster
+                            best_match = None
+                            best_score = 0
                             
-                        # Create a representative text from the refined cluster
-                        refined_texts = []
-                        for article in refined_cluster[:3]:  # Use at most 3 articles to avoid too much text
-                            refined_texts.append(f"{article.get('title', '')}")
-                        refined_text = " | ".join(refined_texts)
-                        
-                        # Use the LM to compare the texts
-                        similarity_score = self._compare_texts_with_lm(candidate_text, refined_text)
-                        
-                        # Update best match if this score is higher
-                        if similarity_score > best_score and similarity_score > 0.7:  # 0.7 threshold
-                            best_score = similarity_score
-                            best_match = i
+                            article = lm_cluster[0]
+                            article_text = f"{article.get('title', '')} {article.get('content', '')}"
+                            article_text = article_text[:1000]  # Truncate for API
+                            
+                            # Compare with existing clusters
+                            for cluster_idx, cluster in enumerate(refined_clusters):
+                                if not cluster:
+                                    continue
+                                    
+                                # Create representative text from cluster
+                                cluster_texts = []
+                                for cluster_article in cluster[:3]:  # Use up to 3 articles
+                                    cluster_texts.append(f"{cluster_article.get('title', '')}")
+                                cluster_text = " | ".join(cluster_texts)
+                                
+                                # Compare the single article with this cluster
+                                similarity = self._compare_texts_with_lm(article_text, cluster_text)
+                                
+                                if similarity > best_score and similarity > 0.7:
+                                    best_score = similarity
+                                    best_match = cluster_idx
+                            
+                            # Merge or create new cluster
+                            if best_match is not None:
+                                refined_clusters[best_match].append(article)
+                                merged_count += 1
+                                self.logger.info(f"Merged single article with cluster {best_match} (similarity: {best_score:.2f})")
+                            else:
+                                refined_clusters.append(lm_cluster)
                 
-                # If a good match is found, merge the candidate with that cluster
-                if best_match is not None:
-                    refined_clusters[best_match].extend(candidate_cluster)
-                    merged_count += 1
-                    self.logger.info(f"Merged small cluster with cluster {best_match} (similarity: {best_score:.2f})")
-                else:
-                    # Otherwise, keep it as a separate cluster
-                    refined_clusters.append(candidate_cluster)
+                except Exception as e:
+                    self.logger.error(f"Error in LM-based clustering batch: {str(e)}")
+                    # Add all articles as individual clusters as fallback
+                    for article in batch:
+                        refined_clusters.append([article])
             
-            self.logger.info(f"LM enhancement complete: merged {merged_count} clusters")
+            self.logger.info(f"LM enhancement complete: processed {merged_count} articles from small clusters")
         else:
-            # If no summarizer available or no candidates, just use the initial clusters
-            refined_clusters = initial_clusters
+            # If no small clusters or summarizer, add all small clusters individually
+            for cluster in initial_clusters:
+                if len(cluster) <= 2:
+                    refined_clusters.append(cluster)
         
         return refined_clusters
+    
+    def _compare_multiple_texts_with_lm(self, texts_list):
+        """
+        Compare multiple texts using the language model to determine clustering.
+        
+        Args:
+            texts_list: List of article texts to compare
+            
+        Returns:
+            List of cluster assignments (indices of clusters for each article)
+        """
+        # Create a numbered list of texts for the prompt
+        articles_text = ""
+        for i, text in enumerate(texts_list, 1):
+            # Truncate each text to a reasonable length
+            truncated = text[:800] + "..." if len(text) > 800 else text
+            articles_text += f"Article {i}: {truncated}\n\n"
+        
+        # Create the prompt for multi-article clustering
+        prompt = (
+            "Task: Group the following news articles into clusters based on their topics and content.\n\n"
+            f"{articles_text}\n"
+            "Instructions:\n"
+            "1. Analyze the topical similarity and content of all articles.\n"
+            "2. Group articles that cover the same news story or highly related topics.\n"
+            "3. Return your answer as a JSON object with cluster assignments:\n"
+            "   {\"clusters\": [[1, 3, 5], [2, 4], [6]]}\n"
+            "   Where each inner array represents a cluster, and the numbers are article indices.\n"
+            "4. Articles that don't belong to any cluster should be in their own single-item cluster.\n"
+            "5. IMPORTANT: Return ONLY the JSON object, nothing else.\n"
+        )
+        
+        # Call the LM API
+        try:
+            response = self.summarizer._call_claude_api(
+                model_id=self.summarizer.DEFAULT_MODEL,
+                prompt=prompt,
+                temperature=0.0,  # Use 0 temperature for deterministic response
+                max_tokens=200
+            )
+            
+            # Extract JSON from the response
+            json_match = re.search(r'\{.*?\}', response, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+                try:
+                    result = json.loads(json_str)
+                    self.logger.info(f"Successfully parsed LM clustering result: {result}")
+                    return result.get('clusters', [])
+                except json.JSONDecodeError as e:
+                    self.logger.warning(f"Failed to parse JSON response: {e}")
+            else:
+                self.logger.warning(f"No JSON found in LM response: {response}")
+            
+            # Fallback: each article in its own cluster
+            return [[i] for i in range(1, len(texts_list) + 1)]
+                
+        except Exception as e:
+            self.logger.error(f"Error comparing multiple texts with LM: {str(e)}")
+            # Return each article as its own cluster as fallback
+            return [[i] for i in range(1, len(texts_list) + 1)]
     
     def _compare_texts_with_lm(self, text1, text2):
         """
