@@ -19,7 +19,14 @@ from utils.source_extractor import is_aggregator_link, extract_original_source_u
 from batch import BatchProcessor
 from summarizer import ArticleSummarizer
 from clustering import ArticleClusterer
-from enhanced_clustering import create_enhanced_clusterer
+
+# Import the enhanced clusterer - make sure this import works
+try:
+    from enhanced_clustering import create_enhanced_clusterer
+    ENHANCED_CLUSTERING_AVAILABLE = True
+except ImportError:
+    logging.warning("Enhanced clustering module not available. Using basic clustering.")
+    ENHANCED_CLUSTERING_AVAILABLE = False
 
 
 class RSSReader:
@@ -59,8 +66,13 @@ class RSSReader:
         self.batch_processor = BatchProcessor(batch_size=5)  # Process 5 API calls at a time
         self.summarizer = ArticleSummarizer()
         
-        # Use the enhanced clusterer instead of the basic one
-        self.clusterer = create_enhanced_clusterer(summarizer=self.summarizer)
+        # Use the enhanced clusterer if available, otherwise fall back to basic
+        if ENHANCED_CLUSTERING_AVAILABLE:
+            self.clusterer = create_enhanced_clusterer(summarizer=self.summarizer)
+            logging.info("Using enhanced clustering for better article grouping")
+        else:
+            self.clusterer = ArticleClusterer()
+            logging.info("Using basic clustering for article grouping")
         
         self.last_processed_clusters = []  # Store the last processed clusters for web server access
 
@@ -328,17 +340,24 @@ class RSSReader:
                 logging.error("No articles collected from any feeds")
                 return None
 
-            # Cluster the articles using the enhanced clusterer
-            logging.info("Clustering similar articles using enhanced clustering...")
-            clusters = self.clusterer.cluster_with_summaries(all_articles)
+            # Cluster the articles using the improved clusterer
+            logging.info("Clustering similar articles...")
+            
+            # Use a different clustering method depending on which clusterer we have
+            if ENHANCED_CLUSTERING_AVAILABLE and hasattr(self.clusterer, 'cluster_with_summaries'):
+                # Use the enhanced clustering with summaries if available
+                clusters = self.clusterer.cluster_with_summaries(all_articles)
+                logging.info(f"Created {len(clusters)} clusters with enhanced clustering")
+            else:
+                # Fall back to basic clustering
+                clusters = self.clusterer.cluster_articles(all_articles)
+                logging.info(f"Created {len(clusters)} clusters with basic clustering")
 
             if not clusters:
                 logging.error("No clusters created")
                 return None
 
-            logging.info(f"Created {len(clusters)} clusters with enhanced clustering")
-
-            # Now generate summaries for each cluster
+            # Generate summaries for each cluster
             logging.info("Generating summaries for article clusters...")
             processed_clusters = self.process_cluster_summaries(clusters)
 
