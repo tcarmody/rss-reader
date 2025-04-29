@@ -15,14 +15,34 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("rss_reader_enhanced.log"),
-        logging.StreamHandler()
-    ]
-)
+logger = logging.getLogger(__name__)
+
+def configure_logging():
+    """Set up logging configuration."""
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    
+    # Create file handler
+    file_handler = logging.FileHandler("rss_reader_enhanced.log")
+    file_handler.setLevel(logging.INFO)
+    
+    # Create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    
+    # Create formatter
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
+    
+    # Add handlers to root logger
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+    
+    # Avoid duplicate log messages
+    root_logger.propagate = False
+    
+    return root_logger
 
 def setup_summarization_engine():
     """
@@ -31,7 +51,7 @@ def setup_summarization_engine():
     Returns:
         FastArticleSummarizer: Configured with enhanced batch processing
     """
-    logging.info("Setting up enhanced summarization engine...")
+    logger.info("Setting up enhanced summarization engine...")
     
     try:
         # Import required modules
@@ -58,14 +78,14 @@ def setup_summarization_engine():
             max_batch_workers=max_workers
         )
         
-        logging.info(f"Summarization engine successfully configured with {max_workers} workers")
-        logging.info(f"Rate limit: {rpm_limit} RPM, Cache size: {cache_size}, TTL: {ttl_days} days")
+        logger.info(f"Summarization engine successfully configured with {max_workers} workers")
+        logger.info(f"Rate limit: {rpm_limit} RPM, Cache size: {cache_size}, TTL: {ttl_days} days")
         
         return fast_summarizer
         
     except Exception as e:
-        logging.error(f"Error setting up summarization engine: {e}")
-        logging.error(traceback.format_exc())
+        logger.error(f"Error setting up summarization engine: {e}")
+        logger.error(traceback.format_exc())
         raise RuntimeError(f"Failed to initialize summarization engine: {e}")
 
 
@@ -79,7 +99,7 @@ def setup_clustering_engine(summarizer=None):
     Returns:
         EnhancedArticleClusterer: Configured clustering engine
     """
-    logging.info("Setting up enhanced clustering engine...")
+    logger.info("Setting up enhanced clustering engine...")
     
     try:
         # Import required modules
@@ -95,16 +115,16 @@ def setup_clustering_engine(summarizer=None):
         # Store the analyzer in the clusterer for convenience
         clusterer.analyzer = analyzer
         
-        logging.info("Clustering engine successfully configured with multi-article capabilities")
+        logger.info("Clustering engine successfully configured with multi-article capabilities")
         
         return clusterer
         
     except Exception as e:
-        logging.error(f"Error setting up clustering engine: {e}")
-        logging.error(traceback.format_exc())
+        logger.error(f"Error setting up clustering engine: {e}")
+        logger.error(traceback.format_exc())
         # Fall back to the original clustering if enhanced fails
         from clustering import ArticleClusterer
-        logging.warning("Using fallback clustering engine without multi-article capabilities")
+        logger.warning("Using fallback clustering engine without multi-article capabilities")
         return ArticleClusterer()
 
 
@@ -139,7 +159,7 @@ class EnhancedRSSReader:
         self.reader.clusterer = setup_clustering_engine(summarizer=self.reader.summarizer)
         
         # Log initialization
-        logging.info(f"Enhanced RSS Reader initialized with {max_workers} summarization workers and multi-article clustering")
+        logger.info(f"Enhanced RSS Reader initialized with {max_workers} summarization workers and multi-article clustering")
         
     async def batch_summarize_articles(self, articles):
         """
@@ -151,7 +171,7 @@ class EnhancedRSSReader:
         Returns:
             list: Processed articles with summaries
         """
-        logging.info(f"Processing batch of {len(articles)} articles with enhanced parallel summarization")
+        logger.info(f"Processing batch of {len(articles)} articles with enhanced parallel summarization")
         start_time = time.time()
         
         # Prepare articles for summarization
@@ -170,10 +190,10 @@ class EnhancedRSSReader:
         
         # Skip if no articles need summarization
         if not articles_to_process:
-            logging.info("No articles need summarization in this batch")
+            logger.info("No articles need summarization in this batch")
             return articles
             
-        logging.info(f"Summarizing {len(articles_to_process)} articles with enhanced batch processing")
+        logger.info(f"Summarizing {len(articles_to_process)} articles with enhanced batch processing")
         
         try:
             # Process articles in batch
@@ -194,13 +214,13 @@ class EnhancedRSSReader:
                     article['summary'] = url_to_summary[article['link']]
             
             elapsed_time = time.time() - start_time
-            logging.info(f"Batch summarization completed in {elapsed_time:.2f}s")
+            logger.info(f"Batch summarization completed in {elapsed_time:.2f}s")
             
             return articles
             
         except Exception as e:
-            logging.error(f"Error in batch summarization: {e}")
-            logging.error(traceback.format_exc())
+            logger.error(f"Error in batch summarization: {e}")
+            logger.error(traceback.format_exc())
             return articles
     
     async def process_feeds(self):
@@ -217,7 +237,7 @@ class EnhancedRSSReader:
 
             # Process feeds in batches (reusing the original implementation)
             for batch in self.reader._get_feed_batches():
-                logging.info(f"\n🔄 Processing Batch {batch['current']}/{batch['total']}: "
+                logger.info(f"\n🔄 Processing Batch {batch['current']}/{batch['total']}: "
                            f"Feeds {batch['start']} to {batch['end']}")
 
                 # Process each feed in the batch in parallel
@@ -228,30 +248,30 @@ class EnhancedRSSReader:
                         articles = future.result()
                         if articles:
                             batch_articles.extend(articles)
-                            logging.info(f"Added {len(articles)} articles to batch")
+                            logger.info(f"Added {len(articles)} articles to batch")
 
                 all_articles.extend(batch_articles)
-                logging.info(f"Batch complete. Total articles so far: {len(all_articles)}")
+                logger.info(f"Batch complete. Total articles so far: {len(all_articles)}")
 
                 # Add delay between batches if there are more
                 if batch['current'] < batch['total']:
                     time.sleep(self.batch_delay)
 
-            logging.info(f"Total articles collected: {len(all_articles)}")
+            logger.info(f"Total articles collected: {len(all_articles)}")
 
             if not all_articles:
-                logging.error("No articles collected from any feeds")
+                logger.error("No articles collected from any feeds")
                 return None
 
             # Use the enhanced clustering with multi-article capabilities
-            logging.info("Clustering similar articles with enhanced multi-article clustering...")
+            logger.info("Clustering similar articles with enhanced multi-article clustering...")
             clusters = self.reader.clusterer.cluster_with_summaries(all_articles)
 
             if not clusters:
-                logging.error("No clusters created")
+                logger.error("No clusters created")
                 return None
 
-            logging.info(f"Created {len(clusters)} clusters")
+            logger.info(f"Created {len(clusters)} clusters")
             
             # Extract topics for each cluster using the LM-based analyzer
             if hasattr(self.reader.clusterer, 'analyzer'):
@@ -264,7 +284,7 @@ class EnhancedRSSReader:
                                 for article in cluster:
                                     article['cluster_topics'] = topics
                     except Exception as e:
-                        logging.warning(f"Error extracting topics for cluster: {str(e)}")
+                        logger.warning(f"Error extracting topics for cluster: {str(e)}")
             
             # Now process each cluster with enhanced summarization
             import asyncio
@@ -273,25 +293,25 @@ class EnhancedRSSReader:
             for i, cluster in enumerate(clusters, 1):
                 try:
                     if not cluster:
-                        logging.warning(f"Empty cluster {i}, skipping")
+                        logger.warning(f"Empty cluster {i}, skipping")
                         continue
 
-                    logging.info(f"Processing cluster {i}/{len(clusters)} with {len(cluster)} articles")
+                    logger.info(f"Processing cluster {i}/{len(clusters)} with {len(cluster)} articles")
                     
                     # First, try to fetch full content for articles that don't have it
                     for article in cluster:
                         if not article.get('content') or len(article.get('content', '')) < 200:
                             try:
                                 from utils.archive import fetch_article_content
-                                logging.info(f"Fetching full content for article: {article['title']}")
+                                logger.info(f"Fetching full content for article: {article['title']}")
                                 full_content = fetch_article_content(article['link'], self.reader.session)
                                 if full_content and len(full_content) > 200:
                                     article['content'] = full_content
-                                    logging.info(f"Successfully fetched full content for {article['title']}")
+                                    logger.info(f"Successfully fetched full content for {article['title']}")
                                 else:
-                                    logging.warning(f"Could not fetch meaningful content for {article['title']}")
+                                    logger.warning(f"Could not fetch meaningful content for {article['title']}")
                             except Exception as e:
-                                logging.warning(f"Error fetching content for {article['title']}: {str(e)}")
+                                logger.warning(f"Error fetching content for {article['title']}: {str(e)}")
 
                     if len(cluster) > 1:
                         # For clusters with multiple articles, use the primary article for summarization
@@ -359,10 +379,10 @@ class EnhancedRSSReader:
                             }
                     
                     processed_clusters.append(cluster)
-                    logging.info(f"Successfully processed cluster {i}")
+                    logger.info(f"Successfully processed cluster {i}")
                     
                 except Exception as cluster_error:
-                    logging.error(f"Error processing cluster {i}: {str(cluster_error)}", exc_info=True)
+                    logger.error(f"Error processing cluster {i}: {str(cluster_error)}", exc_info=True)
                     continue
 
             # Store the processed clusters for web server access
@@ -371,14 +391,14 @@ class EnhancedRSSReader:
             # Generate HTML output using the original method
             output_file = self.reader.generate_html_output(processed_clusters)
             if output_file:
-                logging.info(f"Successfully generated HTML output: {output_file}")
+                logger.info(f"Successfully generated HTML output: {output_file}")
             else:
-                logging.error("Failed to generate HTML output")
+                logger.error("Failed to generate HTML output")
 
             return output_file
 
         except Exception as e:
-            logging.error(f"Error processing feeds: {str(e)}", exc_info=True)
+            logger.error(f"Error processing feeds: {str(e)}", exc_info=True)
             return None
 
 
@@ -392,6 +412,9 @@ def main():
         # Run directly
         python -m main
     """
+    # Configure logging
+    root_logger = configure_logging()
+    
     parser = argparse.ArgumentParser(description="Enhanced RSS Reader and Summarizer with Multi-Article Clustering")
     parser.add_argument("--feeds", nargs="+", help="List of feed URLs to process")
     parser.add_argument("--batch-size", type=int, default=25, help="Number of feeds to process in a batch")
@@ -404,7 +427,7 @@ def main():
     # Apply multi-article clustering setting to environment if specified
     if args.disable_multi_article:
         os.environ['ENABLE_MULTI_ARTICLE_CLUSTERING'] = 'false'
-        logging.info("Multi-article clustering disabled by command line argument")
+        logger.info("Multi-article clustering disabled by command line argument")
     
     try:
         # Print welcome message
@@ -426,16 +449,16 @@ def main():
         output_file = asyncio.run(rss_reader.process_feeds())
 
         if output_file:
-            logging.info(f"✅ Successfully generated RSS summary: {output_file}")
+            logger.info(f"✅ Successfully generated RSS summary: {output_file}")
             print(f"\nSummary generated at: {output_file}")
             return 0
         else:
-            logging.warning("⚠️ No articles found or processed")
+            logger.warning("⚠️ No articles found or processed")
             print("\nNo articles found or processed. Check the log for details.")
             return 1
 
     except Exception as e:
-        logging.error(f"❌ Error in main: {str(e)}")
+        logger.error(f"❌ Error in main: {str(e)}")
         traceback.print_exc()
         print(f"\nError: {str(e)}")
         return 1
