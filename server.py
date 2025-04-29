@@ -10,6 +10,50 @@ from datetime import datetime
 from urllib.parse import urlparse
 from flask import Flask, render_template, redirect, url_for, request, jsonify, session
 
+import sys
+print(f"Python version: {sys.version}")
+print(f"Python executable: {sys.executable}")
+
+try:
+    import flask
+    print(f"Flask imported successfully, version: {flask.__version__}")
+except ImportError as e:
+    print(f"Failed to import flask: {e}")
+    import traceback
+    traceback.print_exc()
+
+try:
+    from reader import RSSReader
+    print("Successfully imported RSSReader")
+except ImportError as e:
+    print(f"Failed to import RSSReader: {e}")
+    import traceback
+    traceback.print_exc()
+
+try:
+    from utils.http import create_http_session
+    print("Successfully imported create_http_session")
+except ImportError as e:
+    print(f"Failed to import create_http_session: {e}")
+    
+try:
+    from utils.archive import fetch_article_content
+    print("Successfully imported fetch_article_content")
+except ImportError as e:
+    print(f"Failed to import fetch_article_content: {e}")
+    
+try:
+    from summarizer import ArticleSummarizer
+    print("Successfully imported ArticleSummarizer")
+except ImportError as e:
+    print(f"Failed to import ArticleSummarizer: {e}")
+    
+try:
+    from lm_cluster_analyzer import create_cluster_analyzer
+    print("Successfully imported create_cluster_analyzer")
+except ImportError as e:
+    print(f"Failed to import create_cluster_analyzer: {e}")
+
 # Import in a try/except block to provide better error messages
 try:
     from reader import RSSReader
@@ -20,6 +64,7 @@ try:
 except ImportError:
     print("Error: Could not import required modules. Make sure all files are in the correct directory.")
     sys.exit(1)
+
 
 # Configure logging
 logging.basicConfig(
