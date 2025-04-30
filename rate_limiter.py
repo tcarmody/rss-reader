@@ -69,7 +69,7 @@ class RateLimiter:
             return tokens_needed / (self.rpm_limit / 60.0)
 
 
-# Enhanced retry decorator
+# Enhanced retry decorator with fixed rate limiter handling
 def adaptive_retry(
     max_retries=3, 
     initial_backoff=1, 
@@ -100,30 +100,41 @@ def adaptive_retry(
             self = args[0] if args else None
             logger = getattr(self, 'logger', logging.getLogger(__name__))
             
-            # Resolve rate limiter if it's a function
-            actual_rate_limiter = rate_limiter(self) if callable(rate_limiter) and self else rate_limiter
+            # Resolve rate limiter - FIXED: Check if it's a callable and handle properly
+            actual_rate_limiter = None
+            if rate_limiter is not None:
+                if callable(rate_limiter) and self:
+                    try:
+                        actual_rate_limiter = rate_limiter(self)
+                    except Exception as e:
+                        logger.warning(f"Failed to get rate limiter from function: {e}")
+                else:
+                    actual_rate_limiter = rate_limiter
             
             retries = 0
             backoff = initial_backoff
             
             while True:
                 try:
-                    # Rate limit if provided
-                    if actual_rate_limiter:
+                    # Rate limit if provided and it's a proper RateLimiter instance
+                    if actual_rate_limiter and hasattr(actual_rate_limiter, 'get_wait_time'):
                         wait_time = actual_rate_limiter.get_wait_time()
                         if wait_time > 0:
                             logger.debug(f"Rate limiting: waiting {wait_time:.2f}s")
                             time.sleep(wait_time)
                         
                         actual_rate_limiter.acquire()
+                    elif actual_rate_limiter:
+                        logger.debug("Rate limiter doesn't have get_wait_time method, using simple delay")
+                        time.sleep(0.5)  # Simple delay as fallback
                     
                     return func(*args, **kwargs)
                 except retryable_exceptions as e:
                     retries += 1
                     if retries > max_retries:
-                        logger.error(f"Maximum retries ({max_retries}) exceeded", 
-                                     error_type=type(e).__name__,
-                                     final_attempt=True)
+                        logger.error(f"Maximum retries ({max_retries}) exceeded",
+                                    error_type=type(e).__name__,
+                                    final_attempt=True)
                         raise
                     
                     # Calculate backoff with jitter (avoid synchronized retries)
@@ -135,9 +146,9 @@ def adaptive_retry(
                         current_backoff = max(current_backoff, 5)  # At least 5 seconds for rate limits
                     
                     logger.warning(f"Retry {retries}/{max_retries} after error: {str(e)}",
-                                  error_type=type(e).__name__,
-                                  backoff_time=current_backoff,
-                                  retry_count=retries)
+                                error_type=type(e).__name__,
+                                backoff_time=current_backoff,
+                                retry_count=retries)
                     
                     time.sleep(current_backoff)
                     backoff = min(max_backoff, backoff * 2)  # Exponential backoff
