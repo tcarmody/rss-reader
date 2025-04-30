@@ -26,6 +26,10 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 main() {
     log_info "Setting up RSS Reader environment..."
     
+    # Make sure we're in the script directory
+    cd "$SCRIPT_DIR"
+    log_info "Working in directory: $(pwd)"
+    
     # Check for Python 3.11 specifically
     if command -v python3.11 &> /dev/null; then
         PYTHON_CMD="python3.11"
@@ -119,12 +123,16 @@ main() {
     # Start the server
     if [ -f "$SCRIPT_DIR/server.py" ]; then
         log_info "Starting server on port $PORT..."
-        python server.py --public --port $PORT || {
+        log_info "Using server.py from: $SCRIPT_DIR/server.py"
+        python "$SCRIPT_DIR/server.py" --public --port $PORT || {
             log_error "Failed to start server. Check server.py for errors."
             exit 1
         }
     else
-        log_error "server.py not found in the project directory."
+        log_error "server.py not found at: $SCRIPT_DIR/server.py"
+        log_error "Current directory: $(pwd)"
+        log_error "Directory contents:"
+        ls -la "$SCRIPT_DIR"
         exit 1
     fi
 }
