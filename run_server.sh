@@ -112,6 +112,18 @@ main() {
         pip install -r "$SCRIPT_DIR/requirements.txt" || {
             log_warning "Some dependencies failed to install. The server may not work correctly."
         }
+        
+        # Download spaCy model after dependencies are installed
+        log_info "Checking for spaCy model..."
+        if ! python -c "import spacy; spacy.load('en_core_web_sm')" 2>/dev/null; then
+            log_info "Downloading and installing spaCy model (en_core_web_sm)..."
+            python -m spacy download en_core_web_sm || {
+                log_warning "Failed to download spaCy model. Enhanced clustering may not work correctly."
+            }
+            log_success "spaCy model installed successfully."
+        else
+            log_info "spaCy model already installed."
+        fi
     else
         log_info "No requirements.txt found. Installing minimal dependencies..."
         pip install flask feedparser requests beautifulsoup4 || {
