@@ -97,3 +97,5 @@ temp/
 test_*.csv
 test_*.json
 test_*.xml
+rss_venv/*
+
