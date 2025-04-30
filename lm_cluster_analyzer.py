@@ -11,6 +11,7 @@ import re
 import json
 import os
 import sys
+import time
 from typing import List, Dict, Any, Optional, Tuple, Union
 
 # Add the parent directory to sys.path to ensure modules can be imported
@@ -38,7 +39,7 @@ class LMClusterAnalyzer:
             logger: Optional logger instance
         """
         self.summarizer = summarizer
-        self.logger = logger or logging.getLogger(__name__)
+        self.logger = logger or logging.getLogger("lm_cluster_analyzer")
         
     def _get_api_caller(self):
         """
@@ -62,6 +63,14 @@ class LMClusterAnalyzer:
                     
         # No suitable API caller found
         return None, None
+
+    def _handle_rate_limits(self):
+        """
+        Handle rate limiting by implementing a simple delay
+        rather than using the rate_limiter object which might not be available
+        """
+        # Simple delay to avoid rate limits
+        time.sleep(0.5)
         
     def compare_article_pair(self, text1: str, text2: str) -> float:
         """
@@ -81,6 +90,9 @@ class LMClusterAnalyzer:
             return 0.0
             
         try:
+            # Basic rate limiting
+            self._handle_rate_limits()
+            
             # Limit text length for API efficiency
             text1 = text1[:1000]
             text2 = text2[:1000]
@@ -141,6 +153,9 @@ class LMClusterAnalyzer:
             text_extractor = lambda a: f"{a.get('title', '')} {a.get('content', '')}"
         
         try:
+            # Basic rate limiting
+            self._handle_rate_limits()
+            
             # Extract and prepare text for each article
             article_texts = []
             for article in articles:
@@ -241,6 +256,9 @@ class LMClusterAnalyzer:
             return []
             
         try:
+            # Basic rate limiting
+            self._handle_rate_limits()
+            
             # Prepare representative text from the cluster
             article_texts = []
             for article in cluster[:5]:  # Use up to 5 articles

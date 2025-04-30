@@ -99,3 +99,4 @@ test_*.json
 test_*.xml
 rss_venv/*
 
+.DS_Store
