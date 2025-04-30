@@ -1,4 +1,4 @@
-# Core dependencies
+# Existing dependencies
 anthropic>=0.7.0
 beautifulsoup4>=4.11.0
 feedparser>=6.0.0
@@ -8,7 +8,7 @@ requests>=2.27.0
 tqdm>=4.64.0
 psutil>=5.9.0
 
-# NLP and Processing
+# NLP and Processing 
 spacy>=3.0.0
 fasttext>=0.9.3
 numpy>=1.20.0
