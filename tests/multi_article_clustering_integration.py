@@ -9,10 +9,15 @@ This script showcases how to:
 """
 
 import os
+import sys
 import logging
 import asyncio
 from datetime import datetime
 from typing import List, Dict, Any
+
+# Add the parent directory to sys.path to ensure modules can be imported
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, parent_dir)
 
 # Configure logging
 logging.basicConfig(
@@ -23,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 # Import from dotenv here to enable .env file support
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(os.path.join(parent_dir, '.env'))
 
 async def demonstrate_enhanced_clustering():
     """
@@ -35,7 +40,7 @@ async def demonstrate_enhanced_clustering():
         # Import required modules
         from summarizer import ArticleSummarizer
         from enhanced_clustering import create_enhanced_clusterer
-        from lm_cluster_analyzer import create_cluster_analyzer
+        from tests.lm_cluster_analyzer import create_cluster_analyzer
         
         # Initialize the summarizer first (needed for LM access)
         summarizer = ArticleSummarizer()

@@ -27,9 +27,9 @@ This enhancement improves the AI News Digest RSS Reader's clustering capabilitie
 
 ### New Files:
 
-- **lm_cluster_analyzer.py**: New utility class for all LM-based cluster operations
-- **test_enhanced_clustering.py**: Test suite for the new clustering functionality
-- **multi_article_clustering_integration.py**: Example script demonstrating usage
+- **tests/lm_cluster_analyzer.py**: New utility class for all LM-based cluster operations
+- **tests/test_enhanced_clustering.py**: Test suite for the new clustering functionality
+- **tests/multi_article_clustering_integration.py**: Example script demonstrating usage
 
 ## Using the Enhanced Clustering
 
@@ -39,7 +39,7 @@ The enhanced clustering system is fully backward compatible with the existing sy
 # Initialize the components
 from summarizer import ArticleSummarizer
 from enhanced_clustering import create_enhanced_clusterer
-from lm_cluster_analyzer import create_cluster_analyzer
+from tests.lm_cluster_analyzer import create_cluster_analyzer
 
 # Create the necessary instances
 summarizer = ArticleSummarizer()
@@ -69,13 +69,13 @@ The enhanced clustering system improves clustering accuracy at the cost of sligh
 To run the tests for the new functionality:
 
 ```bash
-python -m test_enhanced_clustering
+python -m tests.test_enhanced_clustering
 ```
 
 To see the enhanced clustering in action with sample data:
 
 ```bash
-python -m multi_article_clustering_integration
+python -m tests.multi_article_clustering_integration
 ```
 
 ## Configuration Options

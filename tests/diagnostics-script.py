@@ -10,6 +10,9 @@ import sys
 import importlib
 import logging
 
+# Add parent directory to path to access modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Configure basic logging
 logging.basicConfig(
     level=logging.INFO,
@@ -65,7 +68,6 @@ def check_project_modules():
         "cache",
         "fast_summarizer",
         "enhanced_clustering",
-        "lm_cluster_analyzer",
         "utils.config",
         "utils.http",
         "utils.archive",
@@ -75,6 +77,22 @@ def check_project_modules():
     logger.info("Checking project modules...")
     
     for module in project_modules:
+        try:
+            importlib.import_module(module)
+            logger.info(f"✅ {module}: Successfully imported")
+        except ImportError as e:
+            logger.error(f"❌ {module}: Import failed - {str(e)}")
+        except Exception as e:
+            logger.error(f"⚠️ {module}: Error importing - {str(e)}")
+    
+    # Also check the test modules
+    test_modules = [
+        "tests.lm_cluster_analyzer",
+    ]
+    
+    logger.info("Checking test modules...")
+    
+    for module in test_modules:
         try:
             importlib.import_module(module)
             logger.info(f"✅ {module}: Successfully imported")
@@ -137,19 +155,23 @@ def check_required_files():
         "requirements.txt"
     ]
     
+    # Get the parent directory
+    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
     logger.info("Checking required files...")
     
     for file in required_files:
-        if os.path.exists(file):
+        file_path = os.path.join(parent_dir, file)
+        if os.path.exists(file_path):
             logger.info(f"✅ {file}: Found")
         else:
             logger.warning(f"❌ {file}: Not found")
 
 def check_templates():
     """Check if template directories and files exist."""
-    templates_dir = os.path.join(os.path.dirname(os.path.abspath(".")), 'templates')
-    if not os.path.exists(templates_dir):
-        templates_dir = os.path.join(os.getcwd(), 'templates')
+    # Get the parent directory
+    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    templates_dir = os.path.join(parent_dir, 'templates')
     
     if os.path.exists(templates_dir):
         logger.info(f"✅ Templates directory found: {templates_dir}")

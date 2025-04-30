@@ -9,7 +9,13 @@ multi-article clustering comparisons.
 import logging
 import re
 import json
+import os
+import sys
 from typing import List, Dict, Any, Optional, Tuple, Union
+
+# Add the parent directory to sys.path to ensure modules can be imported
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, parent_dir)
 
 
 class LMClusterAnalyzer:
