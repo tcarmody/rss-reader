@@ -15,6 +15,9 @@ from collections import defaultdict
 # Import from the original clustering file to avoid code duplication
 from clustering import ArticleClusterer, CONFIG
 
+# Import the LM cluster analyzer
+from lm_cluster_analyzer import create_cluster_analyzer
+
 
 class EnhancedArticleClusterer(ArticleClusterer):
     """
@@ -35,6 +38,9 @@ class EnhancedArticleClusterer(ArticleClusterer):
         super().__init__()
         self.summarizer = summarizer
         self.logger = logging.getLogger("EnhancedArticleClusterer")
+        
+        # Create a cluster analyzer for LM-based operations
+        self.analyzer = create_cluster_analyzer(summarizer=summarizer)
         
     def cluster_articles(self, articles):
         """
@@ -188,56 +194,21 @@ class EnhancedArticleClusterer(ArticleClusterer):
         Returns:
             List of cluster assignments (indices of clusters for each article)
         """
-        # Create a numbered list of texts for the prompt
-        articles_text = ""
-        for i, text in enumerate(texts_list, 1):
-            # Truncate each text to a reasonable length
-            truncated = text[:800] + "..." if len(text) > 800 else text
-            articles_text += f"Article {i}: {truncated}\n\n"
+        # Convert text list to article format for analyzer
+        article_dicts = [{'content': text} for text in texts_list]
+        text_extractor = lambda a: a.get('content', '')
         
-        # Create the prompt for multi-article clustering
-        prompt = (
-            "Task: Group the following news articles into clusters based on their topics and content.\n\n"
-            f"{articles_text}\n"
-            "Instructions:\n"
-            "1. Analyze the topical similarity and content of all articles.\n"
-            "2. Group articles that cover the same news story or highly related topics.\n"
-            "3. Return your answer as a JSON object with cluster assignments:\n"
-            "   {\"clusters\": [[1, 3, 5], [2, 4], [6]]}\n"
-            "   Where each inner array represents a cluster, and the numbers are article indices.\n"
-            "4. Articles that don't belong to any cluster should be in their own single-item cluster.\n"
-            "5. IMPORTANT: Return ONLY the JSON object, nothing else.\n"
+        # Use the cluster_articles method from the analyzer
+        result = self.analyzer.cluster_articles(
+            articles=article_dicts, 
+            text_extractor=text_extractor,
+            similarity_threshold=0.7
         )
         
-        # Call the LM API
-        try:
-            response = self.summarizer._call_claude_api(
-                model_id=self.summarizer.DEFAULT_MODEL,
-                prompt=prompt,
-                temperature=0.0,  # Use 0 temperature for deterministic response
-                max_tokens=200
-            )
-            
-            # Extract JSON from the response
-            json_match = re.search(r'\{.*?\}', response, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(0)
-                try:
-                    result = json.loads(json_str)
-                    self.logger.info(f"Successfully parsed LM clustering result: {result}")
-                    return result.get('clusters', [])
-                except json.JSONDecodeError as e:
-                    self.logger.warning(f"Failed to parse JSON response: {e}")
-            else:
-                self.logger.warning(f"No JSON found in LM response: {response}")
-            
-            # Fallback: each article in its own cluster
-            return [[i] for i in range(1, len(texts_list) + 1)]
-                
-        except Exception as e:
-            self.logger.error(f"Error comparing multiple texts with LM: {str(e)}")
-            # Return each article as its own cluster as fallback
-            return [[i] for i in range(1, len(texts_list) + 1)]
+        # Log the result for debugging
+        self.logger.info(f"LM clustering result: {result}")
+        
+        return result
     
     def _compare_texts_with_lm(self, text1, text2):
         """
@@ -250,46 +221,8 @@ class EnhancedArticleClusterer(ArticleClusterer):
         Returns:
             float: Similarity score between 0 and 1
         """
-        try:
-            # Limit text length to avoid excessive API usage
-            text1 = text1[:1000]
-            text2 = text2[:1000]
-            
-            # Create a prompt for the LM to evaluate similarity
-            prompt = (
-                "Task: Evaluate the similarity of the following two news articles based on their topic and content.\n\n"
-                f"Article 1: {text1}\n\n"
-                f"Article 2: {text2}\n\n"
-                "Evaluate the topical similarity on a scale from 0 to 1, where:\n"
-                "- 0: Completely different topics\n"
-                "- 0.5: Somewhat related topics\n"
-                "- 1: Same topic and focus\n\n"
-                "Return only a number between 0 and 1 representing the similarity score."
-            )
-            
-            # Call the LM API
-            if hasattr(self.summarizer, '_call_claude_api'):
-                response = self.summarizer._call_claude_api(
-                    model_id=self.summarizer.DEFAULT_MODEL,
-                    prompt=prompt,
-                    temperature=0.0,  # Use 0 temperature for deterministic response
-                    max_tokens=10
-                )
-                
-                # Extract the numerical score from the response
-                score_match = re.search(r'([0-9]\.[0-9]|[01])', response)
-                if score_match:
-                    return float(score_match.group(1))
-                else:
-                    self.logger.warning(f"Could not extract similarity score from response: {response}")
-                    return 0.0
-            else:
-                self.logger.warning("API call method not available")
-                return 0.0
-                
-        except Exception as e:
-            self.logger.error(f"Error comparing texts with LM: {str(e)}")
-            return 0.0
+        # Use the analyzer instead of direct API calls
+        return self.analyzer.compare_article_pair(text1, text2)
             
     def _detect_duplicate_summaries(self, clusters, similarity_threshold=0.7):
         """
