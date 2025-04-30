@@ -17,6 +17,7 @@ import signal
 import threading
 import time
 import traceback
+import importlib
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
@@ -75,7 +76,11 @@ class WorkerProcess:
         self.process = multiprocessing.Process(
             target=self._worker_main,
             args=(self.worker_id, self.ready_queue, self.result_queue, 
-                  self.log_queue, self.shutdown_event)
+                  self.log_queue, self.shutdown_event),
+            kwargs={
+                'summarizer_module': 'summarizer',
+                'summarizer_class': 'ArticleSummarizer'
+            }
         )
         self.process.daemon = True
         self.process.start()
@@ -99,7 +104,8 @@ class WorkerProcess:
     @staticmethod
     def _worker_main(worker_id: int, ready_queue: multiprocessing.Queue, 
                     result_queue: multiprocessing.Queue, log_queue: multiprocessing.Queue,
-                    shutdown_event: multiprocessing.Event):
+                    shutdown_event: multiprocessing.Event, summarizer_module='summarizer',
+                    summarizer_class='ArticleSummarizer'):
         """Main function for the worker process."""
         # Configure logging
         logger = WorkerProcess._configure_logging(worker_id, log_queue)
@@ -109,13 +115,15 @@ class WorkerProcess:
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
         
-        # Initialize the summarizer
+        # Initialize the summarizer - use dynamic import to avoid circular imports
         try:
-            from summarizer import ArticleSummarizer
-            summarizer = ArticleSummarizer()
-            logger.info(f"Worker {worker_id} initialized ArticleSummarizer")
+            # Use importlib for dynamic imports
+            summarizer_module_obj = importlib.import_module(summarizer_module)
+            SummarizerClass = getattr(summarizer_module_obj, summarizer_class)
+            summarizer = SummarizerClass()
+            logger.info(f"Worker {worker_id} initialized {summarizer_class}")
         except Exception as e:
-            error_msg = f"Worker {worker_id} failed to initialize ArticleSummarizer: {str(e)}"
+            error_msg = f"Worker {worker_id} failed to initialize summarizer: {str(e)}"
             logger.error(error_msg)
             result_queue.put(pickle.dumps({
                 'type': 'init_error',
@@ -545,10 +553,10 @@ class EnhancedBatchProcessor:
                         'original': article,
                         'error': "Task not processed (timeout or worker failure)",
                         'summary': {
-                            'headline': article['title'],
-                            'summary': "Summary generation failed: Task not processed. Please try again later."
-                        }
-                    })
+                                'headline': article['title'],
+                                'summary': "Summary generation failed: Task not processed. Please try again later."
+                            }
+                        })
             
             elapsed_time = time.time() - start_time
             self.logger.info(f"Batch processing completed: {len(results)}/{len(submitted_tasks)} " +
@@ -594,7 +602,7 @@ def create_enhanced_batch_processor(max_workers=3):
     return EnhancedBatchProcessor(max_workers=max_workers)
 
 
-# Integrate with FastArticleSummarizer
+# Integrate with FastArticleSummarizer - The function has been moved inside the FastArticleSummarizer class
 def add_enhanced_batch_to_fast_summarizer(fast_summarizer, max_workers=3):
     """
     Add enhanced batch processing to an existing FastArticleSummarizer instance.
@@ -638,23 +646,15 @@ def add_enhanced_batch_to_fast_summarizer(fast_summarizer, max_workers=3):
                 # Clean text for complexity estimation
                 text = self.original.clean_text(article['text'])
                 
-                # Import here to avoid circular imports
-                try:
-                    # Dynamic import to prevent circular imports
-                    import importlib
-                    model_selection_module = importlib.import_module('model_selection')
-                    select_model = model_selection_module.auto_select_model
-                    
-                    selected_model = select_model(
-                        text,
-                        self.original.AVAILABLE_MODELS,
-                        self.original.DEFAULT_MODEL,
-                        self.logger
-                    )
-                except ImportError:
-                    # Fallback if import fails
-                    self.logger.warning("Could not import model_selection, using default model")
-                    selected_model = self.original.DEFAULT_MODEL
+                # Select model based on complexity
+                # Import locally to avoid circular import
+                from model_selection import auto_select_model as select_model
+                selected_model = select_model(
+                    text,
+                    self.original.AVAILABLE_MODELS,
+                    self.original.DEFAULT_MODEL,
+                    self.logger
+                )
                 
                 # Create a copy of the article with cleaned text
                 prepared_article = {

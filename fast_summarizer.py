@@ -17,7 +17,6 @@ from text_chunking import chunk_text, summarize_long_article
 from model_selection import estimate_complexity, auto_select_model
 from tiered_cache import TieredSummaryCache
 from rate_limiter import RateLimiter, adaptive_retry
-from enhanced_batch_processor import add_enhanced_batch_to_fast_summarizer
 
 class FastArticleSummarizer:
     """
@@ -31,7 +30,8 @@ class FastArticleSummarizer:
         rpm_limit=50, 
         cache_size=256, 
         cache_dir="./summary_cache", 
-        ttl_days=30
+        ttl_days=30,
+        enable_batch_processor=False
     ):
         """
         Initialize the optimized summarizer as a wrapper around the original.
@@ -42,6 +42,7 @@ class FastArticleSummarizer:
             cache_size: Size of in-memory cache
             cache_dir: Directory for persistent cache
             ttl_days: TTL for cache entries in days
+            enable_batch_processor: Whether to enable batch processing immediately
         """
         self.original = original_summarizer
         self.logger = original_summarizer.logger
@@ -65,8 +66,16 @@ class FastArticleSummarizer:
             f"{cache_size} cache entries, {ttl_days} days TTL"
         )
         
-        # Add enhanced batch processing capability
-        self = add_enhanced_batch_to_fast_summarizer(self)
+        # Add enhanced batch processing capability if requested
+        if enable_batch_processor:
+            self.add_batch_processor()
+    
+    def add_batch_processor(self, max_workers=3):
+        """Add enhanced batch processing capability."""
+        # Import here instead of at the module level to avoid circular imports
+        from enhanced_batch_processor import add_enhanced_batch_to_fast_summarizer
+        add_enhanced_batch_to_fast_summarizer(self, max_workers=max_workers)
+        return self
     
     def _apply_retry_decorator(self):
         """Apply the enhanced retry decorator to the API call method."""
@@ -237,19 +246,18 @@ def create_fast_summarizer(
     Returns:
         FastArticleSummarizer: The configured summarizer instance
     """
+    # Create without batch processor initially
     summarizer = FastArticleSummarizer(
         original_summarizer=original_summarizer,
         rpm_limit=rpm_limit,
         cache_size=cache_size,
         cache_dir=cache_dir,
-        ttl_days=ttl_days
+        ttl_days=ttl_days,
+        enable_batch_processor=False
     )
     
-    # Configure with the specified number of batch workers
-    summarizer = add_enhanced_batch_to_fast_summarizer(
-        summarizer, 
-        max_workers=max_batch_workers
-    )
+    # Add batch processor after creation
+    summarizer.add_batch_processor(max_workers=max_batch_workers)
     
     return summarizer
 
