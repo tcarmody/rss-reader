@@ -40,6 +40,29 @@ class LMClusterAnalyzer:
         self.summarizer = summarizer
         self.logger = logger or logging.getLogger(__name__)
         
+    def _get_api_caller(self):
+        """
+        Get the appropriate method to call the Claude API based on summarizer type.
+        
+        Returns:
+            tuple: (api_method, model_id) or (None, None) if no suitable method found
+        """
+        if not self.summarizer:
+            return None, None
+            
+        # Direct API caller for ArticleSummarizer
+        if hasattr(self.summarizer, '_call_claude_api'):
+            return (self.summarizer._call_claude_api, 
+                    getattr(self.summarizer, 'DEFAULT_MODEL', 'claude-3-7-sonnet-20250219'))
+        
+        # Access through original attribute for FastArticleSummarizer
+        elif hasattr(self.summarizer, 'original') and hasattr(self.summarizer.original, '_call_claude_api'):
+            return (self.summarizer.original._call_claude_api,
+                    getattr(self.summarizer.original, 'DEFAULT_MODEL', 'claude-3-7-sonnet-20250219'))
+                    
+        # No suitable API caller found
+        return None, None
+        
     def compare_article_pair(self, text1: str, text2: str) -> float:
         """
         Compare two article texts and return a similarity score.
@@ -51,8 +74,10 @@ class LMClusterAnalyzer:
         Returns:
             float: Similarity score between 0 and 1
         """
-        if not self.summarizer:
-            self.logger.warning("No summarizer available for LM comparisons")
+        api_caller, model_id = self._get_api_caller()
+        
+        if not api_caller:
+            self.logger.warning("No suitable API call method available for LM comparisons")
             return 0.0
             
         try:
@@ -72,24 +97,20 @@ class LMClusterAnalyzer:
                 "Return only a number between 0 and 1 representing the similarity score."
             )
             
-            # Call the LM
-            if hasattr(self.summarizer, '_call_claude_api'):
-                response = self.summarizer._call_claude_api(
-                    model_id=self.summarizer.DEFAULT_MODEL,
-                    prompt=prompt,
-                    temperature=0.0,
-                    max_tokens=10
-                )
-                
-                # Extract the numerical score
-                score_match = re.search(r'([0-9]\.[0-9]|[01])', response)
-                if score_match:
-                    return float(score_match.group(1))
-                else:
-                    self.logger.warning(f"Could not extract similarity score from response: {response}")
-                    return 0.0
+            # Call the LM API
+            response = api_caller(
+                model_id=model_id,
+                prompt=prompt,
+                temperature=0.0,
+                max_tokens=10
+            )
+            
+            # Extract the numerical score from the response
+            score_match = re.search(r'([0-9]\.[0-9]|[01])', response)
+            if score_match:
+                return float(score_match.group(1))
             else:
-                self.logger.warning("API call method not available")
+                self.logger.warning(f"Could not extract similarity score from response: {response}")
                 return 0.0
         except Exception as e:
             self.logger.error(f"Error comparing article pair: {str(e)}")
@@ -109,9 +130,11 @@ class LMClusterAnalyzer:
         Returns:
             List of clusters, each containing indices of related articles
         """
-        if not self.summarizer:
-            self.logger.warning("No summarizer available for LM clustering")
-            return [[i] for i in range(len(articles))]
+        api_caller, model_id = self._get_api_caller()
+        
+        if not api_caller:
+            self.logger.warning("No suitable API call method available for LM clustering")
+            return [[i+1] for i in range(len(articles))]
         
         # Default text extractor
         if text_extractor is None:
@@ -144,8 +167,8 @@ class LMClusterAnalyzer:
             )
             
             # Call the LM API
-            response = self.summarizer._call_claude_api(
-                model_id=self.summarizer.DEFAULT_MODEL,
+            response = api_caller(
+                model_id=model_id,
                 prompt=prompt,
                 temperature=0.0,
                 max_tokens=200
@@ -212,7 +235,9 @@ class LMClusterAnalyzer:
         Returns:
             List of topic strings
         """
-        if not cluster or not self.summarizer:
+        api_caller, model_id = self._get_api_caller()
+        
+        if not api_caller or not cluster:
             return []
             
         try:
@@ -237,8 +262,8 @@ class LMClusterAnalyzer:
             )
             
             # Call the LM API
-            response = self.summarizer._call_claude_api(
-                model_id=self.summarizer.DEFAULT_MODEL,
+            response = api_caller(
+                model_id=model_id,
                 prompt=prompt,
                 temperature=0.2,  # Small amount of temperature for more natural topics
                 max_tokens=100

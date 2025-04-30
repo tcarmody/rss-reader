@@ -488,11 +488,14 @@ class AdvancedClusteringPipeline:
                 metric='cosine'
             )
             
+            # Ensure epsilon is always positive - FIX: Initialize with minimum value
+            epsilon_value = max(CONFIG['min_epsilon'], 0.05)
+            
             self.hdbscan_model = hdbscan.HDBSCAN(
                 min_cluster_size=2,
                 min_samples=2,
                 metric='euclidean',
-                cluster_selection_epsilon=CONFIG['min_epsilon'],  # Initialize with min value
+                cluster_selection_epsilon=epsilon_value,  # Use positive epsilon value
                 prediction_data=True
             )
             
@@ -511,6 +514,9 @@ class AdvancedClusteringPipeline:
     
     def cluster(self, embeddings, threshold, publication_times=None):
         """Apply the UMAP+HDBSCAN clustering pipeline with fallbacks."""
+        # Ensure threshold is always positive - FIX
+        threshold = max(CONFIG['min_epsilon'], threshold)
+        
         # Check if we should use the advanced pipeline
         if not CONFIG['use_umap'] or len(embeddings) < 5:
             # For very small datasets, use the simpler method
@@ -577,6 +583,9 @@ class AdvancedClusteringPipeline:
     def _apply_fallback_clustering(self, embeddings, threshold, publication_times=None):
         """Fallback clustering method using Agglomerative Clustering."""
         logging.info("Using fallback Agglomerative Clustering")
+        
+        # Ensure threshold is always positive - FIX
+        threshold = max(CONFIG['min_epsilon'], threshold)
         
         # Time-weighted similarity matrix if we have publication times
         if publication_times and len(publication_times) == len(embeddings):
@@ -771,7 +780,8 @@ class ArticleClusterer:
             except Exception as e:
                 logging.warning(f"Error calculating adaptive threshold: {e}. Using base threshold.")
                 
-        return threshold
+        # Ensure return value is never negative or zero - FIX
+        return max(CONFIG['min_epsilon'], threshold)
     
     def _filter_recent_articles(self, articles, cutoff_date):
         """
