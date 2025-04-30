@@ -14,6 +14,7 @@ import multiprocessing
 import pickle
 import queue
 import signal
+import threading
 import time
 import traceback
 from contextlib import contextmanager
@@ -297,11 +298,27 @@ class EnhancedBatchProcessor:
         # Create handlers that match the main logger's handlers
         handlers = []
         for handler in self.logger.handlers:
-            handler_copy = handler.__class__(*handler.args, **handler.kwargs)
-            handler_copy.setFormatter(handler.formatter)
-            handler_copy.setLevel(handler.level)
-            handlers.append(handler_copy)
-            
+            try:
+                # For StreamHandler (usually to console)
+                if isinstance(handler, logging.StreamHandler):
+                    handler_copy = handler.__class__(handler.stream)
+                # For FileHandler
+                elif isinstance(handler, logging.FileHandler):
+                    handler_copy = handler.__class__(handler.baseFilename, mode=handler.mode)
+                # For other handler types - try a generic copy or skip
+                else:
+                    try:
+                        handler_copy = handler.__class__()
+                    except:
+                        self.logger.warning(f"Couldn't copy handler of type {handler.__class__.__name__}, skipping")
+                        continue
+                        
+                handler_copy.setFormatter(handler.formatter)
+                handler_copy.setLevel(handler.level)
+                handlers.append(handler_copy)
+            except Exception as e:
+                self.logger.warning(f"Error copying log handler: {e}")
+        
         # Create and start the log listener
         self.log_listener = QueueListener(self.log_queue, *handlers)
         self.log_listener.start()
