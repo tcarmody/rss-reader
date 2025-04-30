@@ -61,10 +61,11 @@ class WorkerProcess:
     """
     
     def __init__(self, worker_id: int, ready_queue: multiprocessing.Queue, 
-                 result_queue: multiprocessing.Queue, log_queue: multiprocessing.Queue,
-                 shutdown_event: multiprocessing.Event):
+                 task_queue: multiprocessing.Queue, result_queue: multiprocessing.Queue, 
+                 log_queue: multiprocessing.Queue, shutdown_event: multiprocessing.Event):
         self.worker_id = worker_id
         self.ready_queue = ready_queue
+        self.task_queue = task_queue
         self.result_queue = result_queue
         self.log_queue = log_queue
         self.shutdown_event = shutdown_event
@@ -75,7 +76,7 @@ class WorkerProcess:
         """Start the worker process."""
         self.process = multiprocessing.Process(
             target=self._worker_main,
-            args=(self.worker_id, self.ready_queue, self.result_queue, 
+            args=(self.worker_id, self.ready_queue, self.task_queue, self.result_queue, 
                   self.log_queue, self.shutdown_event),
             kwargs={
                 'summarizer_module': 'summarizer',
@@ -103,9 +104,9 @@ class WorkerProcess:
     
     @staticmethod
     def _worker_main(worker_id: int, ready_queue: multiprocessing.Queue, 
-                    result_queue: multiprocessing.Queue, log_queue: multiprocessing.Queue,
-                    shutdown_event: multiprocessing.Event, summarizer_module='summarizer',
-                    summarizer_class='ArticleSummarizer'):
+                    task_queue: multiprocessing.Queue, result_queue: multiprocessing.Queue, 
+                    log_queue: multiprocessing.Queue, shutdown_event: multiprocessing.Event, 
+                    summarizer_module='summarizer', summarizer_class='ArticleSummarizer'):
         """Main function for the worker process."""
         # Configure logging
         logger = WorkerProcess._configure_logging(worker_id, log_queue)
@@ -140,9 +141,9 @@ class WorkerProcess:
         # Process tasks until shutdown
         while not shutdown_event.is_set():
             try:
-                # Get a task from the queue with timeout
+                # Get a task from the task queue with timeout
                 try:
-                    task_data = ready_queue.get(timeout=0.5)
+                    task_data = task_queue.get(timeout=0.5)
                 except queue.Empty:
                     continue
                 
@@ -182,7 +183,7 @@ class WorkerProcess:
                 except Exception as e:
                     # Create error result
                     tb = traceback.format_exc()
-                    logger.error(f"Worker {worker_id} error processing {task.article['url']}: {str(e)}\n{tb}")
+                    logger.error(f"Worker {worker_id} error processing article: {str(e)}\n{tb}")
                     
                     result = ProcessingResult(
                         task_id=task.task_id,
@@ -271,6 +272,7 @@ class EnhancedBatchProcessor:
         self.max_workers = max_workers
         self.logger = self._setup_logger(log_level)
         self.ready_queue = multiprocessing.Queue()
+        self.task_queue = multiprocessing.Queue()  # Separate queue for tasks
         self.result_queue = multiprocessing.Queue()
         self.log_queue = multiprocessing.Queue()
         self.shutdown_event = multiprocessing.Event()
@@ -340,6 +342,7 @@ class EnhancedBatchProcessor:
             worker = WorkerProcess(
                 worker_id=i,
                 ready_queue=self.ready_queue,
+                task_queue=self.task_queue,
                 result_queue=self.result_queue,
                 log_queue=self.log_queue,
                 shutdown_event=self.shutdown_event
@@ -401,7 +404,7 @@ class EnhancedBatchProcessor:
         # Send explicit shutdown signals
         for _ in range(len(self.workers)):
             try:
-                self.ready_queue.put('SHUTDOWN', timeout=0.5)
+                self.task_queue.put('SHUTDOWN', timeout=0.5)
             except queue.Full:
                 pass
                 
@@ -411,6 +414,7 @@ class EnhancedBatchProcessor:
             
         # Clear the queues
         self._drain_queue(self.ready_queue)
+        self._drain_queue(self.task_queue)
         self._drain_queue(self.result_queue)
         self._drain_queue(self.log_queue)
         
@@ -485,8 +489,8 @@ class EnhancedBatchProcessor:
                     self.logger.warning("Timed out waiting for a ready worker")
                     break
                     
-                # Submit the task
-                self.ready_queue.put(pickle.dumps(task))
+                # Submit the task to the task queue
+                self.task_queue.put(pickle.dumps(task))
                 submitted_tasks.add(task_id)
                 self.logger.debug(f"Submitted task {task_id} for {task.article['url']} to worker {worker_id}")
                 
