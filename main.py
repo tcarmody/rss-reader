@@ -54,8 +54,9 @@ def setup_summarization_engine():
     logger.info("Setting up enhanced summarization engine...")
     
     try:
-        # Import required modules
+        # Import required modules directly (not the entire module)
         from summarizer import ArticleSummarizer
+        # Import only the specific function needed to avoid circular imports
         from fast_summarizer import create_fast_summarizer
         
         # Create the original summarizer
@@ -102,18 +103,20 @@ def setup_clustering_engine(summarizer=None):
     logger.info("Setting up enhanced clustering engine...")
     
     try:
-        # Import required modules
+        # Import modules when needed, not at the top level
         from enhanced_clustering import create_enhanced_clusterer
-        from lm_cluster_analyzer import create_cluster_analyzer
         
         # Create the enhanced clusterer that uses LM-based multi-article clustering
         clusterer = create_enhanced_clusterer(summarizer=summarizer)
         
-        # Also create a cluster analyzer for advanced cluster operations
-        analyzer = create_cluster_analyzer(summarizer=summarizer)
-        
-        # Store the analyzer in the clusterer for convenience
-        clusterer.analyzer = analyzer
+        # Try to create a cluster analyzer for advanced operations
+        try:
+            from lm_cluster_analyzer import create_cluster_analyzer
+            analyzer = create_cluster_analyzer(summarizer=summarizer)
+            # Store the analyzer in the clusterer for convenience
+            clusterer.analyzer = analyzer
+        except ImportError:
+            logger.warning("LM cluster analyzer not available, skipping advanced cluster analysis")
         
         logger.info("Clustering engine successfully configured with multi-article capabilities")
         
@@ -198,6 +201,32 @@ class EnhancedRSSReader:
         try:
             # Process articles in batch
             summarizer = self.reader.summarizer
+            
+            # Check for batch_summarize method (added by enhanced batch processor)
+            if not hasattr(summarizer, 'batch_summarize'):
+                logger.warning("Batch processing not available, falling back to sequential processing")
+                # Process articles sequentially as fallback
+                for article in articles_to_process:
+                    try:
+                        summary = summarizer.summarize(
+                            text=article['text'],
+                            title=article['title'],
+                            url=article['url'],
+                            auto_select_model=True
+                        )
+                        # Find the matching original article and update it
+                        for orig_article in articles:
+                            if orig_article.get('link') == article['url']:
+                                orig_article['summary'] = summary
+                                break
+                    except Exception as e:
+                        logger.error(f"Error summarizing article {article['url']}: {e}")
+                
+                elapsed_time = time.time() - start_time
+                logger.info(f"Sequential summarization completed in {elapsed_time:.2f}s")
+                return articles
+            
+            # Use batch processing if available
             results = await summarizer.batch_summarize(
                 articles=articles_to_process,
                 max_concurrent=self.max_workers,
@@ -265,7 +294,14 @@ class EnhancedRSSReader:
 
             # Use the enhanced clustering with multi-article capabilities
             logger.info("Clustering similar articles with enhanced multi-article clustering...")
-            clusters = self.reader.clusterer.cluster_with_summaries(all_articles)
+            
+            # Check if the enhanced clustering method exists
+            if hasattr(self.reader.clusterer, 'cluster_with_summaries'):
+                clusters = self.reader.clusterer.cluster_with_summaries(all_articles)
+            else:
+                # Fallback to basic clustering
+                logger.warning("Enhanced clustering not available, using basic clustering")
+                clusters = self.reader.clusterer.cluster_articles(all_articles)
 
             if not clusters:
                 logger.error("No clusters created")
@@ -273,7 +309,7 @@ class EnhancedRSSReader:
 
             logger.info(f"Created {len(clusters)} clusters")
             
-            # Extract topics for each cluster using the LM-based analyzer
+            # Extract topics for each cluster using the LM-based analyzer if available
             if hasattr(self.reader.clusterer, 'analyzer'):
                 for cluster in clusters:
                     try:
