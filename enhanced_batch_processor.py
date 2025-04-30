@@ -638,14 +638,23 @@ def add_enhanced_batch_to_fast_summarizer(fast_summarizer, max_workers=3):
                 # Clean text for complexity estimation
                 text = self.original.clean_text(article['text'])
                 
-                # Select model based on complexity
-                from model_selection import auto_select_model as select_model
-                selected_model = select_model(
-                    text,
-                    self.original.AVAILABLE_MODELS,
-                    self.original.DEFAULT_MODEL,
-                    self.logger
-                )
+                # Import here to avoid circular imports
+                try:
+                    # Dynamic import to prevent circular imports
+                    import importlib
+                    model_selection_module = importlib.import_module('model_selection')
+                    select_model = model_selection_module.auto_select_model
+                    
+                    selected_model = select_model(
+                        text,
+                        self.original.AVAILABLE_MODELS,
+                        self.original.DEFAULT_MODEL,
+                        self.logger
+                    )
+                except ImportError:
+                    # Fallback if import fails
+                    self.logger.warning("Could not import model_selection, using default model")
+                    selected_model = self.original.DEFAULT_MODEL
                 
                 # Create a copy of the article with cleaned text
                 prepared_article = {
