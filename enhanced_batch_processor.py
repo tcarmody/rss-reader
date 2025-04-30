@@ -145,6 +145,10 @@ class WorkerProcess:
                 try:
                     task_data = task_queue.get(timeout=0.5)
                 except queue.Empty:
+                    # If no task, put worker_id back in ready_queue to signal availability
+                    # FIX: Only put back in ready queue if shutdown event is not set
+                    if not shutdown_event.is_set():
+                        ready_queue.put(worker_id)
                     continue
                 
                 # Check if this is a shutdown signal
@@ -200,7 +204,8 @@ class WorkerProcess:
                 
             except Exception as e:
                 logger.error(f"Worker {worker_id} unexpected error: {str(e)}\n{traceback.format_exc()}")
-                # Don't exit, try to recover
+                # FIX: Add worker back to ready queue after an error
+                ready_queue.put(worker_id)
                 
         logger.info(f"Worker {worker_id} shutting down")
 
@@ -356,7 +361,7 @@ class EnhancedBatchProcessor:
         start_time = time.time()
         ready_workers = set()
         
-        while len(ready_workers) < self.max_workers:
+        while len(ready_workers) < self.max_workers and (time.time() - start_time < initialization_timeout):
             # Check for initialization errors
             if not self.result_queue.empty():
                 try:
@@ -375,17 +380,21 @@ class EnhancedBatchProcessor:
             # Check for ready workers
             try:
                 worker_id = self.ready_queue.get(timeout=0.1)
-                ready_workers.add(worker_id)
-                self.logger.info(f"Worker {worker_id} ready ({len(ready_workers)}/{self.max_workers})")
+                # FIX: Put the worker ID back in the ready queue if already seen
+                if worker_id in ready_workers:
+                    self.ready_queue.put(worker_id)
+                else:
+                    ready_workers.add(worker_id)
+                    self.logger.info(f"Worker {worker_id} ready ({len(ready_workers)}/{self.max_workers})")
             except queue.Empty:
-                pass
+                # No worker ready yet, wait a bit
+                time.sleep(0.1)
                 
-            # Check for timeout
-            if time.time() - start_time > initialization_timeout:
-                self.logger.warning(f"Initialization timed out. Only {len(ready_workers)}/{self.max_workers} workers ready.")
-                # Update max_workers to match actual ready workers
-                self.max_workers = len(ready_workers)
-                break
+        # Check for timeout
+        if len(ready_workers) < self.max_workers:
+            self.logger.warning(f"Initialization timed out. Only {len(ready_workers)}/{self.max_workers} workers ready.")
+            # Update max_workers to match actual ready workers
+            self.max_workers = len(ready_workers)
                 
         if self.max_workers == 0:
             self.logger.error("No workers initialized successfully.")
@@ -479,15 +488,27 @@ class EnhancedBatchProcessor:
             workers_started = True
             
         try:
+            # Drain the ready queue before starting (FIX: This is critical!)
+            worker_ids = []
+            while not self.ready_queue.empty():
+                try:
+                    worker_ids.append(self.ready_queue.get_nowait())
+                except queue.Empty:
+                    break
+            
             # Submit all tasks to ready workers
             submitted_tasks = set()
             for task_id, task in tasks.items():
-                # Wait for a worker to be ready
-                try:
-                    worker_id = self.ready_queue.get(timeout=30.0)
-                except queue.Empty:
-                    self.logger.warning("Timed out waiting for a ready worker")
-                    break
+                # Get a worker ID from our saved list
+                if worker_ids:
+                    worker_id = worker_ids.pop(0)
+                else:
+                    # Wait for a worker to be ready
+                    try:
+                        worker_id = self.ready_queue.get(timeout=30.0)
+                    except queue.Empty:
+                        self.logger.warning("Timed out waiting for a ready worker")
+                        break
                     
                 # Submit the task to the task queue
                 self.task_queue.put(pickle.dumps(task))
@@ -499,6 +520,7 @@ class EnhancedBatchProcessor:
             remaining_timeout = timeout
             start_wait_time = time.time()
             
+            # FIX: Use submitted_tasks to know how many tasks were actually submitted
             while len(results) < len(submitted_tasks):
                 # Calculate remaining timeout if specified
                 if timeout is not None:
