@@ -5,6 +5,10 @@ Enhanced RSS reader with improved clustering and summarization.
 This script integrates the multi-article clustering system for better content organization.
 """
 
+# Apply batch processor fixes
+import apply_batch_fix
+apply_batch_fix.apply()
+
 import os
 import sys
 import logging
