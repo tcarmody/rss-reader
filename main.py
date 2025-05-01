@@ -9,6 +9,13 @@ This script integrates the multi-article clustering system for better content or
 import simple_batch_fix
 simple_batch_fix.apply()
 
+# Check if optimized modules are available and apply optimization patch if present
+try:
+    import optimized_integration
+    has_optimized_clustering = True
+except ImportError:
+    has_optimized_clustering = False
+
 import os
 import sys
 import logging
@@ -108,23 +115,33 @@ def setup_clustering_engine(summarizer=None):
     """
     logger.info("Setting up enhanced clustering engine...")
     
+    # Check if we should use optimized clustering
+    use_optimized = os.environ.get('USE_OPTIMIZED_CLUSTERING', 'false').lower() == 'true'
+    
     try:
-        # Import modules when needed, not at the top level
-        from enhanced_clustering import create_enhanced_clusterer
-        
-        # Create the enhanced clusterer that uses LM-based multi-article clustering
-        clusterer = create_enhanced_clusterer(summarizer=summarizer)
-        
-        # Try to create a cluster analyzer for advanced operations
-        try:
-            from lm_cluster_analyzer import create_cluster_analyzer
-            analyzer = create_cluster_analyzer(summarizer=summarizer)
-            # Store the analyzer in the clusterer for convenience
-            clusterer.analyzer = analyzer
-        except ImportError:
-            logger.warning("LM cluster analyzer not available, skipping advanced cluster analysis")
-        
-        logger.info("Clustering engine successfully configured with multi-article capabilities")
+        if use_optimized and has_optimized_clustering:
+            # Use optimized clustering if available and enabled
+            from optimized_enhanced_clustering import create_optimized_clusterer
+            clusterer = create_optimized_clusterer(summarizer=summarizer)
+            logger.info("Using optimized clustering engine for better performance")
+        else:
+            # Use standard enhanced clustering
+            # Import modules when needed, not at the top level
+            from enhanced_clustering import create_enhanced_clusterer
+            
+            # Create the enhanced clusterer that uses LM-based multi-article clustering
+            clusterer = create_enhanced_clusterer(summarizer=summarizer)
+            
+            # Try to create a cluster analyzer for advanced operations
+            try:
+                from lm_cluster_analyzer import create_cluster_analyzer
+                analyzer = create_cluster_analyzer(summarizer=summarizer)
+                # Store the analyzer in the clusterer for convenience
+                clusterer.analyzer = analyzer
+            except ImportError:
+                logger.warning("LM cluster analyzer not available, skipping advanced cluster analysis")
+            
+            logger.info("Clustering engine successfully configured with multi-article capabilities")
         
         return clusterer
         
@@ -148,7 +165,7 @@ class EnhancedRSSReader:
         Initialize the enhanced RSS reader
         
         Args:
-            feeds: List of feed URLs to process (or None to use default)
+            feeds: List of RSS feed URLs to process (optional)
             batch_size: Number of feeds to process in a batch
             batch_delay: Delay between batches in seconds
             max_workers: Maximum number of worker processes for batch summarization
@@ -166,6 +183,9 @@ class EnhancedRSSReader:
         
         # Replace the standard clusterer with our enhanced version
         self.reader.clusterer = setup_clustering_engine(summarizer=self.reader.summarizer)
+        
+        # Store the last processed clusters for web server access
+        self.last_processed_clusters = []
         
         # Log initialization
         logger.info(f"Enhanced RSS Reader initialized with {self.max_workers} summarization workers and multi-article clustering")
@@ -376,6 +396,7 @@ class EnhancedRSSReader:
                                 from utils.archive import fetch_article_content
                                 logger.info(f"Fetching full content for article: {article['title']}")
                                 full_content = fetch_article_content(article['link'], self.reader.session)
+                                
                                 if full_content and len(full_content) > 200:
                                     article['content'] = full_content
                                     logger.info(f"Successfully fetched full content for {article['title']}")
@@ -458,6 +479,7 @@ class EnhancedRSSReader:
 
             # Store the processed clusters for web server access
             self.reader.last_processed_clusters = processed_clusters
+            self.last_processed_clusters = processed_clusters
             
             # Generate HTML output using the original method
             output_file = self.reader.generate_html_output(processed_clusters)
@@ -492,6 +514,8 @@ def main():
     parser.add_argument("--batch-delay", type=int, default=15, help="Delay between batches in seconds")
     parser.add_argument("--workers", type=int, default=3, help="Number of worker processes for summarization")
     parser.add_argument("--disable-multi-article", action="store_true", help="Disable multi-article clustering")
+    # Add new argument for optimized clustering
+    parser.add_argument("--optimized", action="store_true", help="Use optimized clustering")
     
     args = parser.parse_args()
     
@@ -503,24 +527,43 @@ def main():
         os.environ['ENABLE_MULTI_ARTICLE_CLUSTERING'] = 'false'
         logger.info("Multi-article clustering disabled by command line argument")
     
+    # Apply optimized clustering setting to environment if specified
+    if args.optimized:
+        os.environ['USE_OPTIMIZED_CLUSTERING'] = 'true'
+        logger.info("Optimized clustering enabled by command line argument")
+    
     try:
         # Print welcome message
         print("\n===== Enhanced RSS Reader with Multi-Article Clustering =====")
         print(f"Starting at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"Using {args.workers} worker processes for summarization")
+        if args.optimized and has_optimized_clustering:
+            print("💨 Using optimized clustering for better performance")
         print("========================================================\n")
         
-        # Initialize and run enhanced RSS reader
-        rss_reader = EnhancedRSSReader(
-            feeds=args.feeds,  # Will use default if None
-            batch_size=args.batch_size,
-            batch_delay=args.batch_delay,
-            max_workers=args.workers
-        )
-        
-        # Run the async process_feeds method
-        import asyncio
-        output_file = asyncio.run(rss_reader.process_feeds())
+        # Use optimized reader if available and requested
+        if args.optimized and has_optimized_clustering and optimized_integration:
+            # Apply optimization patches
+            optimized_integration.apply_optimization_patch()
+            
+            # Run the optimized reader
+            output_file = asyncio.run(optimized_integration.run_optimized_reader(args.feeds))
+        else:
+            if args.optimized and not has_optimized_clustering:
+                logger.warning("Optimized clustering requested but not available. Using standard clustering.")
+                print("⚠️ Optimized clustering requested but not available. Using standard clustering.")
+                
+            # Initialize and run standard enhanced RSS reader
+            rss_reader = EnhancedRSSReader(
+                feeds=args.feeds,  # Will use default if None
+                batch_size=args.batch_size,
+                batch_delay=args.batch_delay,
+                max_workers=args.workers
+            )
+            
+            # Run the async process_feeds method
+            import asyncio
+            output_file = asyncio.run(rss_reader.process_feeds())
 
         if output_file:
             logger.info(f"✅ Successfully generated RSS summary: {output_file}")
