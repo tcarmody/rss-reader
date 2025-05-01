@@ -525,3 +525,5 @@
 2025-05-01 11:05:51 | generate_html_output | Time: 0.02s | Memory: 2.94MB
 2025-05-01 12:06:16 | _process_feed | Time: 35.48s | Memory: -1.33MB
 2025-05-01 12:16:26 | generate_html_output | Time: 0.02s | Memory: 6.31MB
+2025-05-01 13:58:57 | _process_feed | Time: 344.01s | Memory: 81.36MB
+2025-05-01 14:01:56 | _process_feed | Time: 523.17s | Memory: 74.08MB
