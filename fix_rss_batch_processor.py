@@ -18,6 +18,7 @@ import time
 import queue
 import multiprocessing
 import traceback
+import signal
 from datetime import datetime
 from pathlib import Path
 
@@ -39,7 +40,7 @@ def patch_enhanced_batch_processor():
     """
     try:
         # Import the original module
-        from enhanced_batch_processor import EnhancedBatchProcessor, WorkerProcess, ProcessingResult
+        from enhanced_batch_processor import EnhancedBatchProcessor, WorkerProcess, ProcessingTask, ProcessingResult
         
         # Store the original methods
         original_process_batch_sync = EnhancedBatchProcessor.process_batch_sync
