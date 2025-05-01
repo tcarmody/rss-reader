@@ -685,11 +685,6 @@ def apply_all_fixes():
         logger.error("Failed to apply fixes")
         print("\n❌ Failed to apply batch processor fix")
         return 1
-
-if __name__ == "__main__":
-    sys.exit(main())
- patch EnhancedBatchProcessor")
-        return False
     
     # Then patch the FastArticleSummarizer
     if not patch_fast_summarizer():
@@ -697,6 +692,9 @@ if __name__ == "__main__":
     
     logger.info("All fixes applied successfully")
     return True
+
+if __name__ == "__main__":
+    sys.exit(main())
 
 def create_runner():
     """Create a runner script that applies the fixes when the application starts."""
@@ -781,4 +779,7 @@ def main():
         print("```\n")
         return 0
     else:
-        logger.error("Failed to
+        logger.error("Failed to apply fixes")
+        print("\n❌ Failed to apply batch processor fix")
+        return 1
+        
