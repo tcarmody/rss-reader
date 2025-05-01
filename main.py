@@ -5,9 +5,9 @@ Enhanced RSS reader with improved clustering and summarization.
 This script integrates the multi-article clustering system for better content organization.
 """
 
-# Apply batch processor fixes
-import apply_batch_fix
-apply_batch_fix.apply()
+# Apply simple batch processor fix
+import simple_batch_fix
+simple_batch_fix.apply()
 
 import os
 import sys
@@ -71,7 +71,9 @@ def setup_summarization_engine():
         cache_size = int(os.environ.get('CACHE_SIZE', '256'))
         cache_dir = os.environ.get('CACHE_DIR', './summary_cache')
         ttl_days = int(os.environ.get('CACHE_TTL_DAYS', '30'))
-        max_workers = int(os.environ.get('MAX_BATCH_WORKERS', '3'))
+        
+        # Ensure at least 1 worker
+        max_workers = max(1, int(os.environ.get('MAX_BATCH_WORKERS', '3')))
         
         # Create fast summarizer with enhanced batch processing
         fast_summarizer = create_fast_summarizer(
@@ -153,7 +155,7 @@ class EnhancedRSSReader:
         """
         self.batch_size = batch_size
         self.batch_delay = batch_delay
-        self.max_workers = max_workers
+        self.max_workers = max(1, max_workers)  # Ensure at least 1 worker
         
         # Set up the original RSS reader
         from reader import RSSReader
@@ -166,7 +168,7 @@ class EnhancedRSSReader:
         self.reader.clusterer = setup_clustering_engine(summarizer=self.reader.summarizer)
         
         # Log initialization
-        logger.info(f"Enhanced RSS Reader initialized with {max_workers} summarization workers and multi-article clustering")
+        logger.info(f"Enhanced RSS Reader initialized with {self.max_workers} summarization workers and multi-article clustering")
         
     async def batch_summarize_articles(self, articles):
         """
@@ -189,10 +191,14 @@ class EnhancedRSSReader:
                 continue
                 
             # Prepare the article for processing
+            # Include both content and text fields for compatibility
+            content = article.get('content', '')
             articles_to_process.append({
-                'text': article.get('content', ''),
+                'text': content,
+                'content': content,
                 'title': article.get('title', 'No Title'),
-                'url': article.get('link', '#')
+                'url': article.get('link', '#'),
+                'link': article.get('link', '#')
             })
         
         # Skip if no articles need summarization
@@ -207,47 +213,41 @@ class EnhancedRSSReader:
             summarizer = self.reader.summarizer
             
             # Check for batch_summarize method (added by enhanced batch processor)
-            if not hasattr(summarizer, 'batch_summarize'):
-                logger.warning("Batch processing not available, falling back to sequential processing")
+            if hasattr(summarizer, 'batch_summarize'):
+                # Use batch processing 
+                try:
+                    results = await summarizer.batch_summarize(
+                        articles=articles_to_process,
+                        max_concurrent=self.max_workers,
+                        auto_select_model=True,
+                        temperature=0.3
+                    )
+                    
+                    # Match results back to original articles
+                    url_to_summary = {}
+                    for r in results:
+                        if 'original' in r and 'summary' in r:
+                            url = r['original'].get('url', r['original'].get('link', '#'))
+                            url_to_summary[url] = r['summary']
+                    
+                    # Update articles with summaries
+                    for article in articles:
+                        url = article.get('link', '#')
+                        if url in url_to_summary and not article.get('summary'):
+                            article['summary'] = url_to_summary[url]
+                    
+                    elapsed_time = time.time() - start_time
+                    logger.info(f"Batch summarization completed in {elapsed_time:.2f}s")
+                except Exception as e:
+                    logger.error(f"Error in batch processing: {e}")
+                    logger.error(traceback.format_exc())
+                    # Fall back to sequential processing if batch fails
+                    logger.warning("Falling back to sequential processing")
+                    await self._sequential_summarize(articles_to_process, articles)
+            else:
                 # Process articles sequentially as fallback
-                for article in articles_to_process:
-                    try:
-                        summary = summarizer.summarize(
-                            text=article['text'],
-                            title=article['title'],
-                            url=article['url'],
-                            auto_select_model=True
-                        )
-                        # Find the matching original article and update it
-                        for orig_article in articles:
-                            if orig_article.get('link') == article['url']:
-                                orig_article['summary'] = summary
-                                break
-                    except Exception as e:
-                        logger.error(f"Error summarizing article {article['url']}: {e}")
-                
-                elapsed_time = time.time() - start_time
-                logger.info(f"Sequential summarization completed in {elapsed_time:.2f}s")
-                return articles
-            
-            # Use batch processing if available
-            results = await summarizer.batch_summarize(
-                articles=articles_to_process,
-                max_concurrent=self.max_workers,
-                auto_select_model=True,
-                temperature=0.3
-            )
-            
-            # Match results back to original articles
-            url_to_summary = {r['original']['url']: r['summary'] for r in results if 'summary' in r}
-            
-            # Update articles with summaries
-            for article in articles:
-                if article.get('link') in url_to_summary and not article.get('summary'):
-                    article['summary'] = url_to_summary[article['link']]
-            
-            elapsed_time = time.time() - start_time
-            logger.info(f"Batch summarization completed in {elapsed_time:.2f}s")
+                logger.warning("Batch processing not available, using sequential processing")
+                await self._sequential_summarize(articles_to_process, articles)
             
             return articles
             
@@ -255,6 +255,37 @@ class EnhancedRSSReader:
             logger.error(f"Error in batch summarization: {e}")
             logger.error(traceback.format_exc())
             return articles
+    
+    async def _sequential_summarize(self, articles_to_process, original_articles):
+        """Helper method for sequential processing if batch fails."""
+        summarizer = self.reader.summarizer
+        
+        # Process articles one by one
+        for article in articles_to_process:
+            try:
+                # Try the summarize method first
+                if hasattr(summarizer, 'summarize'):
+                    summary = summarizer.summarize(
+                        text=article['text'],
+                        title=article['title'],
+                        url=article['url'],
+                        auto_select_model=True
+                    )
+                # Fall back to summarize_article if summarize isn't available
+                else:
+                    summary = summarizer.summarize_article(
+                        text=article['text'],
+                        title=article['title'],
+                        url=article['url']
+                    )
+                
+                # Find the matching original article and update it
+                for orig_article in original_articles:
+                    if orig_article.get('link') == article['url'] or orig_article.get('link') == article['link']:
+                        orig_article['summary'] = summary
+                        break
+            except Exception as e:
+                logger.error(f"Error summarizing article {article['url']}: {e}")
     
     async def process_feeds(self):
         """
@@ -463,6 +494,9 @@ def main():
     parser.add_argument("--disable-multi-article", action="store_true", help="Disable multi-article clustering")
     
     args = parser.parse_args()
+    
+    # Ensure at least 1 worker
+    args.workers = max(1, args.workers)
     
     # Apply multi-article clustering setting to environment if specified
     if args.disable_multi_article:
