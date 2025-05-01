@@ -2,11 +2,9 @@
 """
 Integration script to fix the batch processing issue in the RSS reader application.
 
-This script specifically addresses the timeout issue that occurs when processing feeds:
-2025-05-01 11:05:21,583 - EnhancedBatchProcessor - INFO - 3 workers initialized and ready
-2025-05-01 11:05:21,584 - EnhancedBatchProcessor - INFO - Processing batch of 1 articles
-2025-05-01 11:05:51,585 - EnhancedBatchProcessor - WARNING - Timed out waiting for a ready worker
-2025-05-01 11:05:51,585 - EnhancedBatchProcessor - INFO - Batch processing completed: 0/0 articles processed in 30.00s
+This script specifically addresses two issues:
+1. The timeout issue with workers not being recognized
+2. The issue with 0 workers being initialized
 """
 
 import os
@@ -45,6 +43,121 @@ def patch_enhanced_batch_processor():
         # Store the original methods
         original_process_batch_sync = EnhancedBatchProcessor.process_batch_sync
         original_worker_main = WorkerProcess._worker_main
+        original_init = EnhancedBatchProcessor.__init__
+        original_start_workers = EnhancedBatchProcessor.start_workers
+        
+        # Define a patched __init__ method to ensure min_workers is at least 1
+        def patched_init(self, max_workers=3, log_level=logging.INFO):
+            """
+            Patched initialization to ensure at least 1 worker is created.
+            """
+            # Ensure max_workers is at least 1
+            max_workers = max(1, max_workers)
+            logger.info(f"Initializing EnhancedBatchProcessor with {max_workers} workers (patched)")
+            
+            # Call original init with ensured min workers
+            original_init(self, max_workers=max_workers, log_level=log_level)
+        
+        # Define a patched start_workers method
+        def patched_start_workers(self):
+            """
+            Patched start_workers to ensure at least 1 worker is created
+            and to improve worker initialization.
+            """
+            # Ensure max_workers is at least 1
+            self.max_workers = max(1, self.max_workers)
+            self.logger.info(f"Starting {self.max_workers} worker processes (patched)")
+            
+            # Create workers
+            for i in range(self.max_workers):
+                worker = WorkerProcess(
+                    worker_id=i,
+                    ready_queue=self.ready_queue,
+                    task_queue=self.task_queue,
+                    result_queue=self.result_queue,
+                    log_queue=self.log_queue,
+                    shutdown_event=self.shutdown_event
+                )
+                worker.start()
+                self.workers.append(worker)
+                
+            # Wait for all workers to initialize
+            self.logger.info("Waiting for workers to initialize...")
+            initialization_timeout = 30.0  # seconds
+            start_time = time.time()
+            ready_workers = set()
+            
+            while len(ready_workers) < self.max_workers and (time.time() - start_time < initialization_timeout):
+                # Check for initialization errors
+                if not self.result_queue.empty():
+                    try:
+                        result = pickle.loads(self.result_queue.get_nowait())
+                        if isinstance(result, dict) and result.get('type') == 'init_error':
+                            worker_id = result.get('worker_id')
+                            error = result.get('error')
+                            tb = result.get('traceback')
+                            self.logger.error(f"Worker {worker_id} failed to initialize: {error}\n{tb}")
+                            # Remove the failed worker
+                            self.workers = [w for w in self.workers if w.worker_id != worker_id]
+                            self.max_workers -= 1
+                    except Exception as e:
+                        self.logger.error(f"Error checking for worker initialization: {e}")
+                
+                # Check for ready workers
+                try:
+                    worker_id = self.ready_queue.get(timeout=0.5)
+                    # FIX: Put the worker ID back in the ready queue if already seen
+                    if worker_id in ready_workers:
+                        self.ready_queue.put(worker_id)
+                    else:
+                        ready_workers.add(worker_id)
+                        self.logger.info(f"Worker {worker_id} ready ({len(ready_workers)}/{self.max_workers})")
+                except queue.Empty:
+                    # No worker ready yet, wait a bit
+                    time.sleep(0.1)
+                    
+            # Check for timeout
+            if len(ready_workers) < self.max_workers:
+                self.logger.warning(f"Initialization timed out. Only {len(ready_workers)}/{self.max_workers} workers ready.")
+                # Update max_workers to match actual ready workers
+                self.max_workers = len(ready_workers)
+                    
+            if self.max_workers == 0:
+                self.logger.error("No workers initialized successfully. Creating a single fallback worker...")
+                
+                # Create a single fallback worker with different settings
+                try:
+                    fallback_worker = WorkerProcess(
+                        worker_id=999,  # Use a special ID for the fallback worker
+                        ready_queue=self.ready_queue,
+                        task_queue=self.task_queue,
+                        result_queue=self.result_queue,
+                        log_queue=self.log_queue,
+                        shutdown_event=self.shutdown_event
+                    )
+                    fallback_worker.start()
+                    self.workers.append(fallback_worker)
+                    self.max_workers = 1
+                    
+                    # Wait for the fallback worker to initialize
+                    self.logger.info("Waiting for fallback worker to initialize...")
+                    try:
+                        worker_id = self.ready_queue.get(timeout=10.0)
+                        self.logger.info(f"Fallback worker {worker_id} ready")
+                        # Put the worker ID back in the ready queue
+                        self.ready_queue.put(worker_id)
+                        return 1
+                    except queue.Empty:
+                        self.logger.error("Fallback worker failed to initialize")
+                        from enhanced_batch_processor import ProcessInitError
+                        raise ProcessInitError("All worker processes failed to initialize including fallback")
+                except Exception as e:
+                    self.logger.error(f"Error creating fallback worker: {e}")
+                    from enhanced_batch_processor import ProcessInitError
+                    raise ProcessInitError("All worker processes failed to initialize")
+            
+            self.logger.info(f"{self.max_workers} workers initialized and ready")
+            return self.max_workers
         
         # Define the fixed version of process_batch_sync
         def fixed_process_batch_sync(self, articles, model=None, temperature=0.3, timeout=None):
@@ -91,8 +204,19 @@ def patch_enhanced_batch_processor():
             # Start the workers if not already started
             workers_started = False
             if not self.workers:
-                self.start_workers()
-                workers_started = True
+                try:
+                    self.start_workers()
+                    workers_started = True
+                except Exception as e:
+                    self.logger.error(f"Failed to start workers: {e}")
+                    return [{
+                        'original': article,
+                        'error': f"Failed to start worker processes: {str(e)}",
+                        'summary': {
+                            'headline': article.get('title', 'Error'),
+                            'summary': f"Summary generation failed: {str(e)}. Please try again later."
+                        }
+                    } for article in articles]
                 
             try:
                 # FIX: Drain the ready queue to ensure we have all available workers
@@ -121,6 +245,12 @@ def patch_enhanced_batch_processor():
                 
                 # Log how many workers we found
                 self.logger.info(f"Found {len(worker_ids)} ready workers out of {self.max_workers}")
+                
+                # If still no workers, create a special fallback worker
+                if not worker_ids and self.max_workers > 0:
+                    self.logger.warning("No workers available from ready queue, creating fallback signal")
+                    # Create a fake worker ID signal
+                    worker_ids.append(0)  # Use ID 0 as a fallback
                 
                 # Submit tasks to workers
                 submitted_tasks = set()
@@ -384,6 +514,8 @@ def patch_enhanced_batch_processor():
         
         # Apply the patches
         logger.info("Applying patches to EnhancedBatchProcessor...")
+        EnhancedBatchProcessor.__init__ = patched_init
+        EnhancedBatchProcessor.start_workers = patched_start_workers
         EnhancedBatchProcessor.process_batch_sync = fixed_process_batch_sync
         WorkerProcess._worker_main = fixed_worker_main
         
@@ -430,6 +562,9 @@ def patch_fast_summarizer():
             if not hasattr(self, '_fixed_batch_processor_applied'):
                 patch_enhanced_batch_processor()
                 self._fixed_batch_processor_applied = True
+            
+            # Ensure we have at least one worker
+            max_concurrent = max(1, max_concurrent)
             
             # Prepare articles for processing
             articles_to_process = []
@@ -492,6 +627,25 @@ def patch_fast_summarizer():
             except Exception as e:
                 self.logger.error(f"Error in fixed batch_summarize: {e}")
                 traceback.print_exc()
+                
+                # Fallback to sequential processing if batch fails
+                self.logger.info("Falling back to sequential processing")
+                for article in articles_to_process:
+                    try:
+                        summary = self.summarize(
+                            text=article['text'],
+                            title=article['title'],
+                            url=article['url'],
+                            auto_select_model=auto_select_model
+                        )
+                        # Find the matching original article and update it
+                        for orig_article in articles:
+                            if orig_article.get('link') == article['url'] or orig_article.get('url') == article['url']:
+                                orig_article['summary'] = summary
+                                break
+                    except Exception as e:
+                        self.logger.error(f"Error summarizing article: {e}")
+                
                 return articles
         
         # Apply the patch to all existing instances
@@ -528,7 +682,13 @@ def apply_all_fixes():
     
     # First patch the EnhancedBatchProcessor
     if not patch_enhanced_batch_processor():
-        logger.error("Failed to patch EnhancedBatchProcessor")
+        logger.error("Failed to apply fixes")
+        print("\n❌ Failed to apply batch processor fix")
+        return 1
+
+if __name__ == "__main__":
+    sys.exit(main())
+ patch EnhancedBatchProcessor")
         return False
     
     # Then patch the FastArticleSummarizer
@@ -557,6 +717,7 @@ apply_batch_fix.apply()
 import sys
 import logging
 import importlib.util
+import traceback
 
 def apply():
     """Apply the batch processor fix."""
@@ -583,7 +744,6 @@ def apply():
             return False
     except Exception as e:
         print(f"Error applying batch processor fix: {e}")
-        import traceback
         traceback.print_exc()
         return False
 
@@ -621,9 +781,4 @@ def main():
         print("```\n")
         return 0
     else:
-        logger.error("Failed to apply fixes")
-        print("\n❌ Failed to apply batch processor fix")
-        return 1
-
-if __name__ == "__main__":
-    sys.exit(main())
+        logger.error("Failed to
