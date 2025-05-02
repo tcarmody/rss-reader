@@ -1,4 +1,5 @@
-"""Article summarization with Anthropic Claude API with model selection and streaming."""
+"""Article summarization with Anthropic Claude API with model selection and streaming.
+(Re-tracked in git)"""
 
 import re
 import html
