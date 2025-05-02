@@ -644,7 +644,9 @@ def apply():
                     
                 def add_enhanced_batch_to_fast_summarizer(self, fast_summarizer, max_workers=3):
                     """Add the batch method to a fast summarizer instance."""
-                    return apply_fix_to_fast_summarizer(fast_summarizer, max_workers)
+                    # Directly apply the fix instead of returning it
+                    apply_fix_to_fast_summarizer(fast_summarizer, max_workers)
+                    return fast_summarizer
             
             # Replace the enhanced_batch_processor module
             if 'enhanced_batch_processor' in sys.modules:
