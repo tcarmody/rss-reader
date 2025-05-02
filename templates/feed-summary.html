@@ -203,6 +203,16 @@
       border-radius: 0.25rem;
       border: 1px solid var(--neutral-300);
     }
+    
+    .entity-tag {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: var(--primary);
+      background-color: rgba(59, 130, 246, 0.1);
+      padding: 0.15rem 0.4rem;
+      border-radius: 0.25rem;
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
 
     .article-summary {
       padding: 1.5rem;
@@ -433,6 +443,19 @@
       margin-top: 0.25rem;
     }
 
+    .model-info {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background-color: var(--neutral-100);
+      border-radius: var(--radius);
+      font-size: 0.75rem;
+      color: var(--neutral-600);
+    }
+
+    .model-info strong {
+      color: var(--primary);
+    }
+
     /* Dark mode support */
     @media (prefers-color-scheme: dark) {
       :root {
@@ -502,6 +525,35 @@
 
     .mt-6 {
       margin-top: 1.5rem;
+    }
+
+    /* Status badge styles */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-weight: 500;
+    }
+
+    .status-badge.success {
+      background-color: rgba(22, 163, 74, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(22, 163, 74, 0.2);
+    }
+
+    .status-badge.info {
+      background-color: rgba(59, 130, 246, 0.1);
+      color: var(--primary);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .status-badge.warning {
+      background-color: rgba(245, 158, 11, 0.1);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.2);
     }
 
     @media (max-width: 768px) {
@@ -611,6 +663,18 @@
               <button type="submit" class="button" style="flex: 1;">Save</button>
               <button type="submit" class="button" formaction="/reset_clustering_settings" style="flex: 1;">Reset</button>
             </div>
+            
+            <!-- Added model info section -->
+            <div class="model-info">
+              <div>
+                <strong>Fast Summarization:</strong> 
+                {{ 'Enabled' if clustering_settings.auto_select_model|default(true) else 'Disabled' }}
+              </div>
+              <div>
+                <strong>Auto-Select Models:</strong> 
+                {{ 'Enabled' if clustering_settings.auto_select_model|default(true) else 'Disabled' }}
+              </div>
+            </div>
           </form>
         </div>
       </div>
@@ -648,7 +712,7 @@
   {% for cluster in clusters %}
   <div class="cluster">
     <div class="cluster-header">
-      {% if cluster[0].summary.headline %}
+      {% if cluster[0].summary and cluster[0].summary.headline %}
         <h2 class="cluster-title">{{ cluster[0].summary.headline }}</h2>
       {% else %}
         <h2 class="cluster-title">{{ cluster[0].title }}</h2>
@@ -656,7 +720,7 @@
       <span class="cluster-info">{{ cluster|length }} related articles</span>
     </div>
 
-    {% if cluster[0].summary.summary %}
+    {% if cluster[0].summary and cluster[0].summary.summary %}
       <div class="article-summary">
         {{ cluster[0].summary.summary|replace('\n\n', '<br><br>')|replace('\n', '<br>')|safe }}
         
@@ -666,6 +730,22 @@
             {% for topic in cluster[0].cluster_topics %}
               <span class="topic-tag">{{ topic }}</span>
             {% endfor %}
+          </div>
+        {% endif %}
+        
+        <!-- Display Entities if available -->
+        {% if cluster[0].cluster_entities %}
+          <div class="cluster-topics" style="margin-top: 0.5rem;">
+            {% for entity in cluster[0].cluster_entities %}
+              <span class="entity-tag">{{ entity }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+        
+        <!-- Display model info if available -->
+        {% if cluster[0].model_used %}
+          <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--neutral-500);">
+            Summarized with: {{ cluster[0].model_used }}
           </div>
         {% endif %}
       </div>
@@ -680,6 +760,9 @@
           </h3>
           <div class="article-meta">
             Published: {{ article.published }}
+            {% if article.cluster_size and article.cluster_size > 1 %}
+              <span style="margin-left: 0.5rem;">Part of {{ article.cluster_size }}-article cluster</span>
+            {% endif %}
           </div>
         </div>
       {% endfor %}
@@ -713,6 +796,28 @@
       settingsContainer.classList.remove('active');
     }
   });
+  
+  // Helper function to check if articles have proper summaries
+  function checkSummaries() {
+    const articles = document.querySelectorAll('.article-summary');
+    let issueFound = false;
+    
+    articles.forEach(article => {
+      if (article.textContent.trim().length < 20) {
+        article.style.backgroundColor = 'rgba(220, 38, 38, 0.1)';
+        article.style.color = 'var(--danger)';
+        article.textContent = 'Summary unavailable. Please refresh to try again.';
+        issueFound = true;
+      }
+    });
+    
+    if (issueFound) {
+      console.warn('Some article summaries are missing or incomplete');
+    }
+  }
+  
+  // Run the check when the page loads
+  checkSummaries();
 </script>
 </body>
 </html>

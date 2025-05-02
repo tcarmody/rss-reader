@@ -1,7 +1,13 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Web server for RSS Reader that displays summarized articles in a browser.
-Enhanced with controls for clustering settings.
+Enhanced with controls for clustering settings and batch processing improvements.
 """
+
+# Apply streamlined batch processing fix
+import batch_processing
+batch_processing.apply()
 
 import os
 import logging
@@ -10,49 +16,18 @@ from datetime import datetime
 from urllib.parse import urlparse
 from flask import Flask, render_template, redirect, url_for, request, jsonify, session
 
-import sys
-print(f"Python version: {sys.version}")
-print(f"Python executable: {sys.executable}")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
+# Check if optimized modules are available and apply optimization patch if present
 try:
-    import flask
-    print(f"Flask imported successfully, version: {flask.__version__}")
-except ImportError as e:
-    print(f"Failed to import flask: {e}")
-    import traceback
-    traceback.print_exc()
-
-try:
-    from reader import RSSReader
-    print("Successfully imported RSSReader")
-except ImportError as e:
-    print(f"Failed to import RSSReader: {e}")
-    import traceback
-    traceback.print_exc()
-
-try:
-    from utils.http import create_http_session
-    print("Successfully imported create_http_session")
-except ImportError as e:
-    print(f"Failed to import create_http_session: {e}")
-    
-try:
-    from utils.archive import fetch_article_content
-    print("Successfully imported fetch_article_content")
-except ImportError as e:
-    print(f"Failed to import fetch_article_content: {e}")
-    
-try:
-    from summarizer import ArticleSummarizer
-    print("Successfully imported ArticleSummarizer")
-except ImportError as e:
-    print(f"Failed to import ArticleSummarizer: {e}")
-    
-try:
-    from lm_cluster_analyzer import create_cluster_analyzer
-    print("Successfully imported create_cluster_analyzer")
-except ImportError as e:
-    print(f"Failed to import create_cluster_analyzer: {e}")
+    import optimized_integration
+    has_optimized_clustering = True
+except ImportError:
+    has_optimized_clustering = False
 
 # Import in a try/except block to provide better error messages
 try:
@@ -60,17 +35,20 @@ try:
     from utils.http import create_http_session
     from utils.archive import fetch_article_content
     from summarizer import ArticleSummarizer
-    from lm_cluster_analyzer import create_cluster_analyzer
-except ImportError:
-    print("Error: Could not import required modules. Make sure all files are in the correct directory.")
+    from fast_summarizer import create_fast_summarizer
+    
+    # Import enhanced clustering components
+    try:
+        from enhanced_clustering import create_enhanced_clusterer
+        from lm_cluster_analyzer import create_cluster_analyzer
+        has_enhanced_clustering = True
+    except ImportError:
+        has_enhanced_clustering = False
+        logging.warning("Enhanced clustering modules not available. Will use basic clustering.")
+except ImportError as e:
+    print(f"Error: Could not import required modules: {e}")
+    print("Make sure all files are in the correct directory.")
     sys.exit(1)
-
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 
 # Initialize Flask app
 app = Flask(__name__, 
@@ -95,6 +73,106 @@ DEFAULT_CLUSTERING_SETTINGS = {
     'max_articles_per_batch': 5,
     'use_enhanced_clustering': True
 }
+
+def setup_summarization_engine(max_workers=3):
+    """
+    Set up the enhanced summarization engine with improved batch processing.
+    
+    Args:
+        max_workers: Number of worker processes
+        
+    Returns:
+        FastArticleSummarizer: Configured with enhanced batch processing
+    """
+    logging.info("Setting up enhanced summarization engine...")
+    
+    try:
+        # Create the original summarizer
+        original_summarizer = ArticleSummarizer()
+        
+        # Configure environment variables for rate limiting and process management
+        rpm_limit = int(os.environ.get('API_RPM_LIMIT', '50'))
+        cache_size = int(os.environ.get('CACHE_SIZE', '256'))
+        cache_dir = os.environ.get('CACHE_DIR', './summary_cache')
+        ttl_days = int(os.environ.get('CACHE_TTL_DAYS', '30'))
+        
+        # Ensure at least 1 worker
+        max_workers = max(1, max_workers)
+        
+        # Create fast summarizer with enhanced batch processing
+        fast_summarizer = create_fast_summarizer(
+            original_summarizer=original_summarizer,
+            rpm_limit=rpm_limit,
+            cache_size=cache_size,
+            cache_dir=cache_dir,
+            ttl_days=ttl_days,
+            max_batch_workers=max_workers
+        )
+        
+        logging.info(f"Summarization engine successfully configured with {max_workers} workers")
+        return fast_summarizer
+        
+    except Exception as e:
+        logging.error(f"Error setting up summarization engine: {e}")
+        # Fall back to original summarizer
+        return ArticleSummarizer()
+
+def setup_clustering_engine(summarizer=None):
+    """
+    Set up the enhanced clustering engine with multi-article comparison capabilities.
+    
+    Args:
+        summarizer: The summarizer instance that provides access to LLM
+        
+    Returns:
+        EnhancedArticleClusterer or ArticleClusterer: Configured clustering engine
+    """
+    logging.info("Setting up enhanced clustering engine...")
+    
+    # Get clustering settings
+    clustering_settings = get_clustering_settings()
+    
+    # Check if we should use optimized clustering
+    use_optimized = os.environ.get('USE_OPTIMIZED_CLUSTERING', 'false').lower() == 'true'
+    use_enhanced = clustering_settings.get('use_enhanced_clustering', True)
+    
+    try:
+        if use_optimized and has_optimized_clustering:
+            # Use optimized clustering if available and enabled
+            from optimized_integration import create_optimized_reader
+            clusterer = optimized_integration.create_optimized_clusterer(summarizer=summarizer)
+            logging.info("Using optimized clustering engine for better performance")
+        elif use_enhanced and has_enhanced_clustering:
+            # Use standard enhanced clustering
+            from enhanced_clustering import create_enhanced_clusterer
+            
+            # Create the enhanced clusterer that uses LM-based multi-article clustering
+            clusterer = create_enhanced_clusterer(summarizer=summarizer)
+            
+            # Try to create a cluster analyzer for advanced operations
+            try:
+                from lm_cluster_analyzer import create_cluster_analyzer
+                analyzer = create_cluster_analyzer(summarizer=summarizer)
+                # Store the analyzer in the clusterer for convenience
+                clusterer.analyzer = analyzer
+                logging.info("Clustering engine successfully configured with multi-article capabilities")
+            except ImportError:
+                logging.warning("LM cluster analyzer not available, skipping advanced cluster analysis")
+        else:
+            # Use basic clustering
+            from clustering import ArticleClusterer
+            clusterer = ArticleClusterer()
+            logging.info("Using basic clustering engine")
+        
+        return clusterer
+        
+    except Exception as e:
+        logging.error(f"Error setting up clustering engine: {e}")
+        logging.error(f"Detailed error: {str(e)}")
+        # Fall back to the original clustering if enhanced fails
+        from clustering import ArticleClusterer
+        logging.warning("Using fallback clustering engine without multi-article capabilities")
+        return ArticleClusterer()
 
 def sort_clusters(clusters):
     """
@@ -347,24 +425,52 @@ def refresh_feeds():
             os.environ['ENABLE_PAYWALL_BYPASS'] = 'false'
             logging.info("Paywall bypass disabled as per user setting")
         
-        # Import the enhanced RSS reader with multi-article clustering
-        from main import EnhancedRSSReader
+        # Initialize readers with enhanced components
+        max_workers = clustering_settings.get('max_articles_per_batch', 3)
         
-        # Initialize and run RSS reader with clustering settings
-        reader = EnhancedRSSReader(
-            feeds=feeds_list if not use_default else None,
-            batch_size=batch_size,
-            batch_delay=batch_delay
-        )
-        
-        # Process feeds and get output file
-        import asyncio
-        output_file = asyncio.run(reader.process_feeds())
-        
-        if output_file:
-            # Get the clusters from the reader
-            clusters = reader.reader.last_processed_clusters
+        # Check if we should use optimized integration
+        if has_optimized_clustering and clustering_settings.get('use_enhanced_clustering', True):
+            from optimized_integration import run_optimized_reader
+            import asyncio
+            output_file = asyncio.run(run_optimized_reader(feeds_list if not use_default else None))
             
+            # Get the latest clusters from the optimized reader (requires accessing global var)
+            import sys
+            if 'main' in sys.modules:
+                from main import latest_data as main_latest_data
+                clusters = main_latest_data.get('clusters', [])
+            else:
+                # Fallback to standard approach
+                from main import EnhancedRSSReader
+                reader = EnhancedRSSReader(
+                    feeds=feeds_list if not use_default else None,
+                    batch_size=batch_size,
+                    batch_delay=batch_delay,
+                    max_workers=max_workers
+                )
+                import asyncio
+                output_file = asyncio.run(reader.process_feeds())
+                clusters = reader.last_processed_clusters
+        else:
+            # Import the enhanced RSS reader with multi-article clustering
+            from main import EnhancedRSSReader
+            
+            # Initialize and run RSS reader with clustering settings
+            reader = EnhancedRSSReader(
+                feeds=feeds_list if not use_default else None,
+                batch_size=batch_size,
+                batch_delay=batch_delay,
+                max_workers=max_workers
+            )
+            
+            # Process feeds and get output file
+            import asyncio
+            output_file = asyncio.run(reader.process_feeds())
+            
+            # Get the clusters from the reader
+            clusters = reader.last_processed_clusters
+
+        if output_file and clusters:
             # Fix: Ensure every cluster has proper summaries attached to the first article
             for cluster in clusters:
                 if cluster and len(cluster) > 0:
@@ -452,8 +558,9 @@ def summarize_single():
             url = 'https://' + url
         
         try:
-            # Initialize summarizer (reusing existing code)
-            summarizer = ArticleSummarizer()
+            # Initialize summarizer with enhanced batch processing
+            max_workers = clustering_settings.get('max_articles_per_batch', 3)
+            summarizer = setup_summarization_engine(max_workers)
             
             # Fetch the article content
             session_obj = create_http_session()
@@ -479,12 +586,21 @@ def summarize_single():
             domain = urlparse(url).netloc
             title = f"Article from {domain}"
             
-            # Generate summary
-            summary = summarizer.summarize_article(
-                text=content,
-                title=title,
-                url=url
-            )
+            # Use auto model selection if supported
+            if hasattr(summarizer, 'summarize'):
+                summary = summarizer.summarize(
+                    text=content,
+                    title=title,
+                    url=url,
+                    auto_select_model=True
+                )
+            else:
+                # Fallback to standard summarization
+                summary = summarizer.summarize_article(
+                    text=content,
+                    title=title,
+                    url=url
+                )
             
             # Create a fake "cluster" for template compatibility
             fake_cluster = [{
@@ -532,7 +648,9 @@ def status():
         'paywall_bypass_enabled': session.get('paywall_bypass_enabled', False),
         'using_default_feeds': session.get('use_default', True),
         'custom_feed_count': len(session.get('feeds_list', [])) if session.get('feeds_list') else 0,
-        'clustering_settings': clustering_settings
+        'clustering_settings': clustering_settings,
+        'has_enhanced_clustering': has_enhanced_clustering,
+        'has_optimized_clustering': has_optimized_clustering
     })
 
 @app.route('/debug')
@@ -552,6 +670,8 @@ def debug():
         'using_default_feeds': session.get('use_default', True),
         'custom_feed_count': len(session.get('feeds_list', [])) if session.get('feeds_list') else 0,
         'clustering_settings': get_clustering_settings(),
+        'has_enhanced_clustering': has_enhanced_clustering,
+        'has_optimized_clustering': has_optimized_clustering,
         'clusters': []
     }
     
@@ -575,14 +695,21 @@ def debug():
             }
             
             if 'summary' in article and article['summary']:
-                cluster_info['sample_article']['headline'] = article['summary'].get('headline', 'None')
-                # Truncate summary for display
-                summary = article['summary'].get('summary', 'None')
-                cluster_info['sample_article']['summary_preview'] = summary[:100] + '...' if len(summary) > 100 else summary
+                if isinstance(article['summary'], dict):
+                    cluster_info['sample_article']['headline'] = article['summary'].get('headline', 'None')
+                    # Truncate summary for display
+                    summary = article['summary'].get('summary', 'None')
+                    cluster_info['sample_article']['summary_preview'] = summary[:100] + '...' if len(summary) > 100 else summary
+                else:
+                    cluster_info['sample_article']['summary_preview'] = str(article['summary'])[:100] + '...'
             
             # Add topics if available
             if 'cluster_topics' in article:
                 cluster_info['topics'] = article.get('cluster_topics', [])
+            
+            # Add entities if available
+            if 'cluster_entities' in article:
+                cluster_info['entities'] = article.get('cluster_entities', [])
         
         debug_info['clusters'].append(cluster_info)
     
@@ -607,55 +734,61 @@ def initialize_data():
         
         logging.info("Initializing RSS reader with enhanced multi-article clustering...")
         
-        # Import the enhanced reader
-        from main import EnhancedRSSReader
-        reader = EnhancedRSSReader()
-        
-        # Process feeds asynchronously
-        import asyncio
-        output_file = asyncio.run(reader.process_feeds())
-        
-        if output_file:
-            # Get the clusters from the reader
-            clusters = reader.reader.last_processed_clusters
-            
-            # Fix: Ensure every cluster has proper summaries
-            for cluster in clusters:
-                if cluster and len(cluster) > 0:
-                    # Get the first article in the cluster
-                    first_article = cluster[0]
-                    
-                    # Check if the article has a summary
-                    if 'summary' not in first_article or first_article['summary'] is None:
-                        # No summary exists, create a default one
-                        logging.warning(f"No summary found for cluster with article: {first_article.get('title')}")
-                        first_article['summary'] = {
-                            'headline': first_article.get('title', 'News Article'),
-                            'summary': f"This is a cluster of {len(cluster)} related articles about {first_article.get('title', 'various topics')}."
-                        }
-                    elif isinstance(first_article['summary'], str):
-                        # Summary is a string, convert to proper dict format
-                        summary_text = first_article['summary']
-                        first_article['summary'] = {
-                            'headline': first_article.get('title', 'News Article'),
-                            'summary': summary_text
-                        }
-                    elif isinstance(first_article['summary'], dict):
-                        # Summary is a dict, ensure it has the required fields
-                        if 'headline' not in first_article['summary']:
-                            first_article['summary']['headline'] = first_article.get('title', 'News Article')
-                        if 'summary' not in first_article['summary']:
-                            first_article['summary']['summary'] = f"This is a cluster of {len(cluster)} related articles."
-            
-            # Update latest data with the modified clusters
-            latest_data['clusters'] = clusters
-            latest_data['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            latest_data['output_file'] = output_file
-            
-            logging.info(f"Successfully initialized RSS reader with data: {output_file}")
+        # Use enhanced reader with batch processing fix
+        if has_optimized_clustering:
+            from optimized_integration import run_optimized_reader
+            import asyncio
+            asyncio.run(run_optimized_reader())
         else:
-            logging.warning("No articles found or processed during initialization")
-    
+            # Import the enhanced reader
+            from main import EnhancedRSSReader
+            reader = EnhancedRSSReader()
+            
+            # Process feeds asynchronously
+            import asyncio
+            output_file = asyncio.run(reader.process_feeds())
+            
+            if output_file:
+                # Get the clusters from the reader
+                clusters = reader.last_processed_clusters
+                
+                # Fix: Ensure every cluster has proper summaries
+                for cluster in clusters:
+                    if cluster and len(cluster) > 0:
+                        # Get the first article in the cluster
+                        first_article = cluster[0]
+                        
+                        # Check if the article has a summary
+                        if 'summary' not in first_article or first_article['summary'] is None:
+                            # No summary exists, create a default one
+                            logging.warning(f"No summary found for cluster with article: {first_article.get('title')}")
+                            first_article['summary'] = {
+                                'headline': first_article.get('title', 'News Article'),
+                                'summary': f"This is a cluster of {len(cluster)} related articles about {first_article.get('title', 'various topics')}."
+                            }
+                        elif isinstance(first_article['summary'], str):
+                            # Summary is a string, convert to proper dict format
+                            summary_text = first_article['summary']
+                            first_article['summary'] = {
+                                'headline': first_article.get('title', 'News Article'),
+                                'summary': summary_text
+                            }
+                        elif isinstance(first_article['summary'], dict):
+                            # Summary is a dict, ensure it has the required fields
+                            if 'headline' not in first_article['summary']:
+                                first_article['summary']['headline'] = first_article.get('title', 'News Article')
+                            if 'summary' not in first_article['summary']:
+                                first_article['summary']['summary'] = f"This is a cluster of {len(cluster)} related articles."
+                
+                # Update latest data with the modified clusters
+                latest_data['clusters'] = clusters
+                latest_data['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                latest_data['output_file'] = output_file
+                
+                logging.info(f"Successfully initialized RSS reader with data: {output_file}")
+            else:
+                logging.warning("No articles found or processed during initialization")
+        
     except Exception as e:
         logging.error(f"Error initializing RSS reader: {str(e)}", exc_info=True)
 
@@ -681,8 +814,17 @@ if __name__ == '__main__':
     # Check if initialization is requested
     if '--init' in sys.argv:
         initialize_data()
-        
-    # Use a safer configuration for the web server
+    
+    # Get port from environment or command line
     port = int(os.environ.get('PORT', 5005))
+    
+    # Get port from command line if specified
+    for i, arg in enumerate(sys.argv):
+        if arg == '--port' and i + 1 < len(sys.argv):
+            try:
+                port = int(sys.argv[i + 1])
+            except ValueError:
+                logging.warning(f"Invalid port number: {sys.argv[i + 1]}. Using default: {port}")
+    
     logging.info(f"Starting server on {host}:{port} (debug={debug_mode})")
     app.run(debug=debug_mode, host=host, port=port)
