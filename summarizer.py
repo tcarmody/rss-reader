@@ -214,6 +214,8 @@ class ArticleSummarizer:
             
             # Initialize cache and logger
             cache_dir = os.path.join(os.path.dirname(__file__), '.cache')
+            # Fix: Create the cache directory if it doesn't exist
+            os.makedirs(cache_dir, exist_ok=True)
             self.summary_cache = SummaryCache(cache_dir=cache_dir)
             self.logger = StructuredLogger("ArticleSummarizer")
             
@@ -1180,3 +1182,8 @@ if __name__ == "__main__":
     
     print("\n=== Error Handling Example ===")
     example_error_handling()
+        """
+        Generate tags for an article using Claude.
+        
+        Args:
+            content: Article content to extract tags from
