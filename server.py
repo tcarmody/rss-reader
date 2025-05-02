@@ -438,11 +438,11 @@ def refresh_feeds():
             import sys
             if 'main' in sys.modules:
                 # Import directly from EnhancedRSSReader
-from main import EnhancedRSSReader
+                from main import EnhancedRSSReader
                 # Get clusters directly from a temporary reader instance
-temp_reader = EnhancedRSSReader()
-output_file = asyncio.run(temp_reader.process_feeds())
-clusters = temp_reader.last_processed_clusters if hasattr(temp_reader, 'last_processed_clusters') else []
+                temp_reader = EnhancedRSSReader()
+                output_file = asyncio.run(temp_reader.process_feeds())
+                clusters = temp_reader.last_processed_clusters if hasattr(temp_reader, 'last_processed_clusters') else []
             else:
                 # Fallback to standard approach
                 from main import EnhancedRSSReader
