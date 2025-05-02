@@ -3,6 +3,7 @@
 import re
 import html
 import logging
+from cache import SummaryCache
 import time
 import anthropic
 import os
@@ -1182,8 +1183,3 @@ if __name__ == "__main__":
     
     print("\n=== Error Handling Example ===")
     example_error_handling()
-        """
-        Generate tags for an article using Claude.
-        
-        Args:
-            content: Article content to extract tags from
