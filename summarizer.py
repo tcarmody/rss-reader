@@ -3,7 +3,6 @@
 import re
 import html
 import logging
-from cache import SummaryCache
 import time
 import anthropic
 import os
@@ -201,17 +200,8 @@ class ArticleSummarizer:
             if not api_key:
                 raise APIAuthError("Anthropic API key not found")
                 
-            try:
-                # Try the current API format
-                self.client = anthropic.Anthropic(api_key=api_key)
-            except TypeError as e:
-                if 'proxies' in str(e):
-                    # Fall back to older API format if needed
-                    import inspect
-                    if 'proxies' in inspect.signature(anthropic.Anthropic.__init__).parameters:
-                        self.client = anthropic.Anthropic(api_key=api_key, proxies=None)
-                    else:
-                        raise
+            # Simplified client initialization - avoid trying to use 'proxies'
+            self.client = anthropic.Anthropic(api_key=api_key)
             
             # Initialize cache and logger
             cache_dir = os.path.join(os.path.dirname(__file__), '.cache')
