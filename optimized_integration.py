@@ -11,6 +11,7 @@ import logging
 import time
 import asyncio
 from typing import List, Dict, Any, Optional
+import anthropic
 
 # Configure logging
 logging.basicConfig(
@@ -18,6 +19,21 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("optimized_integration")
+
+
+def create_anthropic_client(api_key):
+    """Create an Anthropic client handling API version differences."""
+    try:
+        # Try current API format
+        return anthropic.Anthropic(api_key=api_key)
+    except TypeError as e:
+        if 'proxies' in str(e):
+            # Try older API format
+            import inspect
+            if 'proxies' in inspect.signature(anthropic.Anthropic.__init__).parameters:
+                return anthropic.Anthropic(api_key=api_key, proxies=None)
+        # Re-raise if we can't handle the error
+        raise
 
 def apply_optimization_patch():
     """

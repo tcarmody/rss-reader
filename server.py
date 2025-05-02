@@ -437,8 +437,12 @@ def refresh_feeds():
             # Get the latest clusters from the optimized reader (requires accessing global var)
             import sys
             if 'main' in sys.modules:
-                from main import latest_data as main_latest_data
-                clusters = main_latest_data.get('clusters', [])
+                # Import directly from EnhancedRSSReader
+from main import EnhancedRSSReader
+                # Get clusters directly from a temporary reader instance
+temp_reader = EnhancedRSSReader()
+output_file = asyncio.run(temp_reader.process_feeds())
+clusters = temp_reader.last_processed_clusters if hasattr(temp_reader, 'last_processed_clusters') else []
             else:
                 # Fallback to standard approach
                 from main import EnhancedRSSReader
