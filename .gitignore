@@ -8,6 +8,9 @@ ENV/
 env/
 .venv/
 .ENV/
+fresh_venv/
+rss_venv/
+*_venv/
 
 # Python
 __pycache__/
@@ -39,16 +42,18 @@ cache/
 .coverage
 htmlcov/
 .mypy_cache/
+.summary_cache/
+*_cache/
+summary_cache/
 
 # Generated output
 output/
 outputs/
 *.log
-*.txt
-!requirements.txt
-!essential_requirements.txt
-!templates/
-!static/
+performance_logs.txt
+benchmark_results/
+benchmark_results.log
+rss_summary_*.html
 
 # IDE files
 .idea/
@@ -73,18 +78,11 @@ Desktop.ini
 *~
 
 # Project-specific
-performance_logs.txt
-summary_cache.json
-benchmark_results/
-*_cache/
-.summary_cache/
-rss_summary_*.html
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-*.bak
+diagnostics-script.py
+diagnostics.py
+simple_batch_fix.py
+benchmark.py
+examples.py
 
 # Language model files
 *.ckpt
@@ -97,8 +95,3 @@ temp/
 test_*.csv
 test_*.json
 test_*.xml
-rss_venv/*
-
-.DS_Store
-.DS_Store
-.DS_Store
