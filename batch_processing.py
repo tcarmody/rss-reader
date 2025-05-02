@@ -648,14 +648,17 @@ def apply():
                     apply_fix_to_fast_summarizer(fast_summarizer, max_workers)
                     return fast_summarizer
             
+            # Create a single instance of the wrapper to use consistently
+            compatibility_wrapper = CompatibilityWrapper()
+            
             # Replace the enhanced_batch_processor module
             if 'enhanced_batch_processor' in sys.modules:
                 # If it was already imported, replace it
-                sys.modules['enhanced_batch_processor'] = CompatibilityWrapper()
+                sys.modules['enhanced_batch_processor'] = compatibility_wrapper
                 logger.info("Replaced existing enhanced_batch_processor module with compatibility wrapper")
             else:
                 # If not yet imported, prepare to replace it on import
-                sys.meta_path.insert(0, CompatibilityImportHook('enhanced_batch_processor', CompatibilityWrapper()))
+                sys.meta_path.insert(0, CompatibilityImportHook('enhanced_batch_processor', compatibility_wrapper))
                 logger.info("Installed import hook for enhanced_batch_processor")
             
         except Exception as e:
@@ -692,8 +695,8 @@ class CompatibilityImportHook:
         return None
     
     def create_module(self, spec):
-        # Return the replacement module instead
-        return self.replacement()
+        # Return the replacement module directly instead of calling it
+        return self.replacement
     
     def exec_module(self, module):
         # Already initialized in create_module
