@@ -154,6 +154,14 @@ def setup_clustering_engine(summarizer=None):
         return ArticleClusterer()
 
 
+# Store the latest processed data for server.py access
+latest_data = {
+    'clusters': [],
+    'timestamp': None,
+    'output_file': None
+}
+
+
 class EnhancedRSSReader:
     """
     Enhanced RSS reader with improved parallel batch processing for article summarization
