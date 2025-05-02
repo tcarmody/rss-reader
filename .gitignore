@@ -100,3 +100,4 @@ test_*.xml
 rss_venv/*
 
 .DS_Store
+.DS_Store

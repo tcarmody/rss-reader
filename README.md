@@ -1,227 +1,176 @@
-# AI News Digest - RSS Reader and Summarizer
+# Enhanced RSS Reader with Multi-Article Clustering
 
-A comprehensive RSS feed reader that fetches articles, summarizes them using the Anthropic Claude API, clusters similar articles together, and provides a clean web interface for browsing summaries.
+An advanced RSS feed reader with AI-powered summarization and intelligent article clustering.
 
 ## Features
 
-- **Smart Article Clustering**: Groups similar articles based on semantic similarity
-- **AI-Powered Summaries**: Automatically summarizes articles using Anthropic Claude API
-- **Interactive Web Interface**: Browse summaries and article clusters through a web browser
-- **Responsive Design**: Clean, modern UI that works on desktop and mobile devices
-- **Dark Mode Support**: Automatic theme switching based on system preferences
-- **Caching System**: Implements caching to avoid redundant API calls
-- **Batch Processing**: Processes feeds in batches with rate limiting
-- **Performance Tracking**: Detailed logging and performance metrics
+- **Smart Clustering**: Automatically groups related articles using sentence embeddings and ML-based clustering
+- **AI Summaries**: Generates concise summaries of articles using the Claude API
+- **Batch Processing**: Efficient parallel processing of multiple feeds and articles
+- **Web Interface**: Clean, simple interface for browsing feed summaries
+- **Paywall Bypass**: Optional capability to retrieve content from paywalled sites (configurable)
+- **Performance Optimization**: Tiered caching system and optimized batch processing
 
-## Installation
+## Quick Start
 
-1. **Clone the repository:**
+### Prerequisites
+
+- Python 3.11 or higher (recommended)
+- Anthropic API key
+
+### Installation
+
+1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/yourusername/rss-reader.git
    cd rss-reader
    ```
 
-2. **Create and activate a virtual environment (recommended):**
+2. Create and activate a virtual environment:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   python -m venv rss_venv
+   source rss_venv/bin/activate  # On Windows, use: rss_venv\Scripts\activate
    ```
 
-3. **Install dependencies:**
+3. Install dependencies:
    ```bash
-   pip install --upgrade pip
    pip install -r requirements.txt
+   python -m spacy download en_core_web_sm
    ```
-   This project requires Python 3.8 or newer. All required dependencies are listed in `requirements.txt`:
 
-   - anthropic
-   - beautifulsoup4
-   - feedparser
-   - Flask
-   - fasttext
-   - hdbscan
-   - langdetect
-   - numpy
-   - python-dateutil
-   - python-dotenv
-   - psutil
-   - requests
-   - ratelimit
-   - scikit-learn
-   - safetensors
-   - sentence-transformers
-   - torch
-   - transformers
-   - tqdm
-
-4. **Add your Anthropic API key:**
-   Create a `.env` file in the project root:
+4. Create a `.env` file with your Anthropic API key:
    ```
    ANTHROPIC_API_KEY=your_api_key_here
    ```
 
-### Updating Dependencies
+### Running the Server
 
-To update dependencies to the latest compatible versions, run:
-```bash
-pip install -U -r requirements.txt
-```
-If you add new packages to your code, be sure to add them to `requirements.txt` as well.
-
-## Using the Web Interface
-
-The recommended way to use the RSS Reader is via the web interface:
-
-1. **Start the web server:**
-   ```bash
-   python server.py
-   ```
-   By default, the server runs on [http://localhost:5004](http://localhost:5004).
-
-2. **Open your browser:**
-   Go to [http://localhost:5004](http://localhost:5004)
-
-3. **Web interface features:**
-   - Refresh feeds to fetch and process the latest articles
-   - Browse clustered articles and AI-generated summaries
-   - Click article titles to view the original sources
-   - See when feeds were last processed (timestamp at top)
-   - Add custom RSS feed URLs via the input field (one per line)
-   - Adjust batch size and delay settings if needed
-
-## Command-line Usage
-
-You can also run the RSS reader from the command line for batch processing:
+Start the web server:
 
 ```bash
-python reader.py
+python server.py
 ```
 
-This will process the feeds listed in `rss_feeds.txt` and generate a summary HTML file in the `output` directory.
+Or use the provided script (recommended):
 
-## Using as a Library
-
-You can use the RSS reader programmatically in your own Python scripts:
-
-```python
-from reader import RSSReader
-
-feeds = [
-    'https://example.com/rss',
-    'https://example2.com/rss',
-]
-reader = RSSReader(feeds=feeds, batch_size=10, batch_delay=5)
-output_file = reader.process_feeds()
-print(f"Generated summary at: {output_file}")
+```bash
+./run_server.sh
 ```
 
-## Project Structure
+The server will be available at http://localhost:5005 by default.
 
+## Configuration
+
+### RSS Feeds
+
+Add your RSS feeds to `rss_feeds.txt`, one URL per line. Comments can be added after a `#` character.
+
+Example:
 ```
-rss-reader/
-├── server.py                    # Web server implementation
-├── reader.py                    # Main RSSReader class
-├── summarizer.py                # ArticleSummarizer class
-├── clustering.py                # Article clustering functionality
-├── cache.py                     # SummaryCache implementation
-├── batch.py                     # BatchProcessor class
-├── utils/
-│   ├── __init__.py
-│   ├── http.py                  # HTTP utilities
-│   ├── performance.py           # Performance tracking
-│   ├── config.py                # Configuration utilities
-│   └── archive.py               # Article content extraction
-├── templates/
-│   ├── feed-summary.html        # Main summary template
-│   ├── welcome.html             # Welcome page template
-│   └── error.html               # Error page template
-├── static/
-│   └── styles.css               # CSS styles for the web interface
-├── output/                      # Generated HTML output files
-└── rss_feeds.txt                # Default RSS feed list
+https://example.com/feed.xml  # Tech News
+https://another-site.com/rss   # Science
 ```
-
-## Creating a Feed List
-
-The application uses a file named `rss_feeds.txt` in the project root with one RSS feed URL per line:
-
-```
-https://news.google.com/rss/search?q=artificial+intelligence
-https://feeds.feedburner.com/aiweekly
-# Lines starting with # are ignored (comments)
-https://machinelearning.apple.com/rss.xml
-```
-
-## Configuration Options
 
 ### Environment Variables
 
-Create a `.env` file in the project root with the following variables:
+Set these in your `.env` file or environment:
 
-```
-ANTHROPIC_API_KEY=your_api_key_here
-```
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANTHROPIC_API_KEY` | Your Anthropic API key | Required |
+| `API_RPM_LIMIT` | Rate limit for API calls (requests per minute) | 50 |
+| `CACHE_SIZE` | Size of in-memory cache | 256 |
+| `CACHE_DIR` | Directory for cache storage | ./summary_cache |
+| `CACHE_TTL_DAYS` | Time-to-live for cache entries (days) | 30 |
+| `MAX_BATCH_WORKERS` | Maximum worker processes for batch processing | 3 |
+| `ENABLE_PAYWALL_BYPASS` | Enable paywall bypass capabilities | false |
 
-### Web Server Settings
+## System Architecture
 
-The web server runs on port 5004 by default. You can modify this in `server.py` if needed.
+The system consists of several key components:
 
-## Advanced Features
+### Core Components
 
-### Article Clustering
+- **Reader (`reader.py`)**: Manages feed fetching and processing
+- **Summarizer (`summarizer.py`)**: Handles article summarization with Claude API
+- **Fast Summarizer (`fast_summarizer.py`)**: Optimized wrapper with enhanced batching
+- **Clustering (`clustering.py`)**: Manages article clustering using sentence embeddings
+- **Enhanced Clustering (`enhanced_clustering.py`)**: Advanced multi-article clustering
+- **Server (`server.py`)**: Web interface and API
 
-The clustering algorithm groups similar articles based on semantic similarity. You can adjust the clustering parameters in `clustering.py`:
+### Support Modules
 
-- `distance_threshold`: Controls how similar articles must be to be clustered together (lower values create more focused clusters)
+- **Batch Processing (`batch.py`, `batch_processing.py`)**: Efficient parallel processing
+- **Caching (`cache.py`, `tiered_cache.py`)**: Multi-level caching system
+- **Archive Utilities (`utils/archive.py`)**: Handling paywalled content
+- **Performance Tracking (`utils/performance.py`)**: Track and log performance metrics
 
-### Summary Generation
+## Recent Changes and Fixes
 
-Summaries are generated using the Anthropic Claude API. The system prompt and style guidelines can be customized in `summarizer.py`.
+- Added Google Auth dependency to resolve Anthropic API integration issues
+- Improved batch processing reliability with better worker management
+- Enhanced error handling for missing dependencies
+- Updated requirements with more specific version constraints
+- Added support for the latest Claude model (Claude 3.7 Sonnet)
 
 ## Troubleshooting
 
-### Common Issues
+### Missing Dependencies
 
-1. **API Key Issues**: Ensure your Anthropic API key is correctly set in the `.env` file
-2. **Port Conflicts**: If port 5004 is already in use, change the port number in `server.py`
-3. **Missing Summaries**: Check the logs for any API errors or rate limiting issues
+If you encounter errors about missing dependencies, run:
 
-## Requirements
+```bash
+pip install -r requirements.txt
+```
 
-- Python 3.8 or higher
-- Anthropic API key (Claude 3 Haiku model)
-- Web browser for accessing the interface
-- All dependencies listed in requirements.txt (see above)
+For issues with the Anthropic API and Google Auth, run the fix script:
 
-## Performance Notes
+```bash
+./fix_dependencies.sh
+```
 
-- The RSS reader uses concurrent processing to handle multiple feeds efficiently
-- Caching reduces redundant API calls for previously processed articles
-- Performance logs are stored in the `performance_logs` directory
+### Performance Issues
 
-## Development
+If you experience performance problems with batch processing:
 
-To contribute to this project:
+1. Reduce the number of concurrent workers:
+   ```
+   MAX_BATCH_WORKERS=2
+   ```
+
+2. Apply the batch processing fix:
+   ```python
+   # Add to the top of main.py
+   import batch_processing
+   batch_processing.apply()
+   ```
+
+### Debugging
+
+For more detailed logs, set the logging level to DEBUG:
+
+```bash
+export LOG_LEVEL=DEBUG
+python server.py
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a pull request.
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests
-5. Submit a pull request
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-MIT.main
-```
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-This will:
-1. Read RSS feed URLs from `rss_feeds.txt`
-2. Fetch and process articles from those feeds
-3. Generate an HTML summary in the `output` directory
+## Acknowledgments
 
-### Custom Usage
-
-Specify your own feeds and settings:
-
-```bash
-python -m rss_reader
+- [Anthropic](https://anthropic.com/) for the Claude API
+- [SentenceTransformers](https://www.sbert.net/) for text embeddings
+- [Flask](https://flask.palletsprojects.com/) for the web framework
+- [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/) for HTML parsing
