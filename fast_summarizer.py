@@ -14,7 +14,7 @@ import traceback
 from typing import Dict, List, Optional, Union, Any
 
 from text_chunking import chunk_text, summarize_long_article
-from model_selection import estimate_complexity, auto_select_model
+from model_selection import estimate_complexity, auto_select_model as select_model_func  # Fixed: Renamed import
 from tiered_cache import TieredSummaryCache
 from rate_limiter import RateLimiter, adaptive_retry
 
@@ -125,8 +125,8 @@ class FastArticleSummarizer:
         
         # Auto-select model if requested
         if auto_select_model and not model:
-            # Use the auto_select_model function imported from model_selection
-            model = auto_select_model(
+            # Fixed: Use renamed function to avoid name collision
+            model = select_model_func(
                 text, 
                 self.original.AVAILABLE_MODELS,
                 self.original.DEFAULT_MODEL,
