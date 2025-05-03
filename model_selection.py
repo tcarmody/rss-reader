@@ -71,15 +71,19 @@ def auto_select_model(text: str, available_models: dict, default_model: str, log
     complexity = estimate_complexity(text)
     
     # Choose model based on complexity thresholds
+    # Updated model selection as of May 2025
     if complexity < 0.3:
-        # Simple content - use fastest model
-        selected_model = available_models.get("haiku-3.5", default_model)
-    elif complexity < 0.7:
-        # Moderate complexity - use balanced model
-        selected_model = available_models.get("sonnet-3.5", default_model)
+        # Simple content - use fastest model (Claude 3.5 Haiku)
+        selected_model = available_models.get("claude-3.5-haiku", default_model)
+    elif complexity < 0.6:
+        # Moderate complexity - use balanced model (Claude 3.5 Sonnet)
+        selected_model = available_models.get("claude-3.5-sonnet", default_model)
+    elif complexity < 0.8:
+        # More complex content - use writing-optimized model (Claude 3 Opus)
+        selected_model = available_models.get("claude-3-opus", default_model)
     else:
-        # Complex content - use most capable model
-        selected_model = available_models.get("sonnet-3.7", default_model)
+        # Very complex content - use most intelligent model (Claude 3.7 Sonnet)
+        selected_model = available_models.get("claude-3.7-sonnet", default_model)
     
     logger.info(f"Auto-selected model based on complexity score {complexity:.2f}: {selected_model}")
     return selected_model
