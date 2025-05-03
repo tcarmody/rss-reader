@@ -186,13 +186,14 @@ class ArticleSummarizer:
         "opus": "claude-3-opus-20240229",
         "haiku-legacy": "claude-2.0",
         "sonnet-legacy": "claude-2.1",
-        "sonnet-3.5": "claude-3-5-sonnet-20240620",
-        "haiku-3.5": "claude-3-5-haiku-20240307",
+        "sonnet-3.5": "claude-3.5-sonnet-20240620",
+        "haiku-3.5": "claude-3.5-haiku-20241022",
+        "sonnet-3.5-new": "claude-3.5-sonnet-20241022",
         "sonnet-3.7": "claude-3-7-sonnet-20250219"
     }
     
-    # Default model to use (using the latest model as default)
-    DEFAULT_MODEL = "claude-3-7-sonnet-20250219"
+    # Default model to use - using the latest working model
+    DEFAULT_MODEL = "claude-3.7-sonnet-20250219"
 
     def __init__(self):
         """Initialize the summarizer with Claude API client."""
