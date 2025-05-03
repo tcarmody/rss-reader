@@ -201,8 +201,9 @@ class ArticleSummarizer:
             if not api_key:
                 raise APIAuthError("Anthropic API key not found")
             
-            # Clear any proxy-related environment variables that might interfere
-            proxy_env_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']
+            # Clear proxy-related environment variables that might cause issues
+            proxy_env_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 
+                              'ALL_PROXY', 'all_proxy', 'NO_PROXY', 'no_proxy']
             original_env = {}
             
             # Temporarily remove proxy variables
@@ -211,8 +212,34 @@ class ArticleSummarizer:
                     original_env[var] = os.environ.pop(var)
             
             try:
-                # Initialize the client without proxy interference
-                self.client = anthropic.Anthropic(api_key=api_key)
+                # Try to initialize the client without proxy settings
+                # The Anthropic library might internally try to set proxy settings
+                # from environment variables, so we ensure a clean environment
+                try:
+                    self.client = anthropic.Anthropic(api_key=api_key)
+                except TypeError as te:
+                    # If we get a TypeError about unexpected keyword arguments,
+                    # it might be because the library is trying to pass proxy settings
+                    # Let's try a different approach
+                    if "proxies" in str(te):
+                        # The library might be trying to set proxies, let's disable them
+                        # by creating the client with explicit empty proxy settings
+                        import httpx
+                        
+                        # Create a client with no proxy settings
+                        http_client = httpx.Client(
+                            proxy=None,  # Explicitly disable proxy
+                            trust_env=False  # Don't trust environment variables
+                        )
+                        
+                        # Initialize with custom http client
+                        self.client = anthropic.Anthropic(
+                            api_key=api_key,
+                            http_client=http_client
+                        )
+                    else:
+                        raise  # Re-raise if it's a different error
+                
             finally:
                 # Restore the environment variables
                 for var, value in original_env.items():
@@ -220,7 +247,7 @@ class ArticleSummarizer:
             
             # Initialize cache and logger
             cache_dir = os.path.join(os.path.dirname(__file__), '.cache')
-            # Fix: Create the cache directory if it doesn't exist
+            # Create the cache directory if it doesn't exist
             os.makedirs(cache_dir, exist_ok=True)
             self.summary_cache = SummaryCache(cache_dir=cache_dir)
             self.logger = StructuredLogger("ArticleSummarizer")
