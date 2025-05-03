@@ -182,10 +182,6 @@ class ArticleSummarizer:
     # Available Claude models
     AVAILABLE_MODELS = {
         "haiku": "claude-3-haiku-20240307",
-        "sonnet": "claude-3-sonnet-20240229",
-        "opus": "claude-3-opus-20240229",
-        "haiku-legacy": "claude-2.0",
-        "sonnet-legacy": "claude-2.1",
         "sonnet-3-5": "claude-3-5-sonnet-20240620",
         "haiku-3-5": "claude-3-5-haiku-20241022",
         "sonnet-3-5-new": "claude-3-5-sonnet-20241022",
