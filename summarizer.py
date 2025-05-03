@@ -200,9 +200,23 @@ class ArticleSummarizer:
             api_key = get_env_var('ANTHROPIC_API_KEY')
             if not api_key:
                 raise APIAuthError("Anthropic API key not found")
-                
-            # Simplified client initialization - avoid trying to use 'proxies'
-            self.client = anthropic.Anthropic(api_key=api_key)
+            
+            # Clear any proxy-related environment variables that might interfere
+            proxy_env_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']
+            original_env = {}
+            
+            # Temporarily remove proxy variables
+            for var in proxy_env_vars:
+                if var in os.environ:
+                    original_env[var] = os.environ.pop(var)
+            
+            try:
+                # Initialize the client without proxy interference
+                self.client = anthropic.Anthropic(api_key=api_key)
+            finally:
+                # Restore the environment variables
+                for var, value in original_env.items():
+                    os.environ[var] = value
             
             # Initialize cache and logger
             cache_dir = os.path.join(os.path.dirname(__file__), '.cache')
@@ -878,7 +892,6 @@ class ArticleSummarizer:
     ) -> List[str]:
         """
         Generate tags for an article using Claude.
-        
         Args:
             content: Article content to extract tags from
             model: Claude model to use (shorthand name or full identifier)
