@@ -79,7 +79,7 @@ def auto_select_model(text: str, available_models: dict, default_model: str, log
         # Moderate complexity - use balanced model (Claude 3.5 Sonnet)
         selected_model = available_models.get("claude-3-5-sonnet", default_model)
     elif complexity < 0.8:
-        # More complex content - use writing-optimized model (Claude 3 Opus)
+        # More complex content - use writing-optimized model (Claude 3.7 Sonnet)
         selected_model = available_models.get("claude-3-7-sonnet", default_model)
     else:
         # Very complex content - use most intelligent model (Claude 3.7 Sonnet)
