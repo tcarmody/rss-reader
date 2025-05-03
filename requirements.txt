@@ -1,5 +1,5 @@
 # Core API and Web Dependencies
-anthropic>=0.7.0,<0.8.0  # More specific version constraint
+anthropic>=0.50.0,<0.51.0  # Updated to latest version
 beautifulsoup4>=4.11.0
 feedparser>=6.0.0
 flask>=2.0.0
