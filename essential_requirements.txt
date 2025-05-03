@@ -1,5 +1,5 @@
 # Core dependencies required for basic functionality
-anthropic>=0.7.0
+anthropic>=0.50.0
 beautifulsoup4>=4.11.0
 feedparser>=6.0.0
 flask>=2.0.0

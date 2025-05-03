@@ -5,7 +5,7 @@ import re
 import html
 import logging
 import time
-import anthropic
+from anthropic import Anthropic, APIError, APIConnectionError, APIResponseValidationError, RateLimitError, AuthenticationError
 import os
 from typing import Dict, List, Optional, Union, Generator, Callable, Any
 from datetime import datetime
@@ -201,49 +201,8 @@ class ArticleSummarizer:
             if not api_key:
                 raise APIAuthError("Anthropic API key not found")
             
-            # Clear proxy-related environment variables that might cause issues
-            proxy_env_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 
-                              'ALL_PROXY', 'all_proxy', 'NO_PROXY', 'no_proxy']
-            original_env = {}
-            
-            # Temporarily remove proxy variables
-            for var in proxy_env_vars:
-                if var in os.environ:
-                    original_env[var] = os.environ.pop(var)
-            
-            try:
-                # Try to initialize the client without proxy settings
-                # The Anthropic library might internally try to set proxy settings
-                # from environment variables, so we ensure a clean environment
-                try:
-                    self.client = anthropic.Anthropic(api_key=api_key)
-                except TypeError as te:
-                    # If we get a TypeError about unexpected keyword arguments,
-                    # it might be because the library is trying to pass proxy settings
-                    # Let's try a different approach
-                    if "proxies" in str(te):
-                        # The library might be trying to set proxies, let's disable them
-                        # by creating the client with explicit empty proxy settings
-                        import httpx
-                        
-                        # Create a client with no proxy settings
-                        http_client = httpx.Client(
-                            proxy=None,  # Explicitly disable proxy
-                            trust_env=False  # Don't trust environment variables
-                        )
-                        
-                        # Initialize with custom http client
-                        self.client = anthropic.Anthropic(
-                            api_key=api_key,
-                            http_client=http_client
-                        )
-                    else:
-                        raise  # Re-raise if it's a different error
-                
-            finally:
-                # Restore the environment variables
-                for var, value in original_env.items():
-                    os.environ[var] = value
+            # Initialize the client - SDK 0.50.0 simplified initialization
+            self.client = Anthropic(api_key=api_key)
             
             # Initialize cache and logger
             cache_dir = os.path.join(os.path.dirname(__file__), '.cache')
@@ -515,6 +474,7 @@ class ArticleSummarizer:
             self.logger.info("Calling Claude API")
             start_time = time.time()
             
+            # Updated for SDK 0.50.0
             response = self.client.messages.create(
                 model=model_id,
                 max_tokens=max_tokens,
@@ -534,26 +494,34 @@ class ArticleSummarizer:
             )
             
             return response.content[0].text
-        except anthropic.APIError as e:
-            # Map Anthropic exception types to our custom exceptions
-            error_type = str(e.__class__.__name__)
-            status_code = getattr(e, 'status_code', None)
-            
+        except RateLimitError as e:
             self.logger.error(
-                "Claude API error", 
-                error_type=error_type,
-                status_code=status_code,
+                "Claude API rate limit error", 
+                error_type="RateLimitError",
                 error=str(e)
             )
-            
-            if status_code == 429:
-                raise APIRateLimitError(f"Rate limit exceeded: {str(e)}")
-            elif status_code == 401:
-                raise APIAuthError(f"Authentication failed: {str(e)}")
-            elif status_code and 500 <= status_code < 600:
-                raise APIConnectionError(f"Claude API server error: {str(e)}")
-            else:
-                raise APIResponseError(f"Claude API error: {str(e)}")
+            raise APIRateLimitError(f"Rate limit exceeded: {str(e)}")
+        except AuthenticationError as e:
+            self.logger.error(
+                "Claude API authentication error", 
+                error_type="AuthenticationError",
+                error=str(e)
+            )
+            raise APIAuthError(f"Authentication failed: {str(e)}")
+        except APIConnectionError as e:
+            self.logger.error(
+                "Claude API connection error", 
+                error_type="APIConnectionError",
+                error=str(e)
+            )
+            raise APIConnectionError(f"Connection error: {str(e)}")
+        except APIError as e:
+            self.logger.error(
+                "Claude API error", 
+                error_type="APIError",
+                error=str(e)
+            )
+            raise APIResponseError(f"Claude API error: {str(e)}")
         except Exception as e:
             self.logger.error(
                 "Unexpected error calling Claude API", 
@@ -594,8 +562,8 @@ class ArticleSummarizer:
             chunk_count = 0
             total_chars = 0
             
-            # Start the streaming request
-            with self.client.messages.stream(
+            # Updated for SDK 0.50.0
+            stream = self.client.messages.create(
                 model=model_id,
                 max_tokens=max_tokens,
                 temperature=temperature,
@@ -603,29 +571,30 @@ class ArticleSummarizer:
                 messages=[{
                     "role": "user",
                     "content": prompt
-                }]
-            ) as stream:
-                # Process each chunk
-                for chunk in stream:
-                    # Check if the chunk contains text content using hasattr
-                    if hasattr(chunk, 'delta') and hasattr(chunk.delta, 'text') and chunk.delta.text:
-                        # Get the text chunk
-                        text_chunk = chunk.delta.text
-                        chunk_count += 1
-                        total_chars += len(text_chunk)
-                        
-                        # Yield the chunk
-                        yield text_chunk
-                        
-                        # Log progress periodically
-                        if chunk_count % 10 == 0:
-                            elapsed = time.time() - start_time
-                            self.logger.debug(
-                                "Streaming progress", 
-                                chunks=chunk_count, 
-                                total_chars=total_chars,
-                                elapsed_seconds=round(elapsed, 2)
-                            )
+                }],
+                stream=True
+            )
+            
+            # Process each chunk
+            for chunk in stream:
+                # Check if the chunk contains text content
+                if chunk.type == "content_block_delta" and hasattr(chunk.delta, 'text'):
+                    text_chunk = chunk.delta.text
+                    chunk_count += 1
+                    total_chars += len(text_chunk)
+                    
+                    # Yield the chunk
+                    yield text_chunk
+                    
+                    # Log progress periodically
+                    if chunk_count % 10 == 0:
+                        elapsed = time.time() - start_time
+                        self.logger.debug(
+                            "Streaming progress", 
+                            chunks=chunk_count, 
+                            total_chars=total_chars,
+                            elapsed_seconds=round(elapsed, 2)
+                        )
             
             # Log completion
             elapsed_time = time.time() - start_time
@@ -637,26 +606,34 @@ class ArticleSummarizer:
                 chars_per_second=round(total_chars/elapsed_time, 2) if elapsed_time > 0 else 0
             )
             
-        except anthropic.APIError as e:
-            # Map Anthropic exception types to our custom exceptions
-            error_type = str(e.__class__.__name__)
-            status_code = getattr(e, 'status_code', None)
-            
+        except RateLimitError as e:
             self.logger.error(
-                "Claude API streaming error", 
-                error_type=error_type,
-                status_code=status_code,
+                "Claude API streaming rate limit error", 
+                error_type="RateLimitError",
                 error=str(e)
             )
-            
-            if status_code == 429:
-                raise APIRateLimitError(f"Rate limit exceeded: {str(e)}")
-            elif status_code == 401:
-                raise APIAuthError(f"Authentication failed: {str(e)}")
-            elif status_code and 500 <= status_code < 600:
-                raise APIConnectionError(f"Claude API server error: {str(e)}")
-            else:
-                raise APIResponseError(f"Claude API error: {str(e)}")
+            raise APIRateLimitError(f"Rate limit exceeded: {str(e)}")
+        except AuthenticationError as e:
+            self.logger.error(
+                "Claude API streaming authentication error", 
+                error_type="AuthenticationError",
+                error=str(e)
+            )
+            raise APIAuthError(f"Authentication failed: {str(e)}")
+        except APIConnectionError as e:
+            self.logger.error(
+                "Claude API streaming connection error", 
+                error_type="APIConnectionError",
+                error=str(e)
+            )
+            raise APIConnectionError(f"Connection error: {str(e)}")
+        except APIError as e:
+            self.logger.error(
+                "Claude API streaming error", 
+                error_type="APIError",
+                error=str(e)
+            )
+            raise APIResponseError(f"Claude API error: {str(e)}")
         except Exception as e:
             self.logger.error(
                 "Unexpected error in Claude API streaming", 
@@ -950,7 +927,7 @@ class ArticleSummarizer:
             # Get the model ID
             model_id = self._get_model(model)
             
-            # Call the API
+            # Call the API - Updated for SDK 0.50.0
             self.logger.info("Calling Claude API for tag generation", model=model_id)
             response = self.client.messages.create(
                 model=model_id,

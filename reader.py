@@ -3,8 +3,6 @@
 import os
 import time
 import logging
-import anthropic
-import feedparser
 import traceback
 
 from datetime import datetime
@@ -62,7 +60,6 @@ class RSSReader:
         self.batch_size = batch_size
         self.batch_delay = batch_delay
         self.session = create_http_session()
-        self.client = anthropic.Anthropic(api_key=get_env_var('ANTHROPIC_API_KEY'))
         self.batch_processor = BatchProcessor(batch_size=5)  # Process 5 API calls at a time
         self.summarizer = ArticleSummarizer()
         
@@ -415,7 +412,7 @@ class RSSReader:
 
     def _generate_summary(self, article_text, title, url):
         """
-        Generate a summary for an article using the Anthropic API.
+        Generate a summary for an article using the ArticleSummarizer.
         
         Args:
             article_text: Text of the article to summarize
