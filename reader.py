@@ -1,5 +1,6 @@
 """Main RSS Reader class for fetching and processing feeds with enhanced clustering."""
 
+import feedparser
 import os
 import time
 import logging
