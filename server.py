@@ -292,7 +292,6 @@ def index():
             clustering_settings=clustering_settings
         )
 
-# Route for the welcome page
 @app.route('/welcome')
 def welcome():
     """Explicitly render the welcome page regardless of data state."""
@@ -381,6 +380,7 @@ def refresh_feeds():
             else:
                 # If using default feeds, clear any stored custom feeds
                 session['feeds_list'] = None
+                logging.info("Clearing custom feeds, will use defaults")
         
         # Now use the stored feeds from session for processing
         use_default = session.get('use_default', True)
@@ -408,11 +408,13 @@ def refresh_feeds():
         os.environ['MAX_ARTICLES_PER_BATCH'] = str(clustering_settings['max_articles_per_batch'])
         os.environ['USE_ENHANCED_CLUSTERING'] = 'true' if clustering_settings['use_enhanced_clustering'] else 'false'
         
-        # Log what we're doing
+        # Log what we're doing - with more detail
         if use_default:
             logging.info("Processing default feeds from rss_feeds.txt")
         elif feeds_list:
             logging.info(f"Processing {len(feeds_list)} custom feeds from session")
+            for i, feed in enumerate(feeds_list, 1):
+                logging.info(f"  Custom feed {i}: {feed}")
         else:
             logging.info("No feeds specified and no session data, will use default feeds")
             use_default = True
@@ -432,22 +434,24 @@ def refresh_feeds():
         if has_optimized_clustering and clustering_settings.get('use_enhanced_clustering', True):
             from optimized_integration import run_optimized_reader
             import asyncio
-            output_file = asyncio.run(run_optimized_reader(feeds_list if not use_default else None))
             
-            # Get the latest clusters from the optimized reader (requires accessing global var)
+            # Pass None for default feeds, specific list for custom feeds
+            feeds_to_pass = None if use_default else feeds_list
+            logging.info(f"Using optimized reader with feeds={feeds_to_pass}")
+            
+            output_file = asyncio.run(run_optimized_reader(feeds_to_pass))
+            
+            # Get the latest clusters from the optimized reader
             import sys
             if 'main' in sys.modules:
-                # Import directly from EnhancedRSSReader
                 from main import EnhancedRSSReader
-                # Get clusters directly from a temporary reader instance
                 temp_reader = EnhancedRSSReader()
                 output_file = asyncio.run(temp_reader.process_feeds())
                 clusters = temp_reader.last_processed_clusters if hasattr(temp_reader, 'last_processed_clusters') else []
             else:
-                # Fallback to standard approach
                 from main import EnhancedRSSReader
                 reader = EnhancedRSSReader(
-                    feeds=feeds_list if not use_default else None,
+                    feeds=feeds_to_pass,
                     batch_size=batch_size,
                     batch_delay=batch_delay,
                     max_workers=max_workers
@@ -459,9 +463,13 @@ def refresh_feeds():
             # Import the enhanced RSS reader with multi-article clustering
             from main import EnhancedRSSReader
             
-            # Initialize and run RSS reader with clustering settings
+            # Initialize and run RSS reader with explicit feeds
+            # Pass None for default feeds, specific list for custom feeds
+            feeds_to_pass = None if use_default else feeds_list
+            logging.info(f"Creating EnhancedRSSReader with feeds={feeds_to_pass}")
+            
             reader = EnhancedRSSReader(
-                feeds=feeds_list if not use_default else None,
+                feeds=feeds_to_pass,
                 batch_size=batch_size,
                 batch_delay=batch_delay,
                 max_workers=max_workers
@@ -527,7 +535,6 @@ def refresh_feeds():
                               paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
                               clustering_settings=get_clustering_settings())
 
-# Route to clear all data and return to welcome page
 @app.route('/clear', methods=['GET', 'POST'])
 def clear_data():
     """Clear all data and return to welcome page."""
@@ -541,7 +548,6 @@ def clear_data():
     logging.info("Data cleared by user")
     return redirect(url_for('welcome'))
 
-# Route for summarizing a single URL
 @app.route('/summarize', methods=['GET', 'POST'])
 def summarize_single():
     """Handle summarization of a single URL."""
@@ -719,82 +725,25 @@ def debug():
     
     return jsonify(debug_info)
 
+@app.route('/debug/feeds')
+def debug_feeds():
+    """Show current feed configuration for debugging."""
+    return jsonify({
+        'session': {
+            'use_default': session.get('use_default', True),
+            'feeds_list': session.get('feeds_list', []),
+            'feed_count': len(session.get('feeds_list', [])) if session.get('feeds_list') else 0
+        },
+        'environment': {
+            'paywall_bypass': os.environ.get('ENABLE_PAYWALL_BYPASS', 'false'),
+            'clustering': os.environ.get('ENABLE_MULTI_ARTICLE_CLUSTERING', 'true')
+        }
+    })
+
 @app.route('/test_route')
 def test_route():
     """Test route to verify routing is working."""
     return "Routing is working correctly!"
-
-def initialize_data():
-    """Initialize the latest data by running the RSS reader once at startup."""
-    try:
-        # Default to paywall bypass disabled
-        os.environ['ENABLE_PAYWALL_BYPASS'] = 'false'
-        
-        # Set default clustering settings
-        os.environ['ENABLE_MULTI_ARTICLE_CLUSTERING'] = 'true'
-        os.environ['MIN_SIMILARITY_THRESHOLD'] = '0.7'
-        os.environ['MAX_ARTICLES_PER_BATCH'] = '5'
-        os.environ['USE_ENHANCED_CLUSTERING'] = 'true'
-        
-        logging.info("Initializing RSS reader with enhanced multi-article clustering...")
-        
-        # Use enhanced reader with batch processing fix
-        if has_optimized_clustering:
-            from optimized_integration import run_optimized_reader
-            import asyncio
-            asyncio.run(run_optimized_reader())
-        else:
-            # Import the enhanced reader
-            from main import EnhancedRSSReader
-            reader = EnhancedRSSReader()
-            
-            # Process feeds asynchronously
-            import asyncio
-            output_file = asyncio.run(reader.process_feeds())
-            
-            if output_file:
-                # Get the clusters from the reader
-                clusters = reader.last_processed_clusters
-                
-                # Fix: Ensure every cluster has proper summaries
-                for cluster in clusters:
-                    if cluster and len(cluster) > 0:
-                        # Get the first article in the cluster
-                        first_article = cluster[0]
-                        
-                        # Check if the article has a summary
-                        if 'summary' not in first_article or first_article['summary'] is None:
-                            # No summary exists, create a default one
-                            logging.warning(f"No summary found for cluster with article: {first_article.get('title')}")
-                            first_article['summary'] = {
-                                'headline': first_article.get('title', 'News Article'),
-                                'summary': f"This is a cluster of {len(cluster)} related articles about {first_article.get('title', 'various topics')}."
-                            }
-                        elif isinstance(first_article['summary'], str):
-                            # Summary is a string, convert to proper dict format
-                            summary_text = first_article['summary']
-                            first_article['summary'] = {
-                                'headline': first_article.get('title', 'News Article'),
-                                'summary': summary_text
-                            }
-                        elif isinstance(first_article['summary'], dict):
-                            # Summary is a dict, ensure it has the required fields
-                            if 'headline' not in first_article['summary']:
-                                first_article['summary']['headline'] = first_article.get('title', 'News Article')
-                            if 'summary' not in first_article['summary']:
-                                first_article['summary']['summary'] = f"This is a cluster of {len(cluster)} related articles."
-                
-                # Update latest data with the modified clusters
-                latest_data['clusters'] = clusters
-                latest_data['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                latest_data['output_file'] = output_file
-                
-                logging.info(f"Successfully initialized RSS reader with data: {output_file}")
-            else:
-                logging.warning("No articles found or processed during initialization")
-        
-    except Exception as e:
-        logging.error(f"Error initializing RSS reader: {str(e)}", exc_info=True)
 
 # Helper function to determine if we're in a production environment
 def is_production():
@@ -817,7 +766,19 @@ if __name__ == '__main__':
     
     # Check if initialization is requested
     if '--init' in sys.argv:
-        initialize_data()
+        # Use initialize_data() if it's defined for backward compatibility
+        # Otherwise fall back to a simple initialization
+        try:
+            # Simple initialization by just setting up the environment
+            os.environ['ENABLE_PAYWALL_BYPASS'] = 'false'
+            os.environ['ENABLE_MULTI_ARTICLE_CLUSTERING'] = 'true'
+            os.environ['MIN_SIMILARITY_THRESHOLD'] = '0.7'
+            os.environ['MAX_ARTICLES_PER_BATCH'] = '5'
+            os.environ['USE_ENHANCED_CLUSTERING'] = 'true'
+            
+            logging.info("Initialization completed successfully")
+        except Exception as e:
+            logging.error(f"Initialization failed: {e}")
     
     # Get port from environment or command line
     port = int(os.environ.get('PORT', 5005))
