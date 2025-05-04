@@ -173,7 +173,7 @@ class EnhancedRSSReader:
         Initialize the enhanced RSS reader
         
         Args:
-            feeds: List of RSS feed URLs to process (optional)
+            feeds: List of RSS feed URLs (None for default feeds, [] for no feeds)
             batch_size: Number of feeds to process in a batch
             batch_delay: Delay between batches in seconds
             max_workers: Maximum number of worker processes for batch summarization
@@ -182,9 +182,17 @@ class EnhancedRSSReader:
         self.batch_delay = batch_delay
         self.max_workers = max(1, max_workers)  # Ensure at least 1 worker
         
-        # Set up the original RSS reader
+        # Set up the original RSS reader with explicit feed handling
         from reader import RSSReader
         self.reader = RSSReader(feeds=feeds, batch_size=batch_size, batch_delay=batch_delay)
+        
+        # Log what feeds we're using
+        if feeds is None:
+            logger.info("EnhancedRSSReader: Using default feeds from rss_feeds.txt")
+        else:
+            logger.info(f"EnhancedRSSReader: Using {len(feeds)} custom feeds")
+            for i, feed in enumerate(feeds, 1):
+                logger.info(f"  Feed {i}: {feed}")
         
         # Replace the standard summarizer with our enhanced version
         self.reader.summarizer = setup_summarization_engine()
@@ -326,6 +334,14 @@ class EnhancedRSSReader:
         """
         try:
             all_articles = []
+
+            # Log what feeds we're going to process
+            if self.reader.feeds is None:
+                logger.info("Processing default feeds")
+            else:
+                logger.info(f"Processing {len(self.reader.feeds)} feeds")
+                for i, feed in enumerate(self.reader.feeds, 1):
+                    logger.info(f"  Feed {i}: {feed}")
 
             # Process feeds in batches (reusing the original implementation)
             for batch in self.reader._get_feed_batches():
@@ -549,12 +565,21 @@ def main():
             print("💨 Using optimized clustering for better performance")
         print("========================================================\n")
         
+        # Log what feeds we're using
+        if args.feeds:
+            logger.info(f"Using {len(args.feeds)} custom feeds from command line")
+            for i, feed in enumerate(args.feeds, 1):
+                logger.info(f"  Feed {i}: {feed}")
+        else:
+            logger.info("Using default feeds from rss_feeds.txt")
+        
         # Use optimized reader if available and requested
         if args.optimized and has_optimized_clustering and optimized_integration:
             # Apply optimization patches
             optimized_integration.apply_optimization_patch()
             
             # Run the optimized reader
+            import asyncio
             output_file = asyncio.run(optimized_integration.run_optimized_reader(args.feeds))
         else:
             if args.optimized and not has_optimized_clustering:

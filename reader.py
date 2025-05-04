@@ -53,11 +53,18 @@ class RSSReader:
         Initialize RSSReader with feeds and settings.
         
         Args:
-            feeds: List of RSS feed URLs (optional)
+            feeds: List of RSS feed URLs (None for default feeds, [] for no feeds)
             batch_size: Number of feeds to process in a batch
             batch_delay: Delay between batches in seconds
         """
-        self.feeds = feeds or self._load_default_feeds()
+        # Explicitly handle None vs empty list
+        if feeds is None:
+            logging.info("No feeds provided, loading defaults")
+            self.feeds = self._load_default_feeds()
+        else:
+            logging.info(f"Using {len(feeds)} provided feeds")
+            self.feeds = feeds
+            
         self.batch_size = batch_size
         self.batch_delay = batch_delay
         self.session = create_http_session()
@@ -91,6 +98,7 @@ class RSSReader:
             
             for path in file_paths:
                 if os.path.exists(path):
+                    logging.info(f"Loading default feeds from {path}")
                     with open(path, 'r') as f:
                         for line in f:
                             url = line.strip()
@@ -100,6 +108,7 @@ class RSSReader:
                                 url = ''.join(c for c in url if ord(c) >= 32)  # Remove control characters
                                 if url:
                                     feeds.append(url)
+                    logging.info(f"Loaded {len(feeds)} default feeds")
                     return feeds
             
             logging.error("No rss_feeds.txt file found")
@@ -393,6 +402,7 @@ class RSSReader:
             list: Processed articles from the feed
         """
         try:
+            logging.info(f"Processing feed: {feed_url}")
             feed = feedparser.parse(feed_url)
             articles = []
 
@@ -405,6 +415,7 @@ class RSSReader:
                     if article:
                         articles.append(article)
 
+            logging.info(f"Successfully processed {len(articles)} articles from {feed_url}")
             return articles
 
         except Exception as e:
