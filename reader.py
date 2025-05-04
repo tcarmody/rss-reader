@@ -6,7 +6,7 @@ import time
 import logging
 import traceback
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, render_template
 
@@ -116,6 +116,78 @@ class RSSReader:
         except Exception as e:
             logging.error(f"Error loading feed URLs: {str(e)}")
             return []
+
+    def _parse_date(self, date_str):
+        """
+        Parse date string with multiple formats.
+        
+        Args:
+            date_str: Date string to parse
+            
+        Returns:
+            datetime object
+        """
+        if not date_str:
+            return datetime.now()
+        
+        try:
+            # First, try feedparser's date parsing
+            parsed_date = feedparser._parse_date(date_str)
+            if parsed_date:
+                return datetime(*parsed_date[:6])
+        except:
+            pass
+        
+        # Try common date formats
+        date_formats = [
+            '%a, %d %b %Y %H:%M:%S %z',  # RFC 822
+            '%a, %d %b %Y %H:%M:%S %Z',  # RFC 822 with timezone name
+            '%Y-%m-%dT%H:%M:%S%z',       # ISO 8601
+            '%Y-%m-%dT%H:%M:%SZ',        # ISO 8601 with Z
+            '%Y-%m-%d %H:%M:%S',         # Common format
+            '%Y-%m-%d',                  # Date only
+            '%d %b %Y %H:%M:%S %z',      # Another common format
+            '%d %b %Y %H:%M:%S %Z',      # Another common format
+        ]
+        
+        for fmt in date_formats:
+            try:
+                return datetime.strptime(date_str, fmt)
+            except ValueError:
+                continue
+        
+        # If all parsing attempts fail, return current time
+        logging.warning(f"Could not parse date: {date_str}")
+        return datetime.now()
+
+    def _filter_articles_by_date(self, articles, hours):
+        """
+        Filter articles to include only those from the specified time range.
+        
+        Args:
+            articles: List of articles to filter
+            hours: Number of hours in the past to include
+            
+        Returns:
+            List of filtered articles
+        """
+        if hours <= 0:  # No filtering if hours is 0 or negative
+            return articles
+            
+        cutoff_date = datetime.now() - timedelta(hours=hours)
+        filtered_articles = []
+        
+        for article in articles:
+            try:
+                article_date = self._parse_date(article.get('published', ''))
+                # Remove timezone for comparison
+                if article_date.replace(tzinfo=None) >= cutoff_date:
+                    filtered_articles.append(article)
+            except Exception as e:
+                logging.debug(f"Could not parse date for article: {article.get('title')}. Including it anyway.")
+                filtered_articles.append(article)  # Include articles with unparseable dates
+        
+        return filtered_articles
 
     @track_performance
     def process_cluster_summaries(self, clusters):
@@ -342,6 +414,17 @@ class RSSReader:
                     time.sleep(self.batch_delay)
 
             logging.info(f"Total articles collected: {len(all_articles)}")
+
+            # Apply time range filtering if enabled
+            time_range_hours = int(os.environ.get('TIME_RANGE_HOURS', '0'))
+            if time_range_hours > 0:
+                filtered_articles = self._filter_articles_by_date(all_articles, time_range_hours)
+                logging.info(f"Filtered articles from {len(all_articles)} to {len(filtered_articles)} using {time_range_hours} hour time range")
+                all_articles = filtered_articles
+                
+                if not all_articles:
+                    logging.warning("No articles remaining after time range filtering")
+                    return None
 
             if not all_articles:
                 logging.error("No articles collected from any feeds")

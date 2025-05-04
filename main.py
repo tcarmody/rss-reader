@@ -22,7 +22,7 @@ import logging
 import time
 import traceback
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Configure logging
@@ -206,6 +206,46 @@ class EnhancedRSSReader:
         # Log initialization
         logger.info(f"Enhanced RSS Reader initialized with {self.max_workers} summarization workers and multi-article clustering")
         
+    def _parse_date(self, date_str):
+        """Parse date string with multiple formats using dateutil."""
+        if not date_str:
+            return datetime.now()
+            
+        try:
+            from dateutil import parser
+            return parser.parse(date_str)
+        except Exception as e:
+            logger.debug(f"Date parsing failed: {e}. Using current date.")
+            return datetime.now()
+    
+    def _filter_articles_by_date(self, articles, hours):
+        """
+        Filter articles to include only those from the specified time range.
+        
+        Args:
+            articles: List of articles to filter
+            hours: Number of hours in the past to include
+            
+        Returns:
+            List of filtered articles
+        """
+        if hours <= 0:  # No filtering if hours is 0 or negative
+            return articles
+            
+        cutoff_date = datetime.now() - timedelta(hours=hours)
+        filtered_articles = []
+        
+        for article in articles:
+            try:
+                article_date = self._parse_date(article.get('published', ''))
+                if article_date.replace(tzinfo=None) >= cutoff_date:
+                    filtered_articles.append(article)
+            except Exception as e:
+                logger.debug(f"Could not parse date for article: {article.get('title')}. Including it anyway.")
+                filtered_articles.append(article)  # Include articles with unparseable dates
+        
+        return filtered_articles
+        
     async def batch_summarize_articles(self, articles):
         """
         Summarize a batch of articles using enhanced parallel processing.
@@ -370,6 +410,17 @@ class EnhancedRSSReader:
             if not all_articles:
                 logger.error("No articles collected from any feeds")
                 return None
+
+            # Apply time range filtering if enabled
+            time_range_hours = int(os.environ.get('TIME_RANGE_HOURS', '0'))
+            if time_range_hours > 0:
+                filtered_articles = self._filter_articles_by_date(all_articles, time_range_hours)
+                logger.info(f"Filtered articles from {len(all_articles)} to {len(filtered_articles)} using {time_range_hours} hour time range")
+                all_articles = filtered_articles
+                
+                if not all_articles:
+                    logger.warning("No articles remaining after time range filtering")
+                    return None
 
             # Use the enhanced clustering with multi-article capabilities
             logger.info("Clustering similar articles with enhanced multi-article clustering...")

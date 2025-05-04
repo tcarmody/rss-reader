@@ -66,12 +66,15 @@ latest_data = {
     'raw_clusters': []  # Store the raw clusters for debugging
 }
 
-# Default clustering settings
+# Default clustering settings - Updated with time range settings
 DEFAULT_CLUSTERING_SETTINGS = {
     'enable_multi_article': True,
     'similarity_threshold': 0.7,
     'max_articles_per_batch': 5,
-    'use_enhanced_clustering': True
+    'use_enhanced_clustering': True,
+    'time_range_enabled': True,  # New setting
+    'time_range_value': 168,     # Default to 7 days (168 hours)
+    'time_range_unit': 'hours'   # Can be 'hours', 'days', 'weeks', or 'months'
 }
 
 def setup_summarization_engine(max_workers=3):
@@ -329,6 +332,9 @@ def update_clustering_settings():
     clustering_settings['enable_multi_article'] = request.form.get('enable_multi_article') == 'on'
     clustering_settings['use_enhanced_clustering'] = request.form.get('use_enhanced_clustering') == 'on'
     
+    # Add time range settings
+    clustering_settings['time_range_enabled'] = request.form.get('time_range_enabled') == 'on'
+    
     # Parse numeric values with error handling
     try:
         similarity = float(request.form.get('similarity_threshold', 0.7))
@@ -343,6 +349,17 @@ def update_clustering_settings():
     except (ValueError, TypeError):
         # Keep existing value on error
         pass
+    
+    try:
+        time_value = int(request.form.get('time_range_value', 168))
+        clustering_settings['time_range_value'] = max(1, time_value)
+    except (ValueError, TypeError):
+        # Keep existing value on error
+        pass
+    
+    time_unit = request.form.get('time_range_unit', 'hours')
+    if time_unit in ['hours', 'days', 'weeks', 'months']:
+        clustering_settings['time_range_unit'] = time_unit
     
     # Store updated settings in session
     session['clustering_settings'] = clustering_settings
@@ -401,6 +418,29 @@ def refresh_feeds():
         
         # Get clustering settings
         clustering_settings = get_clustering_settings()
+        
+        # Calculate time range in hours
+        if clustering_settings.get('time_range_enabled', False):
+            time_value = clustering_settings.get('time_range_value', 168)
+            time_unit = clustering_settings.get('time_range_unit', 'hours')
+            
+            # Convert to hours
+            if time_unit == 'days':
+                time_range_hours = time_value * 24
+            elif time_unit == 'weeks':
+                time_range_hours = time_value * 24 * 7
+            elif time_unit == 'months':
+                time_range_hours = time_value * 24 * 30
+            else:  # hours
+                time_range_hours = time_value
+            
+            # Set environment variable for the clustering module
+            os.environ['TIME_RANGE_HOURS'] = str(time_range_hours)
+            logging.info(f"Time range filter enabled: {time_value} {time_unit} ({time_range_hours} hours)")
+        else:
+            # Disable time filtering
+            os.environ['TIME_RANGE_HOURS'] = '0'
+            logging.info("Time range filter disabled")
         
         # Set environment variables for clustering options
         os.environ['ENABLE_MULTI_ARTICLE_CLUSTERING'] = 'true' if clustering_settings['enable_multi_article'] else 'false'
@@ -736,7 +776,8 @@ def debug_feeds():
         },
         'environment': {
             'paywall_bypass': os.environ.get('ENABLE_PAYWALL_BYPASS', 'false'),
-            'clustering': os.environ.get('ENABLE_MULTI_ARTICLE_CLUSTERING', 'true')
+            'clustering': os.environ.get('ENABLE_MULTI_ARTICLE_CLUSTERING', 'true'),
+            'time_range_hours': os.environ.get('TIME_RANGE_HOURS', '0')
         }
     })
 
@@ -775,6 +816,7 @@ if __name__ == '__main__':
             os.environ['MIN_SIMILARITY_THRESHOLD'] = '0.7'
             os.environ['MAX_ARTICLES_PER_BATCH'] = '5'
             os.environ['USE_ENHANCED_CLUSTERING'] = 'true'
+            os.environ['TIME_RANGE_HOURS'] = '0'
             
             logging.info("Initialization completed successfully")
         except Exception as e:

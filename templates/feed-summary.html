@@ -71,6 +71,33 @@
             
             <div class="setting-row">
               <div>
+                <div class="setting-name">Time Range Filter</div>
+                <div class="setting-description">Only include articles from the selected time range</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" name="time_range_enabled" {% if clustering_settings.time_range_enabled %}checked{% endif %}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-row" {% if not clustering_settings.time_range_enabled %}style="display: none;"{% endif %} id="timeRangeOptions">
+              <div>
+                <div class="setting-name">Time Range</div>
+                <div class="setting-description">How far back to look for articles</div>
+              </div>
+              <div style="display: flex; gap: 0.5rem;">
+                <input type="number" name="time_range_value" class="form-input-number" value="{{ clustering_settings.time_range_value }}" min="1" style="max-width: 70px;">
+                <select name="time_range_unit" class="form-input" style="max-width: 100px;">
+                  <option value="hours" {% if clustering_settings.time_range_unit == 'hours' %}selected{% endif %}>Hours</option>
+                  <option value="days" {% if clustering_settings.time_range_unit == 'days' %}selected{% endif %}>Days</option>
+                  <option value="weeks" {% if clustering_settings.time_range_unit == 'weeks' %}selected{% endif %}>Weeks</option>
+                  <option value="months" {% if clustering_settings.time_range_unit == 'months' %}selected{% endif %}>Months</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="setting-row">
+              <div>
                 <div class="setting-name">Similarity Threshold</div>
                 <div class="setting-description">Minimum similarity score (0.0-1.0)</div>
               </div>
@@ -134,6 +161,14 @@
     <h1 class="page-title">AI News Digest</h1>
     <span class="timestamp">Generated on {{ timestamp }}</span>
   </div>
+  
+  {% if clustering_settings.time_range_enabled %}
+  <div class="time-range-info">
+    Showing articles from the past 
+    {{ clustering_settings.time_range_value }} 
+    {{ clustering_settings.time_range_unit }}
+  </div>
+  {% endif %}
   
   {% for cluster in clusters %}
   <div class="cluster">
@@ -220,6 +255,18 @@
   document.addEventListener('click', (event) => {
     if (!settingsContainer.contains(event.target)) {
       settingsContainer.classList.remove('active');
+    }
+  });
+  
+  // Handle time range options visibility
+  document.addEventListener('DOMContentLoaded', function() {
+    const timeRangeEnabled = document.querySelector('input[name="time_range_enabled"]');
+    const timeRangeOptions = document.getElementById('timeRangeOptions');
+    
+    if (timeRangeEnabled) {
+      timeRangeEnabled.addEventListener('change', function() {
+        timeRangeOptions.style.display = this.checked ? 'flex' : 'none';
+      });
     }
   });
   
