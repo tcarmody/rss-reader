@@ -64,6 +64,51 @@ def get_clustering_settings(request: Request):
         request.session['clustering_settings'] = DEFAULT_CLUSTERING_SETTINGS.copy()
     return request.session['clustering_settings']
 
+def sort_clusters(clusters):
+    """Sort clusters by the number of articles (descending) and by date."""
+    if not clusters:
+        return []
+    
+    # Sort clusters by size (number of articles) in descending order
+    # and by the newest article date for clusters of the same size
+    def get_cluster_key(cluster):
+        cluster_size = len(cluster)
+        # Get the most recent date from articles in cluster
+        most_recent_date = None
+        for article in cluster:
+            try:
+                published = article.get('published', '')
+                # Parse the date
+                if isinstance(published, str):
+                    # Try to parse date string
+                    try:
+                        article_date = datetime.strptime(published, "%Y-%m-%d %H:%M:%S")
+                    except:
+                        try:
+                            # Try alternative formats
+                            from dateutil import parser as date_parser
+                            article_date = date_parser.parse(published)
+                        except:
+                            article_date = None
+                elif isinstance(published, datetime):
+                    article_date = published
+                else:
+                    article_date = None
+                
+                if article_date and (most_recent_date is None or article_date > most_recent_date):
+                    most_recent_date = article_date
+            except:
+                continue
+        
+        # If no valid dates found, use current time as a fallback
+        if most_recent_date is None:
+            most_recent_date = datetime.now()
+            
+        # Return tuple for sorting: negative cluster size for descending order, then most recent date
+        return (-cluster_size, -most_recent_date.timestamp())
+    
+    return sorted(clusters, key=get_cluster_key)
+
 # Routes
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
@@ -343,6 +388,9 @@ async def summarize_single_post(
         url = 'https://' + url
     
     try:
+        # Import necessary functions for summarization
+        from main import setup_summarization_engine
+        
         # Initialize summarizer with enhanced batch processing
         max_workers = clustering_settings.get('max_articles_per_batch', 3)
         summarizer = setup_summarization_engine(max_workers)
@@ -430,6 +478,22 @@ async def status(request: Request):
     """Return the current status of the RSS reader."""
     clustering_settings = get_clustering_settings(request)
     
+    # Check if enhanced clustering is available by trying to import the module
+    has_enhanced_clustering = False
+    try:
+        from enhanced_clustering import create_enhanced_clusterer
+        has_enhanced_clustering = True
+    except ImportError:
+        pass
+    
+    # Check if optimized clustering is available
+    has_optimized_clustering = False
+    try:
+        from lm_cluster_analyzer import create_cluster_analyzer
+        has_optimized_clustering = True
+    except ImportError:
+        pass
+    
     return JSONResponse({
         'has_data': bool(latest_data['clusters']),
         'last_updated': latest_data['timestamp'],
@@ -442,8 +506,6 @@ async def status(request: Request):
         'has_enhanced_clustering': has_enhanced_clustering,
         'has_optimized_clustering': has_optimized_clustering
     })
-
-# ... rest of the routes ...
 
 if __name__ == '__main__':
     import uvicorn
