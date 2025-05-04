@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Data Points AI - URL Summary</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
 </head>
 <body>
   <div class="app-container">
@@ -20,7 +20,7 @@
         
         <div class="nav-actions">
           <a href="{{ url_for('welcome') }}" class="button outline">Home</a>
-          <a href="{{ url_for('summarize_single') }}" class="button outline">New Summary</a>
+          <a href="{{ url_for('summarize_single_get') }}" class="button outline">New Summary</a>
           
           <form action="/toggle_paywall_bypass" method="post" style="display: inline;">
             <div class="paywall-container">
@@ -69,7 +69,7 @@
         </div>
 
         <div class="summary-actions">
-          <a href="{{ url_for('summarize_single') }}" class="button">Summarize Another URL</a>
+          <a href="{{ url_for('summarize_single_get') }}" class="button">Summarize Another URL</a>
         </div>
       </div>
     </main>

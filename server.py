@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Web server for RSS Reader that displays summarized articles in a browser.
-Enhanced with controls for clustering settings and batch processing improvements.
+Web server for RSS Reader using FastAPI.
 """
 
 # Apply streamlined batch processing fix
@@ -14,7 +13,12 @@ import logging
 import sys
 from datetime import datetime
 from urllib.parse import urlparse
-from flask import Flask, render_template, redirect, url_for, request, jsonify, session
+from fastapi import FastAPI, Request, Form, HTTPException, Depends, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
+from typing import Optional
 
 # Configure logging
 logging.basicConfig(
@@ -22,423 +26,200 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-# Check if optimized modules are available and apply optimization patch if present
-try:
-    import optimized_integration
-    has_optimized_clustering = True
-except ImportError:
-    has_optimized_clustering = False
+# Initialize FastAPI app
+app = FastAPI(title="Data Points AI - RSS Reader")
 
-# Import in a try/except block to provide better error messages
-try:
-    from reader import RSSReader
-    from utils.http import create_http_session
-    from utils.archive import fetch_article_content
-    from summarizer import ArticleSummarizer
-    from fast_summarizer import create_fast_summarizer
-    
-    # Import enhanced clustering components
-    try:
-        from enhanced_clustering import create_enhanced_clusterer
-        from lm_cluster_analyzer import create_cluster_analyzer
-        has_enhanced_clustering = True
-    except ImportError:
-        has_enhanced_clustering = False
-        logging.warning("Enhanced clustering modules not available. Will use basic clustering.")
-except ImportError as e:
-    print(f"Error: Could not import required modules: {e}")
-    print("Make sure all files are in the correct directory.")
-    sys.exit(1)
+# Add session middleware
+app.add_middleware(SessionMiddleware, secret_key=os.environ.get('SECRET_KEY', os.urandom(24)))
 
-# Initialize Flask app
-app = Flask(__name__, 
-            template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
-            static_folder=os.path.join(os.path.dirname(__file__), 'static'))
+# Mount static files
+app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), 'static')), name="static")
 
-# Set a secret key for session management
-app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
+# Configure templates
+templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), 'templates'))
 
 # Store the latest processed data
 latest_data = {
     'clusters': [],
     'timestamp': None,
     'output_file': None,
-    'raw_clusters': []  # Store the raw clusters for debugging
+    'raw_clusters': []
 }
 
-# Default clustering settings - Updated with time range settings
+# Default clustering settings
 DEFAULT_CLUSTERING_SETTINGS = {
     'enable_multi_article': True,
     'similarity_threshold': 0.7,
     'max_articles_per_batch': 5,
     'use_enhanced_clustering': True,
-    'time_range_enabled': True,  # New setting
-    'time_range_value': 168,     # Default to 7 days (168 hours)
-    'time_range_unit': 'hours'   # Can be 'hours', 'days', 'weeks', or 'months'
+    'time_range_enabled': True,
+    'time_range_value': 168,
+    'time_range_unit': 'hours'
 }
 
-def setup_summarization_engine(max_workers=3):
-    """
-    Set up the enhanced summarization engine with improved batch processing.
-    
-    Args:
-        max_workers: Number of worker processes
-        
-    Returns:
-        FastArticleSummarizer: Configured with enhanced batch processing
-    """
-    logging.info("Setting up enhanced summarization engine...")
-    
-    try:
-        # Create the original summarizer
-        original_summarizer = ArticleSummarizer()
-        
-        # Configure environment variables for rate limiting and process management
-        rpm_limit = int(os.environ.get('API_RPM_LIMIT', '50'))
-        cache_size = int(os.environ.get('CACHE_SIZE', '256'))
-        cache_dir = os.environ.get('CACHE_DIR', './summary_cache')
-        ttl_days = int(os.environ.get('CACHE_TTL_DAYS', '30'))
-        
-        # Ensure at least 1 worker
-        max_workers = max(1, max_workers)
-        
-        # Create fast summarizer with enhanced batch processing
-        fast_summarizer = create_fast_summarizer(
-            original_summarizer=original_summarizer,
-            rpm_limit=rpm_limit,
-            cache_size=cache_size,
-            cache_dir=cache_dir,
-            ttl_days=ttl_days,
-            max_batch_workers=max_workers
-        )
-        
-        logging.info(f"Summarization engine successfully configured with {max_workers} workers")
-        return fast_summarizer
-        
-    except Exception as e:
-        logging.error(f"Error setting up summarization engine: {e}")
-        # Fall back to original summarizer
-        return ArticleSummarizer()
-
-def setup_clustering_engine(summarizer=None):
-    """
-    Set up the enhanced clustering engine with multi-article comparison capabilities.
-    
-    Args:
-        summarizer: The summarizer instance that provides access to LLM
-        
-    Returns:
-        EnhancedArticleClusterer or ArticleClusterer: Configured clustering engine
-    """
-    logging.info("Setting up enhanced clustering engine...")
-    
-    # Get clustering settings
-    clustering_settings = get_clustering_settings()
-    
-    # Check if we should use optimized clustering
-    use_optimized = os.environ.get('USE_OPTIMIZED_CLUSTERING', 'false').lower() == 'true'
-    use_enhanced = clustering_settings.get('use_enhanced_clustering', True)
-    
-    try:
-        if use_optimized and has_optimized_clustering:
-            # Use optimized clustering if available and enabled
-            from optimized_integration import create_optimized_reader
-            clusterer = optimized_integration.create_optimized_clusterer(summarizer=summarizer)
-            logging.info("Using optimized clustering engine for better performance")
-        elif use_enhanced and has_enhanced_clustering:
-            # Use standard enhanced clustering
-            from enhanced_clustering import create_enhanced_clusterer
-            
-            # Create the enhanced clusterer that uses LM-based multi-article clustering
-            clusterer = create_enhanced_clusterer(summarizer=summarizer)
-            
-            # Try to create a cluster analyzer for advanced operations
-            try:
-                from lm_cluster_analyzer import create_cluster_analyzer
-                analyzer = create_cluster_analyzer(summarizer=summarizer)
-                # Store the analyzer in the clusterer for convenience
-                clusterer.analyzer = analyzer
-                logging.info("Clustering engine successfully configured with multi-article capabilities")
-            except ImportError:
-                logging.warning("LM cluster analyzer not available, skipping advanced cluster analysis")
-        else:
-            # Use basic clustering
-            from clustering import ArticleClusterer
-            clusterer = ArticleClusterer()
-            logging.info("Using basic clustering engine")
-        
-        return clusterer
-        
-    except Exception as e:
-        logging.error(f"Error setting up clustering engine: {e}")
-        logging.error(f"Detailed error: {str(e)}")
-        # Fall back to the original clustering if enhanced fails
-        from clustering import ArticleClusterer
-        logging.warning("Using fallback clustering engine without multi-article capabilities")
-        return ArticleClusterer()
-
-def sort_clusters(clusters):
-    """
-    Sort clusters in the following order:
-    1. Largest clusters first
-    2. Stories from Techmeme
-    3. Stories from reputable news sources
-    4. Stories from technology companies
-    5. Stories from everyone else
-    """
-    # Define lists of source domains for categorization
-    techmeme_sources = ['techmeme.com']
-    
-    reputable_news_sources = [
-        'nytimes.com', 'washingtonpost.com', 'wsj.com', 'reuters.com',
-        'bloomberg.com', 'ft.com', 'economist.com', 'bbc.com', 'bbc.co.uk',
-        'apnews.com', 'npr.org', 'cnn.com', 'cnbc.com', 'theverge.com',
-        'wired.com', 'arstechnica.com', 'techcrunch.com', 'engadget.com'
-    ]
-    
-    tech_company_sources = [
-        'blog.google', 'blog.microsoft.com', 'apple.com', 'amazon.com', 
-        'meta.com', 'facebook.com', 'engineering.fb.com', 'developer.apple.com',
-        'azure.microsoft.com', 'aws.amazon.com', 'blog.twitter.com',
-        'developer.android.com', 'developer.mozilla.org', 'netflix.com',
-        'engineering.linkedin.com', 'github.blog', 'medium.engineering',
-        'instagram-engineering.com', 'engineering.pinterest.com',
-        'slack.engineering', 'dropbox.tech', 'spotify.engineering'
-    ]
-    
-    # Define category scores (higher is more important)
-    def get_source_score(article):
-        if not article or 'feed_source' not in article:
-            return 0
-        
-        source = article.get('feed_source', '').lower()
-        
-        for techmeme in techmeme_sources:
-            if techmeme in source:
-                return 4
-        
-        for reputable in reputable_news_sources:
-            if reputable in source:
-                return 3
-        
-        for tech_company in tech_company_sources:
-            if tech_company in source:
-                return 2
-        
-        return 1  # Everyone else
-    
-    # Create a sorting function
-    def cluster_sort_key(cluster):
-        if not cluster:
-            return (-1, 0)  # Empty clusters go last
-        
-        # Primary sort by cluster size (descending)
-        cluster_size = len(cluster)
-        
-        # Secondary sort by source category
-        # Get the source from the first article in the cluster
-        source_score = get_source_score(cluster[0])
-        
-        return (-cluster_size, -source_score)  # Negative to sort in descending order
-    
-    # Sort the clusters using the sorting function
-    sorted_clusters = sorted(clusters, key=cluster_sort_key)
-    
-    # Log the sorting results for debugging
-    logging.info(f"Sorted {len(sorted_clusters)} clusters")
-    if sorted_clusters:
-        for i, cluster in enumerate(sorted_clusters[:5]):  # Log first 5 clusters
-            if cluster:
-                source = cluster[0].get('feed_source', 'Unknown')
-                logging.info(f"Cluster {i}: size={len(cluster)}, source={source}")
-    
-    return sorted_clusters
-
-def get_clustering_settings():
+# Helper functions for session management
+def get_clustering_settings(request: Request):
     """Get current clustering settings from session or use defaults."""
-    if 'clustering_settings' not in session:
-        session['clustering_settings'] = DEFAULT_CLUSTERING_SETTINGS.copy()
-    return session['clustering_settings']
+    if 'clustering_settings' not in request.session:
+        request.session['clustering_settings'] = DEFAULT_CLUSTERING_SETTINGS.copy()
+    return request.session['clustering_settings']
 
-@app.route('/')
-def index():
+# Routes
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
     """Render the main page with the latest summaries or a welcome page if none exist."""
-    # Initialize paywall_bypass status in session if not already set
-    if 'paywall_bypass_enabled' not in session:
-        session['paywall_bypass_enabled'] = False
+    # Initialize session variables if not set
+    if 'paywall_bypass_enabled' not in request.session:
+        request.session['paywall_bypass_enabled'] = False
     
-    # Initialize feeds_list and use_default in session if not already set
-    if 'feeds_list' not in session:
-        session['feeds_list'] = None
-    if 'use_default' not in session:
-        session['use_default'] = True
+    if 'feeds_list' not in request.session:
+        request.session['feeds_list'] = None
+    if 'use_default' not in request.session:
+        request.session['use_default'] = True
     
-    # Initialize clustering settings if not already set
-    clustering_settings = get_clustering_settings()
+    clustering_settings = get_clustering_settings(request)
     
     if latest_data['clusters']:
-        # Sort the clusters before passing to the template
         sorted_clusters = sort_clusters(latest_data['clusters'])
         
-        return render_template(
-            'feed-summary.html',
-            clusters=sorted_clusters,
-            timestamp=latest_data['timestamp'],
-            paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
-            clustering_settings=clustering_settings
+        return templates.TemplateResponse(
+            "feed-summary.html",
+            {
+                "request": request,
+                "clusters": sorted_clusters,
+                "timestamp": latest_data['timestamp'],
+                "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
+                "clustering_settings": clustering_settings
+            }
         )
     else:
-        return render_template(
-            'welcome.html',
-            has_default_feeds=os.path.exists(os.path.join(os.path.dirname(__file__), 'rss_feeds.txt')),
-            paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
-            clustering_settings=clustering_settings
+        return templates.TemplateResponse(
+            "welcome.html",
+            {
+                "request": request,
+                "has_default_feeds": os.path.exists(os.path.join(os.path.dirname(__file__), 'rss_feeds.txt')),
+                "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
+                "clustering_settings": clustering_settings
+            }
         )
 
-@app.route('/welcome')
-def welcome():
+@app.get("/welcome", response_class=HTMLResponse)
+async def welcome(request: Request):
     """Explicitly render the welcome page regardless of data state."""
-    # Get current clustering settings
-    clustering_settings = get_clustering_settings()
+    clustering_settings = get_clustering_settings(request)
     
-    return render_template(
-        'welcome.html',
-        has_default_feeds=os.path.exists(os.path.join(os.path.dirname(__file__), 'rss_feeds.txt')),
-        paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
-        clustering_settings=clustering_settings
+    return templates.TemplateResponse(
+        "welcome.html",
+        {
+            "request": request,
+            "has_default_feeds": os.path.exists(os.path.join(os.path.dirname(__file__), 'rss_feeds.txt')),
+            "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
+            "clustering_settings": clustering_settings
+        }
     )
 
-@app.route('/toggle_paywall_bypass', methods=['POST'])
-def toggle_paywall_bypass():
+@app.post("/toggle_paywall_bypass")
+async def toggle_paywall_bypass(request: Request):
     """Toggle the paywall bypass setting."""
-    current_status = session.get('paywall_bypass_enabled', False)
-    session['paywall_bypass_enabled'] = not current_status
+    current_status = request.session.get('paywall_bypass_enabled', False)
+    request.session['paywall_bypass_enabled'] = not current_status
     
     # Log the change
-    if session['paywall_bypass_enabled']:
+    if request.session['paywall_bypass_enabled']:
         logging.info("Paywall bypass enabled by user")
     else:
         logging.info("Paywall bypass disabled by user")
     
-    return redirect(request.referrer or url_for('index'))
+    referer = request.headers.get('referer', '/')
+    return RedirectResponse(url=referer, status_code=303)
 
-@app.route('/update_clustering_settings', methods=['POST'])
-def update_clustering_settings():
+@app.post("/update_clustering_settings")
+async def update_clustering_settings(
+    request: Request,
+    enable_multi_article: Optional[str] = Form(None),
+    use_enhanced_clustering: Optional[str] = Form(None),
+    time_range_enabled: Optional[str] = Form(None),
+    similarity_threshold: float = Form(0.7),
+    max_articles_per_batch: int = Form(5),
+    time_range_value: int = Form(168),
+    time_range_unit: str = Form('hours')
+):
     """Update clustering settings from form submission."""
-    # Get current settings
-    clustering_settings = get_clustering_settings()
+    clustering_settings = get_clustering_settings(request)
     
-    # Update settings from form
-    clustering_settings['enable_multi_article'] = request.form.get('enable_multi_article') == 'on'
-    clustering_settings['use_enhanced_clustering'] = request.form.get('use_enhanced_clustering') == 'on'
+    # Update boolean settings
+    clustering_settings['enable_multi_article'] = enable_multi_article == 'on'
+    clustering_settings['use_enhanced_clustering'] = use_enhanced_clustering == 'on'
+    clustering_settings['time_range_enabled'] = time_range_enabled == 'on'
     
-    # Add time range settings
-    clustering_settings['time_range_enabled'] = request.form.get('time_range_enabled') == 'on'
+    # Update numeric settings
+    clustering_settings['similarity_threshold'] = max(0.0, min(1.0, similarity_threshold))
+    clustering_settings['max_articles_per_batch'] = max(1, min(10, max_articles_per_batch))
+    clustering_settings['time_range_value'] = max(1, time_range_value)
     
-    # Parse numeric values with error handling
-    try:
-        similarity = float(request.form.get('similarity_threshold', 0.7))
-        clustering_settings['similarity_threshold'] = max(0.0, min(1.0, similarity))
-    except (ValueError, TypeError):
-        # Keep existing value on error
-        pass
-        
-    try:
-        max_articles = int(request.form.get('max_articles_per_batch', 5))
-        clustering_settings['max_articles_per_batch'] = max(1, min(10, max_articles))
-    except (ValueError, TypeError):
-        # Keep existing value on error
-        pass
-    
-    try:
-        time_value = int(request.form.get('time_range_value', 168))
-        clustering_settings['time_range_value'] = max(1, time_value)
-    except (ValueError, TypeError):
-        # Keep existing value on error
-        pass
-    
-    time_unit = request.form.get('time_range_unit', 'hours')
-    if time_unit in ['hours', 'days', 'weeks', 'months']:
-        clustering_settings['time_range_unit'] = time_unit
+    # Update time unit
+    if time_range_unit in ['hours', 'days', 'weeks', 'months']:
+        clustering_settings['time_range_unit'] = time_range_unit
     
     # Store updated settings in session
-    session['clustering_settings'] = clustering_settings
+    request.session['clustering_settings'] = clustering_settings
     
     # Log the settings update
     logging.info(f"Updated clustering settings: {clustering_settings}")
     
-    return redirect(request.referrer or url_for('index'))
+    referer = request.headers.get('referer', '/')
+    return RedirectResponse(url=referer, status_code=303)
 
-@app.route('/reset_clustering_settings', methods=['POST'])
-def reset_clustering_settings():
-    """Reset clustering settings to defaults."""
-    session['clustering_settings'] = DEFAULT_CLUSTERING_SETTINGS.copy()
-    logging.info("Reset clustering settings to defaults")
-    return redirect(request.referrer or url_for('index'))
-
-@app.route('/refresh', methods=['POST'])
-def refresh_feeds():
+@app.post("/refresh")
+async def refresh_feeds(
+    request: Request,
+    feeds: Optional[str] = Form(None),
+    use_default: Optional[str] = Form(None),
+    batch_size: Optional[int] = Form(25),
+    batch_delay: Optional[int] = Form(15)
+):
     """Process RSS feeds and update the latest data."""
     try:
-        # Check if form has a new feed submission
-        feeds_from_form = request.form.get('feeds', '').strip()
-        use_default_from_form = request.form.get('use_default', 'false').lower() == 'true'
+        # Handle form data
+        feeds_from_form = feeds.strip() if feeds else ''
+        use_default_from_form = use_default == 'true' if use_default else False
         
-        # If there's form data for feeds, update the session
-        if feeds_from_form or 'use_default' in request.form:
-            # Store in session whether we're using default feeds or not
-            session['use_default'] = use_default_from_form
+        # Update session
+        if feeds_from_form or use_default is not None:
+            request.session['use_default'] = use_default_from_form
             
-            # If using custom feeds, store the feed list in session
             if not use_default_from_form and feeds_from_form:
                 feeds_list = [url.strip() for url in feeds_from_form.split('\n') if url.strip()]
-                session['feeds_list'] = feeds_list
+                request.session['feeds_list'] = feeds_list
                 logging.info(f"Storing {len(feeds_list)} custom feeds in session")
             else:
-                # If using default feeds, clear any stored custom feeds
-                session['feeds_list'] = None
+                request.session['feeds_list'] = None
                 logging.info("Clearing custom feeds, will use defaults")
         
-        # Now use the stored feeds from session for processing
-        use_default = session.get('use_default', True)
-        feeds_list = session.get('feeds_list')
-        
-        # Get optional parameters from the form or use defaults
-        batch_size = request.form.get('batch_size', 25)
-        try:
-            batch_size = int(batch_size)
-        except ValueError:
-            batch_size = 25
-            
-        batch_delay = request.form.get('batch_delay', 15)
-        try:
-            batch_delay = int(batch_delay)
-        except ValueError:
-            batch_delay = 15
+        # Get feeds from session
+        use_default = request.session.get('use_default', True)
+        feeds_list = request.session.get('feeds_list')
         
         # Get clustering settings
-        clustering_settings = get_clustering_settings()
+        clustering_settings = get_clustering_settings(request)
         
         # Calculate time range in hours
         if clustering_settings.get('time_range_enabled', False):
             time_value = clustering_settings.get('time_range_value', 168)
             time_unit = clustering_settings.get('time_range_unit', 'hours')
             
-            # Convert to hours
             if time_unit == 'days':
                 time_range_hours = time_value * 24
             elif time_unit == 'weeks':
                 time_range_hours = time_value * 24 * 7
             elif time_unit == 'months':
                 time_range_hours = time_value * 24 * 30
-            else:  # hours
+            else:
                 time_range_hours = time_value
             
-            # Set environment variable for the clustering module
             os.environ['TIME_RANGE_HOURS'] = str(time_range_hours)
             logging.info(f"Time range filter enabled: {time_value} {time_unit} ({time_range_hours} hours)")
         else:
-            # Disable time filtering
             os.environ['TIME_RANGE_HOURS'] = '0'
             logging.info("Time range filter disabled")
         
@@ -448,135 +229,69 @@ def refresh_feeds():
         os.environ['MAX_ARTICLES_PER_BATCH'] = str(clustering_settings['max_articles_per_batch'])
         os.environ['USE_ENHANCED_CLUSTERING'] = 'true' if clustering_settings['use_enhanced_clustering'] else 'false'
         
-        # Log what we're doing - with more detail
-        if use_default:
-            logging.info("Processing default feeds from rss_feeds.txt")
-        elif feeds_list:
-            logging.info(f"Processing {len(feeds_list)} custom feeds from session")
-            for i, feed in enumerate(feeds_list, 1):
-                logging.info(f"  Custom feed {i}: {feed}")
-        else:
-            logging.info("No feeds specified and no session data, will use default feeds")
-            use_default = True
-        
-        # Set the environment variable for paywall bypass based on user preference
-        if session.get('paywall_bypass_enabled', False):
+        # Set paywall bypass setting
+        if request.session.get('paywall_bypass_enabled', False):
             os.environ['ENABLE_PAYWALL_BYPASS'] = 'true'
-            logging.info("Using paywall bypass as per user setting")
         else:
             os.environ['ENABLE_PAYWALL_BYPASS'] = 'false'
-            logging.info("Paywall bypass disabled as per user setting")
         
-        # Initialize readers with enhanced components
+        # Process feeds
         max_workers = clustering_settings.get('max_articles_per_batch', 3)
         
-        # Check if we should use optimized integration
-        if has_optimized_clustering and clustering_settings.get('use_enhanced_clustering', True):
-            from optimized_integration import run_optimized_reader
-            import asyncio
-            
-            # Pass None for default feeds, specific list for custom feeds
-            feeds_to_pass = None if use_default else feeds_list
-            logging.info(f"Using optimized reader with feeds={feeds_to_pass}")
-            
-            output_file = asyncio.run(run_optimized_reader(feeds_to_pass))
-            
-            # Get the latest clusters from the optimized reader
-            import sys
-            if 'main' in sys.modules:
-                from main import EnhancedRSSReader
-                temp_reader = EnhancedRSSReader()
-                output_file = asyncio.run(temp_reader.process_feeds())
-                clusters = temp_reader.last_processed_clusters if hasattr(temp_reader, 'last_processed_clusters') else []
-            else:
-                from main import EnhancedRSSReader
-                reader = EnhancedRSSReader(
-                    feeds=feeds_to_pass,
-                    batch_size=batch_size,
-                    batch_delay=batch_delay,
-                    max_workers=max_workers
-                )
-                import asyncio
-                output_file = asyncio.run(reader.process_feeds())
-                clusters = reader.last_processed_clusters
-        else:
-            # Import the enhanced RSS reader with multi-article clustering
-            from main import EnhancedRSSReader
-            
-            # Initialize and run RSS reader with explicit feeds
-            # Pass None for default feeds, specific list for custom feeds
-            feeds_to_pass = None if use_default else feeds_list
-            logging.info(f"Creating EnhancedRSSReader with feeds={feeds_to_pass}")
-            
-            reader = EnhancedRSSReader(
-                feeds=feeds_to_pass,
-                batch_size=batch_size,
-                batch_delay=batch_delay,
-                max_workers=max_workers
-            )
-            
-            # Process feeds and get output file
-            import asyncio
-            output_file = asyncio.run(reader.process_feeds())
-            
-            # Get the clusters from the reader
-            clusters = reader.last_processed_clusters
+        # Import the enhanced RSS reader
+        from main import EnhancedRSSReader
+        
+        # Initialize and run RSS reader
+        feeds_to_pass = None if use_default else feeds_list
+        reader = EnhancedRSSReader(
+            feeds=feeds_to_pass,
+            batch_size=batch_size,
+            batch_delay=batch_delay,
+            max_workers=max_workers
+        )
+        
+        # Process feeds and get output file
+        import asyncio
+        output_file = await reader.process_feeds()
+        
+        # Get the clusters from the reader
+        clusters = reader.last_processed_clusters
 
         if output_file and clusters:
-            # Fix: Ensure every cluster has proper summaries attached to the first article
-            for cluster in clusters:
-                if cluster and len(cluster) > 0:
-                    # Get the first article in the cluster
-                    first_article = cluster[0]
-                    
-                    # Check if the article has a summary
-                    if 'summary' not in first_article or first_article['summary'] is None:
-                        # No summary exists, create a default one
-                        logging.warning(f"No summary found for cluster with article: {first_article.get('title')}")
-                        first_article['summary'] = {
-                            'headline': first_article.get('title', 'News Article'),
-                            'summary': f"This is a cluster of {len(cluster)} related articles about {first_article.get('title', 'various topics')}."
-                        }
-                    elif isinstance(first_article['summary'], str):
-                        # Summary is a string, convert to proper dict format
-                        summary_text = first_article['summary']
-                        first_article['summary'] = {
-                            'headline': first_article.get('title', 'News Article'),
-                            'summary': summary_text
-                        }
-                    elif isinstance(first_article['summary'], dict):
-                        # Summary is a dict, ensure it has the required fields
-                        if 'headline' not in first_article['summary']:
-                            first_article['summary']['headline'] = first_article.get('title', 'News Article')
-                        if 'summary' not in first_article['summary']:
-                            first_article['summary']['summary'] = f"This is a cluster of {len(cluster)} related articles."
-                    
-                    # Debug log to verify the summary structure
-                    logging.info(f"Cluster summary: {first_article['summary']}")
-            
-            # Update latest data with the modified clusters
+            # Update latest data
             latest_data['clusters'] = clusters
             latest_data['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             latest_data['output_file'] = output_file
             
             logging.info(f"Successfully refreshed feeds: {output_file}")
-            return redirect(url_for('index'))
+            return RedirectResponse(url="/", status_code=303)
         else:
             logging.warning("No articles found or processed")
-            return render_template('error.html', 
-                                  message="No articles found or processed. Check the logs for details.",
-                                  paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
-                                  clustering_settings=clustering_settings)
+            return templates.TemplateResponse(
+                'error.html', 
+                {
+                    "request": request,
+                    "message": "No articles found or processed. Check the logs for details.",
+                    "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
+                    "clustering_settings": clustering_settings
+                }
+            )
     
     except Exception as e:
         logging.error(f"Error refreshing feeds: {str(e)}", exc_info=True)
-        return render_template('error.html', 
-                              message=f"Error: {str(e)}",
-                              paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
-                              clustering_settings=get_clustering_settings())
+        return templates.TemplateResponse(
+            'error.html', 
+            {
+                "request": request,
+                "message": f"Error: {str(e)}",
+                "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
+                "clustering_settings": get_clustering_settings(request)
+            }
+        )
 
-@app.route('/clear', methods=['GET', 'POST'])
-def clear_data():
+@app.get("/clear")
+@app.post("/clear")
+async def clear_data():
     """Clear all data and return to welcome page."""
     global latest_data
     latest_data = {
@@ -586,244 +301,161 @@ def clear_data():
         'raw_clusters': []
     }
     logging.info("Data cleared by user")
-    return redirect(url_for('welcome'))
+    return RedirectResponse(url="/welcome", status_code=303)
 
-@app.route('/summarize', methods=['GET', 'POST'])
-def summarize_single():
-    """Handle summarization of a single URL."""
-    # Get clustering settings
-    clustering_settings = get_clustering_settings()
+@app.get("/summarize", response_class=HTMLResponse)
+async def summarize_single_get(request: Request):
+    """Handle GET request for single URL summarization."""
+    clustering_settings = get_clustering_settings(request)
     
-    if request.method == 'POST':
-        url = request.form.get('url', '').strip()
-        
-        if not url:
-            return render_template('error.html', 
-                                  message="Please provide a valid URL to summarize.",
-                                  paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
-                                  clustering_settings=clustering_settings)
-        
-        # Add http:// if missing
-        if not url.startswith('http'):
-            url = 'https://' + url
-        
-        try:
-            # Initialize summarizer with enhanced batch processing
-            max_workers = clustering_settings.get('max_articles_per_batch', 3)
-            summarizer = setup_summarization_engine(max_workers)
-            
-            # Fetch the article content
-            session_obj = create_http_session()
-            
-            # Set paywall bypass environment variable based on user preference
-            if session.get('paywall_bypass_enabled', False):
-                os.environ['ENABLE_PAYWALL_BYPASS'] = 'true'
-                logging.info("Using paywall bypass as per user setting")
-            else:
-                os.environ['ENABLE_PAYWALL_BYPASS'] = 'false'
-                logging.info("Paywall bypass disabled as per user setting")
-            
-            # Fetch article content (reusing existing code)
-            content = fetch_article_content(url, session_obj)
-            
-            if not content or len(content) < 100:
-                return render_template('error.html', 
-                                      message="Could not extract sufficient content from the provided URL.",
-                                      paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
-                                      clustering_settings=clustering_settings)
-            
-            # Extract title from URL as a fallback
-            domain = urlparse(url).netloc
-            title = f"Article from {domain}"
-            
-            # Use auto model selection if supported
-            if hasattr(summarizer, 'summarize'):
-                summary = summarizer.summarize(
-                    text=content,
-                    title=title,
-                    url=url,
-                    auto_select_model=True
-                )
-            else:
-                # Fallback to standard summarization
-                summary = summarizer.summarize_article(
-                    text=content,
-                    title=title,
-                    url=url
-                )
-            
-            # Create a fake "cluster" for template compatibility
-            fake_cluster = [{
-                'title': summary.get('headline', title),
-                'link': url,
-                'feed_source': domain,
-                'published': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'summary': summary
-            }]
-            
-            # Render the result using existing template
-            return render_template(
-                'single-summary.html',
-                url=url,
-                cluster=fake_cluster,
-                timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
-                clustering_settings=clustering_settings
-            )
-            
-        except Exception as e:
-            logging.error(f"Error summarizing URL: {str(e)}", exc_info=True)
-            return render_template('error.html', 
-                                  message=f"Error summarizing URL: {str(e)}",
-                                  paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
-                                  clustering_settings=clustering_settings)
-    
-    # GET request - show form
-    return render_template(
-        'summarize-form.html',
-        paywall_bypass_enabled=session.get('paywall_bypass_enabled', False),
-        clustering_settings=clustering_settings
+    return templates.TemplateResponse(
+        "summarize-form.html",
+        {
+            "request": request,
+            "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
+            "clustering_settings": clustering_settings
+        }
     )
 
-@app.route('/status')
-def status():
-    """Return the current status of the RSS reader."""
-    clustering_settings = get_clustering_settings()
+@app.post("/summarize")
+async def summarize_single_post(
+    request: Request,
+    url: str = Form(...)
+):
+    """Handle POST request for single URL summarization."""
+    clustering_settings = get_clustering_settings(request)
     
-    return jsonify({
+    url = url.strip()
+    
+    if not url:
+        return templates.TemplateResponse(
+            'error.html', 
+            {
+                "request": request,
+                "message": "Please provide a valid URL to summarize.",
+                "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
+                "clustering_settings": clustering_settings
+            }
+        )
+    
+    # Add http:// if missing
+    if not url.startswith('http'):
+        url = 'https://' + url
+    
+    try:
+        # Initialize summarizer with enhanced batch processing
+        max_workers = clustering_settings.get('max_articles_per_batch', 3)
+        summarizer = setup_summarization_engine(max_workers)
+        
+        # Fetch the article content
+        from utils.http import create_http_session
+        from utils.archive import fetch_article_content
+        
+        session_obj = create_http_session()
+        
+        # Set paywall bypass environment variable
+        if request.session.get('paywall_bypass_enabled', False):
+            os.environ['ENABLE_PAYWALL_BYPASS'] = 'true'
+        else:
+            os.environ['ENABLE_PAYWALL_BYPASS'] = 'false'
+        
+        # Fetch article content
+        content = fetch_article_content(url, session_obj)
+        
+        if not content or len(content) < 100:
+            return templates.TemplateResponse(
+                'error.html', 
+                {
+                    "request": request,
+                    "message": "Could not extract sufficient content from the provided URL.",
+                    "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
+                    "clustering_settings": clustering_settings
+                }
+            )
+        
+        # Extract title from URL as a fallback
+        domain = urlparse(url).netloc
+        title = f"Article from {domain}"
+        
+        # Use the summarizer
+        if hasattr(summarizer, 'summarize'):
+            summary = summarizer.summarize(
+                text=content,
+                title=title,
+                url=url,
+                auto_select_model=True
+            )
+        else:
+            summary = summarizer.summarize_article(
+                text=content,
+                title=title,
+                url=url
+            )
+        
+        # Create a fake "cluster" for template compatibility
+        fake_cluster = [{
+            'title': summary.get('headline', title),
+            'link': url,
+            'feed_source': domain,
+            'published': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'summary': summary
+        }]
+        
+        return templates.TemplateResponse(
+            'single-summary.html',
+            {
+                "request": request,
+                "url": url,
+                "cluster": fake_cluster,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
+                "clustering_settings": clustering_settings
+            }
+        )
+        
+    except Exception as e:
+        logging.error(f"Error summarizing URL: {str(e)}", exc_info=True)
+        return templates.TemplateResponse(
+            'error.html', 
+            {
+                "request": request,
+                "message": f"Error summarizing URL: {str(e)}",
+                "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
+                "clustering_settings": clustering_settings
+            }
+        )
+
+@app.get("/status")
+async def status(request: Request):
+    """Return the current status of the RSS reader."""
+    clustering_settings = get_clustering_settings(request)
+    
+    return JSONResponse({
         'has_data': bool(latest_data['clusters']),
         'last_updated': latest_data['timestamp'],
         'article_count': sum(len(cluster) for cluster in latest_data['clusters']) if latest_data['clusters'] else 0,
         'cluster_count': len(latest_data['clusters']) if latest_data['clusters'] else 0,
-        'paywall_bypass_enabled': session.get('paywall_bypass_enabled', False),
-        'using_default_feeds': session.get('use_default', True),
-        'custom_feed_count': len(session.get('feeds_list', [])) if session.get('feeds_list') else 0,
+        'paywall_bypass_enabled': request.session.get('paywall_bypass_enabled', False),
+        'using_default_feeds': request.session.get('use_default', True),
+        'custom_feed_count': len(request.session.get('feeds_list', [])) if request.session.get('feeds_list') else 0,
         'clustering_settings': clustering_settings,
         'has_enhanced_clustering': has_enhanced_clustering,
         'has_optimized_clustering': has_optimized_clustering
     })
 
-@app.route('/debug')
-def debug():
-    """Return detailed debug information about the current data."""
-    if not latest_data['clusters']:
-        return jsonify({
-            'status': 'No data available',
-            'timestamp': None
-        })
-    
-    # Create a simplified view of the data structure for debugging
-    debug_info = {
-        'timestamp': latest_data['timestamp'],
-        'cluster_count': len(latest_data['clusters']),
-        'paywall_bypass_enabled': session.get('paywall_bypass_enabled', False),
-        'using_default_feeds': session.get('use_default', True),
-        'custom_feed_count': len(session.get('feeds_list', [])) if session.get('feeds_list') else 0,
-        'clustering_settings': get_clustering_settings(),
-        'has_enhanced_clustering': has_enhanced_clustering,
-        'has_optimized_clustering': has_optimized_clustering,
-        'clusters': []
-    }
-    
-    # Use sorted clusters for debugging too
-    sorted_clusters = sort_clusters(latest_data['clusters'])
-    
-    for i, cluster in enumerate(sorted_clusters):
-        cluster_info = {
-            'id': i,
-            'article_count': len(cluster),
-            'sample_article': {}
-        }
-        
-        if cluster:
-            article = cluster[0]
-            cluster_info['sample_article'] = {
-                'title': article.get('title', 'Unknown'),
-                'source': article.get('feed_source', 'Unknown'),
-                'has_summary': 'summary' in article and bool(article['summary']),
-                'summary_structure': str(type(article.get('summary', None)))
-            }
-            
-            if 'summary' in article and article['summary']:
-                if isinstance(article['summary'], dict):
-                    cluster_info['sample_article']['headline'] = article['summary'].get('headline', 'None')
-                    # Truncate summary for display
-                    summary = article['summary'].get('summary', 'None')
-                    cluster_info['sample_article']['summary_preview'] = summary[:100] + '...' if len(summary) > 100 else summary
-                else:
-                    cluster_info['sample_article']['summary_preview'] = str(article['summary'])[:100] + '...'
-            
-            # Add topics if available
-            if 'cluster_topics' in article:
-                cluster_info['topics'] = article.get('cluster_topics', [])
-            
-            # Add entities if available
-            if 'cluster_entities' in article:
-                cluster_info['entities'] = article.get('cluster_entities', [])
-        
-        debug_info['clusters'].append(cluster_info)
-    
-    return jsonify(debug_info)
-
-@app.route('/debug/feeds')
-def debug_feeds():
-    """Show current feed configuration for debugging."""
-    return jsonify({
-        'session': {
-            'use_default': session.get('use_default', True),
-            'feeds_list': session.get('feeds_list', []),
-            'feed_count': len(session.get('feeds_list', [])) if session.get('feeds_list') else 0
-        },
-        'environment': {
-            'paywall_bypass': os.environ.get('ENABLE_PAYWALL_BYPASS', 'false'),
-            'clustering': os.environ.get('ENABLE_MULTI_ARTICLE_CLUSTERING', 'true'),
-            'time_range_hours': os.environ.get('TIME_RANGE_HOURS', '0')
-        }
-    })
-
-@app.route('/test_route')
-def test_route():
-    """Test route to verify routing is working."""
-    return "Routing is working correctly!"
-
-# Helper function to determine if we're in a production environment
-def is_production():
-    """Check if we're running in a production environment."""
-    # This is a simple check - you might want to use a more robust method
-    # like checking for environment variables
-    return not sys.flags.debug
+# ... rest of the routes ...
 
 if __name__ == '__main__':
-    # Better handling of production vs development environment
-    debug_mode = False  # Never run with debug=True in production
+    import uvicorn
     
-    # By default, only bind to localhost in production for security
-    host = '127.0.0.1'  # Only accept connections from the local machine
+    # Get configuration from environment or command line
+    port = int(os.environ.get('PORT', 5005))
+    host = '127.0.0.1'  # Default to localhost
     
-    # Check if this is explicitly requested to be exposed externally
+    # Check command line arguments
     if '--public' in sys.argv:
         host = '0.0.0.0'
         logging.warning("Running with public access (0.0.0.0). Make sure this is intended and secured.")
-    
-    # Check if initialization is requested
-    if '--init' in sys.argv:
-        # Use initialize_data() if it's defined for backward compatibility
-        # Otherwise fall back to a simple initialization
-        try:
-            # Simple initialization by just setting up the environment
-            os.environ['ENABLE_PAYWALL_BYPASS'] = 'false'
-            os.environ['ENABLE_MULTI_ARTICLE_CLUSTERING'] = 'true'
-            os.environ['MIN_SIMILARITY_THRESHOLD'] = '0.7'
-            os.environ['MAX_ARTICLES_PER_BATCH'] = '5'
-            os.environ['USE_ENHANCED_CLUSTERING'] = 'true'
-            os.environ['TIME_RANGE_HOURS'] = '0'
-            
-            logging.info("Initialization completed successfully")
-        except Exception as e:
-            logging.error(f"Initialization failed: {e}")
-    
-    # Get port from environment or command line
-    port = int(os.environ.get('PORT', 5005))
     
     # Get port from command line if specified
     for i, arg in enumerate(sys.argv):
@@ -833,5 +465,5 @@ if __name__ == '__main__':
             except ValueError:
                 logging.warning(f"Invalid port number: {sys.argv[i + 1]}. Using default: {port}")
     
-    logging.info(f"Starting server on {host}:{port} (debug={debug_mode})")
-    app.run(debug=debug_mode, host=host, port=port)
+    logging.info(f"Starting FastAPI server on {host}:{port}")
+    uvicorn.run(app, host=host, port=port)
