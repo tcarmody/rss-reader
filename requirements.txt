@@ -2,7 +2,10 @@
 anthropic>=0.50.0,<0.51.0  # Updated to latest version
 beautifulsoup4>=4.11.0
 feedparser>=6.0.0
-flask>=2.0.0
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-multipart>=0.0.6  # For form data
+jinja2>=3.0.0  # For templates
 python-dotenv>=0.19.0
 requests>=2.27.0
 tqdm>=4.64.0

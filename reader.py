@@ -8,7 +8,6 @@ import traceback
 
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from flask import Flask, render_template
 
 from utils.config import get_env_var
 from utils.http import create_http_session
@@ -574,7 +573,7 @@ class RSSReader:
     @track_performance
     def generate_html_output(self, clusters):
         """
-        Generate HTML output from the processed clusters with improved error handling.
+        Generate HTML output from the processed clusters without Flask dependency.
         
         Args:
             clusters: List of article clusters with summaries
@@ -591,42 +590,46 @@ class RSSReader:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_file = os.path.join(output_dir, f'rss_summary_{timestamp}.html')
             
-            # Explicitly log where we're looking for templates
-            template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
-            if not os.path.exists(template_dir):
-                logging.error(f"Template directory not found: {template_dir}")
-                os.makedirs(template_dir, exist_ok=True)
-                logging.info(f"Created template directory: {template_dir}")
-            
-            logging.info(f"Using template directory: {template_dir}")
-            
             # Check if the template file exists
+            template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
             template_file = os.path.join(template_dir, 'feed-summary.html')
+            
             if not os.path.exists(template_file):
                 logging.error(f"Template file not found: {template_file}")
                 # Create a basic fallback template if the template is missing
                 return self._generate_fallback_html(clusters, output_file)
             
-            app = Flask(__name__, template_folder=template_dir)
-            
-            with app.app_context():
-                try:
-                    html_content = render_template(
-                        'feed-summary.html',
-                        clusters=clusters,
-                        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    )
-                    
-                    # Ensure we're writing with UTF-8 encoding
-                    with open(output_file, 'w', encoding='utf-8') as f:
-                        f.write(html_content)
-                    
-                    logging.info(f"Successfully wrote HTML output to {output_file}")
-                    return output_file
-                except Exception as render_error:
-                    logging.error(f"Error rendering template: {str(render_error)}")
-                    # Try fallback method if template rendering fails
-                    return self._generate_fallback_html(clusters, output_file)
+            try:
+                # Use Jinja2 directly instead of Flask
+                from jinja2 import Environment, FileSystemLoader, select_autoescape
+                
+                # Create Jinja2 environment
+                env = Environment(
+                    loader=FileSystemLoader(template_dir),
+                    autoescape=select_autoescape(['html', 'xml'])
+                )
+                
+                # Load the template
+                template = env.get_template('feed-summary.html')
+                
+                # Render the template
+                html_content = template.render(
+                    clusters=clusters,
+                    timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                )
+                
+                # Write to file
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    f.write(html_content)
+                
+                logging.info(f"Successfully wrote HTML output to {output_file}")
+                return output_file
+                
+            except Exception as render_error:
+                logging.error(f"Error rendering template: {str(render_error)}")
+                # Try fallback method if template rendering fails
+                return self._generate_fallback_html(clusters, output_file)
+                
         except Exception as e:
             logging.error(f"Error generating HTML output: {str(e)}", exc_info=True)
             return None

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Data Points AI - Smart RSS Reader</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
 </head>
 <body>
   <div class="app-container">
@@ -180,7 +180,7 @@
           <p>Generate an AI-powered summary of any webpage or article.</p>
           <p><span class="strong">Note:</span> This will process just one URL and generate a summary.</p>
           
-          <a href="{{ url_for('summarize_single') }}" class="button large" style="margin-top: 1rem; display: block; text-align: center;">
+          <a href="{{ url_for('summarize_single_get') }}" class="button large" style="margin-top: 1rem; display: block; text-align: center;">
             Summarize URL
           </a>
         </div>

@@ -4,6 +4,7 @@ set -e  # Exit immediately if a command exits with a non-zero status
 # Script settings
 VENV_NAME="rss_venv"
 PORT=5005
+HOST="127.0.0.1"  # Default to localhost for security
 
 # Color codes for output
 GREEN='\033[0;32m'
@@ -22,9 +23,42 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# Parse command line arguments
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --public)
+                HOST="0.0.0.0"
+                log_warning "Running with public access (0.0.0.0). Make sure this is intended and secured."
+                shift
+                ;;
+            --port)
+                PORT="$2"
+                shift 2
+                ;;
+            --reload)
+                RELOAD_FLAG="--reload"
+                log_info "Development mode: auto-reload enabled"
+                shift
+                ;;
+            --workers)
+                WORKERS="$2"
+                shift 2
+                ;;
+            *)
+                log_warning "Unknown argument: $1"
+                shift
+                ;;
+        esac
+    done
+}
+
 # Main function
 main() {
     log_info "Setting up RSS Reader environment..."
+    
+    # Parse command line arguments
+    parse_args "$@"
     
     # Make sure we're in the script directory
     cd "$SCRIPT_DIR"
@@ -126,18 +160,45 @@ main() {
         fi
     else
         log_info "No requirements.txt found. Installing minimal dependencies..."
-        pip install flask feedparser requests beautifulsoup4 || {
+        # Install FastAPI and Uvicorn instead of Flask
+        pip install fastapi uvicorn[standard] jinja2 python-multipart || {
             log_error "Failed to install essential dependencies."
             exit 1
         }
     fi
     
+    # Check if uvicorn is installed
+    if ! command -v uvicorn &> /dev/null; then
+        log_error "Uvicorn not found. Please make sure it's installed in the virtual environment."
+        exit 1
+    fi
+    
+    # Build uvicorn command
+    UVICORN_CMD="uvicorn server:app --host $HOST --port $PORT"
+    
+    # Add optional flags
+    if [ ! -z "$RELOAD_FLAG" ]; then
+        UVICORN_CMD="$UVICORN_CMD $RELOAD_FLAG"
+    fi
+    
+    if [ ! -z "$WORKERS" ]; then
+        # Note: --reload and --workers are mutually exclusive
+        if [ -z "$RELOAD_FLAG" ]; then
+            UVICORN_CMD="$UVICORN_CMD --workers $WORKERS"
+        else
+            log_warning "Cannot use --reload with --workers. Ignoring --workers flag."
+        fi
+    fi
+    
     # Start the server
     if [ -f "$SCRIPT_DIR/server.py" ]; then
-        log_info "Starting server on port $PORT..."
+        log_info "Starting FastAPI server on $HOST:$PORT..."
+        log_info "Server command: $UVICORN_CMD"
         log_info "Using server.py from: $SCRIPT_DIR/server.py"
-        python "$SCRIPT_DIR/server.py" --public --port $PORT || {
-            log_error "Failed to start server. Check server.py for errors."
+        
+        # Execute the uvicorn command
+        eval $UVICORN_CMD || {
+            log_error "Failed to start FastAPI server. Check server.py for errors."
             exit 1
         }
     else
@@ -149,5 +210,22 @@ main() {
     fi
 }
 
-# Run the main function
-main
+# Show usage information
+show_usage() {
+    echo "Usage: $0 [options]"
+    echo "Options:"
+    echo "  --public        Listen on all interfaces (0.0.0.0)"
+    echo "  --port PORT     Specify port number (default: 5005)"
+    echo "  --reload        Enable auto-reload for development"
+    echo "  --workers N     Number of worker processes (not compatible with --reload)"
+    echo "  --help          Show this help message"
+}
+
+# Check for help flag
+if [[ "$1" == "--help" ]]; then
+    show_usage
+    exit 0
+fi
+
+# Run the main function with all arguments
+main "$@"
