@@ -95,3 +95,4 @@ examples.py
 test_*.csv
 test_*.json
 test_*.xml
+.DS_Store
