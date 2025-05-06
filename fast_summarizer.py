@@ -79,21 +79,27 @@ class FastArticleSummarizer:
     
     def _apply_retry_decorator(self):
         """Apply the enhanced retry decorator to the API call method."""
-        # Store original method reference
-        original_call_method = self.original._call_claude_api
-        
-        # Create enhanced retry decorator
-        enhanced_retry = adaptive_retry(
-            max_retries=3,
-            initial_backoff=2,
-            max_backoff=60,
-            rate_limiter=lambda _: self.rate_limiter
-        )
-        
-        # Apply decorator to method
-        self.original._call_claude_api = enhanced_retry(original_call_method)
-        
-        self.logger.debug("Applied enhanced retry decorator to API call method")
+        try:
+            # Store original method reference
+            original_call_method = self.original._call_claude_api
+            
+            # Create enhanced retry decorator
+            enhanced_retry = adaptive_retry(
+                max_retries=3,
+                initial_backoff=2,
+                max_backoff=60,
+                rate_limiter=lambda _: self.rate_limiter
+            )
+            
+            # Apply decorator to method
+            self.original._call_claude_api = enhanced_retry(original_call_method)
+            
+            self.logger.debug("Applied enhanced retry decorator to API call method")
+        except AttributeError:
+            self.logger.warning(
+                "Could not find _call_claude_api method in original summarizer. "
+                "The FastArticleSummarizer will function without enhanced retries."
+            )
     
     def summarize(
         self, 
