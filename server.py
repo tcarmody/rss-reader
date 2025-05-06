@@ -12,13 +12,13 @@ import os
 import logging
 import sys
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, Response
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from typing import Optional
+from typing import Optional, List
 
 # Configure logging
 logging.basicConfig(
@@ -283,7 +283,7 @@ async def refresh_feeds(
         # Process feeds
         max_workers = clustering_settings.get('max_articles_per_batch', 3)
         
-        # Import the enhanced RSS reader
+        # Import the enhanced reader
         from main import EnhancedRSSReader
         
         # Initialize and run RSS reader
@@ -350,7 +350,7 @@ async def clear_data():
 
 @app.get("/summarize", response_class=HTMLResponse)
 async def summarize_single_get(request: Request):
-    """Handle GET request for single URL summarization."""
+    """Handle GET request for URL summarization."""
     clustering_settings = get_clustering_settings(request)
     
     return templates.TemplateResponse(
@@ -367,37 +367,42 @@ async def summarize_single_post(
     request: Request,
     url: str = Form(...)
 ):
-    """Handle POST request for single URL summarization."""
+    """Handle POST request for multiple URL summarization."""
     clustering_settings = get_clustering_settings(request)
     
-    url = url.strip()
+    # Split the input by newlines to get individual URLs
+    urls = [u.strip() for u in url.split('\n') if u.strip()]
     
-    if not url:
+    if not urls:
         return templates.TemplateResponse(
             'error.html', 
             {
                 "request": request,
-                "message": "Please provide a valid URL to summarize.",
+                "message": "Please provide at least one valid URL to summarize.",
                 "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
                 "clustering_settings": clustering_settings
             }
         )
     
-    # Add http:// if missing
-    if not url.startswith('http'):
-        url = 'https://' + url
-    
     try:
         # Import necessary functions for summarization
         from main import setup_summarization_engine
+        from fast_summarizer import create_fast_summarizer
         
         # Initialize summarizer with enhanced batch processing
         max_workers = clustering_settings.get('max_articles_per_batch', 3)
-        summarizer = setup_summarization_engine(max_workers)
+        summarizer = setup_summarization_engine()
         
-        # Fetch the article content
+        # Create the fast summarizer with batch processing
+        fast_summarizer = create_fast_summarizer(
+            original_summarizer=summarizer,
+            max_batch_workers=max_workers
+        )
+        
+        # Create HTTP session for fetching content
         from utils.http import create_http_session
         from utils.archive import fetch_article_content
+        from urllib.parse import urlparse
         
         session_obj = create_http_session()
         
@@ -407,67 +412,99 @@ async def summarize_single_post(
         else:
             os.environ['ENABLE_PAYWALL_BYPASS'] = 'false'
         
-        # Fetch article content
-        content = fetch_article_content(url, session_obj)
+        # Initialize containers for results
+        all_clusters = []
+        articles_to_process = []
+        skipped_urls = {}
         
-        if not content or len(content) < 100:
-            return templates.TemplateResponse(
-                'error.html', 
-                {
-                    "request": request,
-                    "message": "Could not extract sufficient content from the provided URL.",
-                    "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
-                    "clustering_settings": clustering_settings
-                }
-            )
+        # Fetch content for each URL
+        for url in urls:
+            # Add http:// if missing
+            if not url.startswith('http'):
+                url = 'https://' + url
+                
+            try:
+                # Fetch article content
+                content = fetch_article_content(url, session_obj)
+                
+                if content and len(content) >= 100:
+                    domain = urlparse(url).netloc
+                    # Add to batch processing list
+                    articles_to_process.append({
+                        'text': content,
+                        'content': content,  # For compatibility
+                        'title': f"Article from {domain}",
+                        'url': url,
+                        'link': url,
+                        'feed_source': domain
+                    })
+                else:
+                    # Track skipped URLs with reason
+                    skipped_urls[url] = "Could not extract sufficient content"
+            except Exception as e:
+                logging.error(f"Error fetching content for {url}: {str(e)}")
+                skipped_urls[url] = f"Error: {str(e)}"
         
-        # Extract title from URL as a fallback
-        domain = urlparse(url).netloc
-        title = f"Article from {domain}"
-        
-        # Use the summarizer
-        if hasattr(summarizer, 'summarize'):
-            summary = summarizer.summarize(
-                text=content,
-                title=title,
-                url=url,
+        # Process articles in batch if any were prepared
+        if articles_to_process:
+            import asyncio
+            batch_results = await fast_summarizer.batch_summarize(
+                articles=articles_to_process,
+                max_concurrent=max_workers,
                 auto_select_model=True
             )
-        else:
-            summary = summarizer.summarize_article(
-                text=content,
-                title=title,
-                url=url
-            )
+            
+            # Convert batch results to clusters
+            for result in batch_results:
+                if 'original' in result and 'summary' in result:
+                    url = result['original'].get('url', result['original'].get('link', '#'))
+                    domain = result['original'].get('feed_source', urlparse(url).netloc)
+                    
+                    article_cluster = [{
+                        'title': result['summary'].get('headline', "Article Summary"),
+                        'link': url,
+                        'feed_source': domain,
+                        'published': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        'summary': result['summary']
+                    }]
+                    
+                    all_clusters.append(article_cluster)
         
-        # Create a fake "cluster" for template compatibility
-        fake_cluster = [{
-            'title': summary.get('headline', title),
-            'link': url,
-            'feed_source': domain,
-            'published': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'summary': summary
-        }]
+        # Add error clusters for skipped URLs
+        for url, reason in skipped_urls.items():
+            domain = urlparse(url).netloc
+            error_cluster = [{
+                'title': f"Error processing {url}",
+                'link': url,
+                'feed_source': domain,
+                'published': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'summary': {
+                    'headline': f"Error processing {domain}",
+                    'summary': f"{reason}. The page might be unavailable or protected."
+                }
+            }]
+            all_clusters.append(error_cluster)
         
+        # Return template with all summaries
         return templates.TemplateResponse(
-            'single-summary.html',
+            'multiple-summaries.html',
             {
                 "request": request,
-                "url": url,
-                "cluster": fake_cluster,
+                "urls": urls,
+                "clusters": all_clusters,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
                 "clustering_settings": clustering_settings
             }
         )
-        
+            
     except Exception as e:
-        logging.error(f"Error summarizing URL: {str(e)}", exc_info=True)
+        logging.error(f"Error in batch summarization: {str(e)}", exc_info=True)
         return templates.TemplateResponse(
             'error.html', 
             {
                 "request": request,
-                "message": f"Error summarizing URL: {str(e)}",
+                "message": f"Error processing URLs: {str(e)}",
                 "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
                 "clustering_settings": clustering_settings
             }

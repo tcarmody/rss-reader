@@ -785,6 +785,21 @@ input:checked + .toggle-slider:before {
   }
 }
 
+.url-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.url-item {
+  font-family: monospace;
+  word-break: break-all;
+  background-color: var(--neutral-100);
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .nav-container {

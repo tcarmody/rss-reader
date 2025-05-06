@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Data Points AI - Summarize URLs</title>
+  <title>Data Points AI - Multiple Summaries</title>
   <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
 </head>
 <body>
@@ -20,6 +20,7 @@
         
         <div class="nav-actions">
           <a href="{{ url_for('welcome') }}" class="button outline">Home</a>
+          <a href="{{ url_for('summarize_single_get') }}" class="button outline">New Summary</a>
           
           <form action="/toggle_paywall_bypass" method="post" style="display: inline;">
             <div class="paywall-container">
@@ -45,21 +46,42 @@
       </div>
     </nav>
     
-    <main class="main standard">
-      <div class="card">
-        <h1 class="card-title">Summarize URLs</h1>
-        <p class="mb-4">Enter one or more URLs to generate AI-powered summaries of the content.</p>
-        
-        <form action="{{ url_for('summarize_single_post') }}" method="post" class="mt-6">
-          <div class="form-group">
-            <label class="form-label" for="url">Website URLs (one per line)</label>
-            <textarea id="url" name="url" class="form-input" rows="5"
-                    placeholder="https://example.com/article1&#10;https://example.com/article2" required></textarea>
-            <p class="form-hint" style="margin-top: 0.25rem; font-size: 0.75rem; color: var(--neutral-500);">Enter one URL per line to summarize multiple articles at once.</p>
+    <main class="main wide">
+      <div class="page-header">
+        <h1 class="page-title">Multiple URL Summaries</h1>
+        <span class="timestamp">Generated on {{ timestamp }}</span>
+      </div>
+      
+      <div class="summary-url-container">
+        <div class="summary-url">
+          <span class="summary-url-label">Processed URLs:</span>
+          <div class="url-list">
+            {% for url in urls %}
+              <div class="url-item">{{ url }}</div>
+            {% endfor %}
           </div>
-          
-          <button type="submit" class="button success large">Generate Summaries</button>
-        </form>
+        </div>
+      </div>
+      
+      {% for cluster in clusters %}
+        <div class="cluster">
+          <div class="cluster-header">
+            <h2 class="cluster-title">{{ cluster[0].summary.headline }}</h2>
+            <span class="article-source">{{ cluster[0].feed_source }}</span>
+          </div>
+
+          <div class="article-summary">
+            {{ cluster[0].summary.summary|replace('\n\n', '<br><br>')|replace('\n', '<br>')|safe }}
+          </div>
+
+          <div class="summary-actions">
+            <a href="{{ cluster[0].link }}" class="button outline" target="_blank">View Original</a>
+          </div>
+        </div>
+      {% endfor %}
+      
+      <div class="summary-actions" style="text-align: center; margin-top: 2rem;">
+        <a href="{{ url_for('summarize_single_get') }}" class="button">Summarize More URLs</a>
       </div>
     </main>
     
