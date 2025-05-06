@@ -197,6 +197,9 @@ class ArticleSummarizer:
             if not api_key:
                 raise APIAuthError("Anthropic API key not found")
             
+            # Initialize logger first
+            self.logger = StructuredLogger("ArticleSummarizer")
+            
             # Check Anthropic SDK version
             self._check_anthropic_version()
             
@@ -208,7 +211,6 @@ class ArticleSummarizer:
             # Create the cache directory if it doesn't exist
             os.makedirs(cache_dir, exist_ok=True)
             self.summary_cache = SummaryCache(cache_dir=cache_dir)
-            self.logger = StructuredLogger("ArticleSummarizer")
             
         except Exception as e:
             # Convert to our custom exception type
@@ -226,8 +228,11 @@ class ArticleSummarizer:
             version = pkg_resources.get_distribution("anthropic").version
             required_version = "0.50.0"
             
+            # Make sure we have a logger
+            logger = getattr(self, 'logger', logging.getLogger("ArticleSummarizer"))
+            
             if version < required_version:
-                self.logger.warning(
+                logger.warning(
                     f"Anthropic SDK version {version} is older than recommended version {required_version}. "
                     f"Some features may not work as expected."
                 )
@@ -236,16 +241,18 @@ class ArticleSummarizer:
                 major_version = version.split('.')[0]
                 required_major = required_version.split('.')[0]
                 if major_version > required_major:
-                    self.logger.warning(
+                    logger.warning(
                         f"Using Anthropic SDK version {version}, which is newer than the tested version {required_version}. "
                         f"If you encounter issues, consider downgrading to version {required_version}."
                     )
-            else:
-                self.logger.info(f"Using compatible Anthropic SDK version: {version}")
+                else:
+                    logger.info(f"Using compatible Anthropic SDK version: {version}")
                 
             return version
         except Exception as e:
-            self.logger.error(f"Failed to check Anthropic SDK version: {str(e)}")
+            # Make sure we have a logger
+            logger = getattr(self, 'logger', logging.getLogger("ArticleSummarizer"))
+            logger.error(f"Failed to check Anthropic SDK version: {str(e)}")
             return None
 
     def clean_text(self, text: str) -> str:
@@ -757,6 +764,7 @@ class ArticleSummarizer:
                 summary_length=len(result['summary'])
             )
             
+            # Return the complete summary result
             return result
         except SummarizerError as e:
             # Log and re-raise our custom exceptions
@@ -874,122 +882,4 @@ class ArticleSummarizer:
                 summary_length=len(result['summary'])
             )
             
-            # Return the complete summary result
             return result
-
-        except SummarizerError as e:
-            # Log and handle our custom exceptions
-            self.logger.exception(
-                f"Streaming summarization error: {str(e)}", 
-                error_type=type(e).__name__
-            )
-            error_message = f"Summary generation failed: {str(e)}. Please try again later."
-            yield error_message
-            if callback:
-                try:
-                    callback(error_message)
-                except:
-                    pass
-                    
-            return {
-                'headline': title,
-                'summary': error_message
-            }
-        except Exception as e:
-            # Log and handle unexpected exceptions
-            self.logger.exception(
-                f"Unexpected error in summarize_article_streaming: {str(e)}",
-                error_type=type(e).__name__
-            )
-            error_message = f"Summary generation failed: {str(e)}. Please try again later."
-            yield error_message
-            if callback:
-                try:
-                    callback(error_message)
-                except:
-                    pass
-                    
-            return {
-                'headline': title,
-                'summary': error_message
-            }
-        finally:
-            # Clear context after the operation
-            self.logger.clear_context()
-    
-    @retry_with_backoff(max_retries=2, initial_backoff=1)
-    def generate_tags(
-        self, 
-        content: str,
-        model: Optional[str] = None,
-        temperature: float = 0.7
-    ) -> List[str]:
-        """
-        Generate tags for an article using Claude.
-        Args:
-            content: Article content to extract tags from
-            model: Claude model to use (shorthand name or full identifier)
-            temperature: Temperature setting for generation (0.0-1.0)
-            
-        Returns:
-            list: Generated tags as strings
-        """
-        # Set up request-specific context for structured logging
-        self.logger.add_context(operation="generate_tags", content_length=len(content))
-        
-        try:
-            # Check cache first
-            cache_key = f"tags:{hash(content)}"
-            cached_tags = self.summary_cache.get(cache_key)
-            if cached_tags:
-                self.logger.info("Retrieved tags from cache", cache_hit=True)
-                return cached_tags
-            
-            # Prepare the prompt for tag generation
-            prompt = (
-                "Extract relevant tags from the following article content. "
-                "Focus on key topics, entities, technologies, and themes. "
-                "Return exactly 5-8 tags as a comma-separated list. "
-                "Tags should be 1-3 words each, lowercase, and contain no special characters.\n\n"
-                f"Article content:\n{content[:4000]}"  # Limit content length
-            )
-            
-            # Get the model ID
-            model_id = self._get_model(model)
-            
-            # Call the API - Updated for SDK 0.50.0
-            self.logger.info("Calling Claude API for tag generation", model=model_id)
-            response = self.client.messages.create(
-                model=model_id,
-                max_tokens=100,
-                temperature=temperature,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            
-            # Process the response
-            tags_text = response.content[0].text
-            
-            # Extract tags (assuming comma-separated format)
-            tags = [tag.strip() for tag in tags_text.split(',') if tag.strip()]
-            
-            # Clean tags (remove any special characters, ensure lowercase)
-            tags = [re.sub(r'[^\w\s-]', '', tag).lower() for tag in tags]
-            
-            # Remove duplicates while preserving order
-            unique_tags = []
-            for tag in tags:
-                if tag and tag not in unique_tags:
-                    unique_tags.append(tag)
-            
-            # Cache the result
-            self.summary_cache.set(cache_key, unique_tags)
-            
-            self.logger.info("Generated tags successfully", tag_count=len(unique_tags))
-            return unique_tags
-            
-        except Exception as e:
-            self.logger.error("Failed to generate tags", error=str(e))
-            # Return empty list on error rather than raising
-            return []
