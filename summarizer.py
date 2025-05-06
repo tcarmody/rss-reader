@@ -1,5 +1,4 @@
-"""Article summarization with Anthropic Claude API with model selection and streaming.
-(Re-tracked in git)"""
+"""Article summarization with Anthropic Claude API with model selection and streaming."""
 
 import re
 import html
@@ -198,6 +197,9 @@ class ArticleSummarizer:
             if not api_key:
                 raise APIAuthError("Anthropic API key not found")
             
+            # Check Anthropic SDK version
+            self._check_anthropic_version()
+            
             # Initialize the client - SDK 0.50.0 simplified initialization
             self.client = Anthropic(api_key=api_key)
             
@@ -214,6 +216,37 @@ class ArticleSummarizer:
                 raise APIAuthError(f"Failed to initialize API client: {str(e)}")
             else:
                 raise SummarizerError(f"Failed to initialize summarizer: {str(e)}")
+
+    def _check_anthropic_version(self):
+        """Check if the installed Anthropic SDK version is compatible."""
+        try:
+            import anthropic
+            import pkg_resources
+            
+            version = pkg_resources.get_distribution("anthropic").version
+            required_version = "0.50.0"
+            
+            if version < required_version:
+                self.logger.warning(
+                    f"Anthropic SDK version {version} is older than recommended version {required_version}. "
+                    f"Some features may not work as expected."
+                )
+            elif version > required_version:
+                # Add this to handle potential breaking changes in future versions
+                major_version = version.split('.')[0]
+                required_major = required_version.split('.')[0]
+                if major_version > required_major:
+                    self.logger.warning(
+                        f"Using Anthropic SDK version {version}, which is newer than the tested version {required_version}. "
+                        f"If you encounter issues, consider downgrading to version {required_version}."
+                    )
+            else:
+                self.logger.info(f"Using compatible Anthropic SDK version: {version}")
+                
+            return version
+        except Exception as e:
+            self.logger.error(f"Failed to check Anthropic SDK version: {str(e)}")
+            return None
 
     def clean_text(self, text: str) -> str:
         """
