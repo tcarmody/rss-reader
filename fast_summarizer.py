@@ -14,9 +14,9 @@ import traceback
 from typing import Dict, List, Optional, Union, Any
 
 from text_chunking import chunk_text, summarize_long_article
-from model_selection import estimate_complexity, auto_select_model as select_model_func  # Fixed: Renamed import
-from tiered_cache import TieredSummaryCache
-from rate_limiter import RateLimiter, adaptive_retry
+from models.selection import estimate_complexity, auto_select_model as select_model_func  # Fixed: Renamed import
+from cache.tiered_cache import TieredSummaryCache
+from api.rate_limiter import RateLimiter, adaptive_retry
 
 class FastArticleSummarizer:
     """
@@ -73,7 +73,7 @@ class FastArticleSummarizer:
     def add_batch_processor(self, max_workers=3):
         """Add enhanced batch processing capability."""
         # Import here instead of at the module level to avoid circular imports
-        from enhanced_batch_processor import add_enhanced_batch_to_fast_summarizer
+        from common.batch_processing import add_enhanced_batch_to_fast_summarizer
         add_enhanced_batch_to_fast_summarizer(self, max_workers=max_workers)
         return self
     
@@ -194,7 +194,7 @@ class FastArticleSummarizer:
             "The enhanced batch processing is now used by default."
         )
         
-        from parallel_batch_processor import SpawnBatchProcessor
+        from common.batch_processing import SpawnBatchProcessor
         
         # Create the batch processor
         batch_processor = SpawnBatchProcessor()
@@ -277,7 +277,7 @@ if __name__ == "__main__":
     )
     
     # Create original summarizer
-    from summarizer import ArticleSummarizer
+    from summarization.article_summarizer import ArticleSummarizer
     original = ArticleSummarizer()
     
     # Create fast summarizer with enhanced batch processing

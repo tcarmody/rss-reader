@@ -395,7 +395,7 @@ async def summarize_single_post(
     try:
         # Import necessary functions for summarization
         from main import setup_summarization_engine
-        from fast_summarizer import create_fast_summarizer
+        from summarization.fast_summarizer import create_fast_summarizer
         
         # Initialize summarizer with enhanced batch processing
         max_workers = clustering_settings.get('max_articles_per_batch', 3)
@@ -408,8 +408,8 @@ async def summarize_single_post(
         )
         
         # Create HTTP session for fetching content
-        from utils.http import create_http_session
-        from utils.archive import fetch_article_content
+        from common.http import create_http_session
+        from common.archive import fetch_article_content
         from urllib.parse import urlparse
         
         session_obj = create_http_session()
@@ -526,7 +526,7 @@ async def status(request: Request):
     # Check if enhanced clustering is available by trying to import the module
     has_enhanced_clustering = False
     try:
-        from enhanced_clustering import create_enhanced_clusterer
+        from clustering.enhanced import create_enhanced_clusterer
         has_enhanced_clustering = True
     except ImportError:
         pass
@@ -534,7 +534,7 @@ async def status(request: Request):
     # Check if optimized clustering is available
     has_optimized_clustering = False
     try:
-        from lm_cluster_analyzer import create_cluster_analyzer
+        from models.lm_analyzer import create_cluster_analyzer
         has_optimized_clustering = True
     except ImportError:
         pass

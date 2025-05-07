@@ -554,7 +554,7 @@ class BatchProcessorLegacyAdapter:
     
     def process_batch_sync(self, articles, model=None, temperature=0.3, timeout=None):
         """Synchronous version for backward compatibility."""
-        from summarizer import ArticleSummarizer
+        from summarization.article_summarizer import ArticleSummarizer
         
         # Create a summarizer if not available
         summarizer = getattr(self, 'summarizer', ArticleSummarizer())
@@ -594,7 +594,7 @@ def apply():
     try:
         # Find and patch FastArticleSummarizer
         try:
-            from fast_summarizer import FastArticleSummarizer
+            from summarization.fast_summarizer import FastArticleSummarizer
             
             # Monkey-patch any existing instances in the global namespace
             import inspect

@@ -139,7 +139,7 @@ class SummarizationBenchmark:
         
         try:
             # Import and initialize summarizer
-            from summarizer import ArticleSummarizer
+            from summarization.article_summarizer import ArticleSummarizer
             summarizer = ArticleSummarizer()
             
             # Generate test articles
@@ -204,8 +204,8 @@ class SummarizationBenchmark:
         
         try:
             # Import and initialize
-            from summarizer import ArticleSummarizer
-            from async_batch import summarize_articles_batch
+            from summarization.article_summarizer import ArticleSummarizer
+            from common.batch_processing import summarize_articles_batch
             
             summarizer = ArticleSummarizer()
             
@@ -268,8 +268,8 @@ class SummarizationBenchmark:
         
         try:
             # Import and initialize
-            from summarizer import ArticleSummarizer
-            from parallel_batch_processor import SpawnBatchProcessor
+            from summarization.article_summarizer import ArticleSummarizer
+            from common.batch_processing import SpawnBatchProcessor
             
             summarizer = ArticleSummarizer()
             batch_processor = SpawnBatchProcessor()
@@ -333,8 +333,8 @@ class SummarizationBenchmark:
         
         try:
             # Import and initialize
-            from summarizer import ArticleSummarizer
-            from fast_summarizer import create_fast_summarizer
+            from summarization.article_summarizer import ArticleSummarizer
+            from summarization.fast_summarizer import create_fast_summarizer
             
             original_summarizer = ArticleSummarizer()
             fast_summarizer = create_fast_summarizer(
