@@ -9,7 +9,9 @@ import logging
 from typing import List, Dict, Optional
 
 from common.logging import configure_logging
+from summarization.article_summarizer import ArticleSummarizer
 from summarization.fast_summarizer import FastSummarizer
+from reader.enhanced_reader import EnhancedRSSReader
 
 # Configure logging
 logger = configure_logging(
@@ -17,6 +19,19 @@ logger = configure_logging(
     log_file="./app.log",
     console=True
 )
+
+def setup_summarization_engine(api_key=None):
+    """Set up the summarization engine with appropriate components."""
+    # Create the base summarizer
+    summarizer = ArticleSummarizer(api_key=api_key)
+    
+    # Create the optimized summarizer with enhanced features
+    return FastSummarizer(
+        api_key=api_key,
+        rpm_limit=50,
+        cache_size=256,
+        max_batch_workers=3
+    )
 
 async def process_articles(articles, api_key=None, max_workers=3):
     """
