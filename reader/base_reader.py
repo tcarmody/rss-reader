@@ -9,18 +9,18 @@ import traceback
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from utils.config import get_env_var
-from utils.http import create_http_session
-from utils.performance import track_performance
-from utils.archive import fetch_article_content, is_paywalled
-from utils.source_extractor import is_aggregator_link, extract_original_source_url
+from common.config import get_env_var
+from common.http import create_http_session
+from common.performance import track_performance
+from common.archive import fetch_article_content, is_paywalled
+from common.source_extractor import is_aggregator_link, extract_original_source_url
 from batch import BatchProcessor
-from summarizer import ArticleSummarizer
-from clustering import ArticleClusterer
+from summarization.article_summarizer import ArticleSummarizer
+from clustering.base import ArticleClusterer
 
 # Import the enhanced clusterer - make sure this import works
 try:
-    from enhanced_clustering import create_enhanced_clusterer
+    from clustering.enhanced import create_enhanced_clusterer
     ENHANCED_CLUSTERING_AVAILABLE = True
 except ImportError:
     logging.warning("Enhanced clustering module not available. Using basic clustering.")

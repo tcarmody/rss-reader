@@ -101,7 +101,7 @@ def check_api_key():
 def validate_summarizer():
     """Test the summarizer module in isolation."""
     try:
-        from summarizer import ArticleSummarizer
+        from summarization.article_summarizer import ArticleSummarizer
         
         logger.info("Initializing ArticleSummarizer...")
         summarizer = ArticleSummarizer()

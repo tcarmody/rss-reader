@@ -29,7 +29,7 @@ import fasttext
 import langdetect
 from typing import List, Dict, Tuple, Any, Optional, Union
 
-from utils.performance import track_performance
+from common.performance import track_performance
 
 # Configure logging
 logging.basicConfig(

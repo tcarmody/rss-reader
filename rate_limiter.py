@@ -90,7 +90,7 @@ def adaptive_retry(
     # Default exceptions if none provided
     if retryable_exceptions is None:
         # Import here to avoid circular imports
-        from summarizer import APIConnectionError, APIRateLimitError
+        from summarization.article_summarizer import APIConnectionError, APIRateLimitError
         retryable_exceptions = (APIConnectionError, APIRateLimitError)
     
     def decorator(func):

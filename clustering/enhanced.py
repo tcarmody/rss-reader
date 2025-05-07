@@ -14,12 +14,12 @@ from collections import defaultdict
 from datetime import datetime
 
 # Import base clustering functionality
-from clustering import ArticleClusterer, CONFIG
-from utils.performance import track_performance
+from clustering.base import ArticleClusterer, CONFIG
+from common.performance import track_performance
 
 # Try to import the language model-based cluster analyzer
 try:
-    from lm_cluster_analyzer import create_cluster_analyzer
+    from models.lm_analyzer import create_cluster_analyzer
     HAS_LM_ANALYZER = True
 except ImportError:
     HAS_LM_ANALYZER = False
