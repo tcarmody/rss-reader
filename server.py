@@ -5,8 +5,8 @@ Web server for RSS Reader using FastAPI.
 """
 
 # Apply streamlined batch processing fix
-import batch_processing
-batch_processing.apply()
+from common.batch_processing import apply
+apply()
 
 import os
 import logging
@@ -19,6 +19,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from typing import Optional, List
+
+# Import from refactored packages
+from reader.enhanced_reader import EnhancedRSSReader
+from summarization.article_summarizer import ArticleSummarizer
+from summarization.fast_summarizer import create_fast_summarizer
+from common.http import create_http_session
+from common.archive import fetch_article_content, is_paywalled
+from common.logging import configure_logging
 
 # Configure logging
 logging.basicConfig(
