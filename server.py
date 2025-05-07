@@ -4,9 +4,12 @@
 Web server for RSS Reader using FastAPI.
 """
 
-# Apply streamlined batch processing fix
-from common.batch_processing import apply
-apply()
+# Remove the problematic import line
+# from common.batch_processing import apply
+# apply()
+
+# Instead, import the BatchProcessor class directly
+from common.batch_processing import BatchProcessor
 
 import os
 import logging
