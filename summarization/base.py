@@ -40,6 +40,197 @@ class BaseSummarizer:
         """Extract publication name from URL."""
         return extract_source_from_url(url)
     
+    def summarize_article(
+        self, 
+        text: str, 
+        title: str, 
+        url: str, 
+        model: Optional[str] = None,
+        force_refresh: bool = False,
+        temperature: float = 0.3,
+    ) -> Dict[str, str]:
+        """
+        Generate a concise summary of the article text.
+        
+        Args:
+            text: The article text to summarize
+            title: The article title
+            url: The article URL
+            model: Claude model to use (shorthand name or full identifier)
+            force_refresh: Whether to force a new summary instead of using cache
+            temperature: Temperature setting for generation (0.0-1.0)
+            
+        Returns:
+            dict: The summary with headline and text
+        """
+        # Set up request-specific context for structured logging
+        if hasattr(self.logger, 'add_context'):
+            self.logger.add_context(
+                operation="summarize_article",
+                url=url,
+                title=title,
+                text_length=len(text),
+                requested_model=model,
+                temperature=temperature
+            )
+        
+        try:
+            # Check cache first if not forcing refresh
+            if not force_refresh and self.cache:
+                cache_key = f"{text}:{model or 'default'}:{temperature}"
+                cached_result = self.cache.get(cache_key)
+                if cached_result:
+                    self.logger.info("Retrieved summary from cache")
+                    return cached_result
+            
+            # Clean the text first
+            text = clean_text(text)
+            
+            # Extract source from URL for attribution
+            source_name = extract_source_from_url(url)
+            
+            # Get the actual model identifier
+            model_id = get_model_identifier(model)
+            
+            # Create the prompt
+            prompt = create_summary_prompt(text, url, source_name)
+            
+            # Generate summary using Claude
+            summary_text = self.call_api(
+                model_id=model_id,
+                prompt=prompt,
+                temperature=temperature,
+                max_tokens=400
+            )
+            
+            # Parse the response
+            result = parse_summary_response(summary_text, title, url, source_name)
+            
+            # Cache the result
+            if self.cache:
+                cache_key = f"{text}:{model_id}:{temperature}"
+                self.cache.set(cache_key, result)
+            
+            self.logger.info(
+                f"Summary generated successfully - Headline length: {len(result['headline'])}, "
+                f"Summary length: {len(result['summary'])}"
+            )
+            
+            # Return the complete summary result
+            return result
+        except Exception as e:
+            self.logger.exception(f"Error in summarize_article: {str(e)}")
+            # Return a fallback summary
+            source_name = extract_source_from_url(url)
+            return {
+                'headline': title,
+                'summary': f"Failed to generate summary: {str(e)}\n\nSource: {source_name}\n{url}"
+            }
+        finally:
+            # Clear context after the operation
+            if hasattr(self.logger, 'clear_context'):
+                self.logger.clear_context()
+    
+    def summarize_article_streaming(
+        self, 
+        text: str, 
+        title: str, 
+        url: str, 
+        model: Optional[str] = None,
+        callback: Optional[Callable[[str], None]] = None,
+        temperature: float = 0.3,
+    ) -> Generator[str, None, Dict[str, str]]:
+        """
+        Generate a summary of the article with streaming response.
+        
+        Args:
+            text: The article text to summarize
+            title: The article title
+            url: The article URL
+            model: Claude model to use (shorthand name or full identifier)
+            callback: Optional callback function to process streamed chunks
+            temperature: Temperature setting for generation (0.0-1.0)
+            
+        Yields:
+            str: Chunks of the summary as they are generated
+            
+        Returns:
+            dict: The complete summary with headline and text when finished
+        """
+        # Set up request-specific context for structured logging
+        if hasattr(self.logger, 'add_context'):
+            self.logger.add_context(
+                operation="summarize_article_streaming",
+                url=url,
+                title=title,
+                text_length=len(text),
+                requested_model=model,
+                temperature=temperature
+            )
+        
+        try:
+            # Clean the text first
+            text = clean_text(text)
+
+            # Extract source from URL for attribution
+            source_name = extract_source_from_url(url)
+            
+            # Get the actual model identifier
+            model_id = get_model_identifier(model)
+            
+            # Create the prompt
+            prompt = create_summary_prompt(text, url, source_name)
+
+            # Collect the full text as we stream
+            full_text = ""
+            
+            # Generate summary using Claude with streaming
+            for text_chunk in self.call_api_streaming(
+                model_id=model_id,
+                prompt=prompt,
+                temperature=temperature,
+                max_tokens=400
+            ):
+                # Append to full text
+                full_text += text_chunk
+                
+                # Yield the chunk
+                yield text_chunk
+                
+                # Call the callback if provided
+                if callback:
+                    try:
+                        callback(text_chunk)
+                    except Exception as callback_error:
+                        self.logger.warning(f"Callback error (continuing streaming): {str(callback_error)}")
+            
+            # Parse the complete response
+            result = parse_summary_response(full_text, title, url, source_name)
+            
+            # Cache the result
+            if self.cache:
+                cache_key = f"{text}:{model_id}:{temperature}"
+                self.cache.set(cache_key, result)
+            
+            self.logger.info(
+                f"Streaming summary completed - Headline length: {len(result['headline'])}, "
+                f"Summary length: {len(result['summary'])}"
+            )
+            
+            return result
+        except Exception as e:
+            self.logger.exception(f"Error in summarize_article_streaming: {str(e)}")
+            # Return a fallback summary
+            source_name = extract_source_from_url(url)
+            return {
+                'headline': title,
+                'summary': f"Failed to generate summary: {str(e)}\n\nSource: {source_name}\n{url}"
+            }
+        finally:
+            # Clear context after the operation
+            if hasattr(self.logger, 'clear_context'):
+                self.logger.clear_context()
+    
     @retry_with_backoff(max_retries=3, initial_backoff=2)
     def call_api(self, model_id: str, prompt: str, temperature: float, max_tokens: int) -> str:
         """Call the Claude API with retry logic."""
