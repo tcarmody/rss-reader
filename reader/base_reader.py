@@ -373,7 +373,7 @@ class RSSReader:
         return content
 
     @track_performance
-    def process_feeds(self):
+    async def process_feeds(self):
         """
         Process all RSS feeds and generate summaries.
         
@@ -590,7 +590,7 @@ class RSSReader:
             output_file = os.path.join(output_dir, f'rss_summary_{timestamp}.html')
             
             # Check if the template file exists
-            template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
+            template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'templates')
             template_file = os.path.join(template_dir, 'feed-summary.html')
             
             if not os.path.exists(template_file):
