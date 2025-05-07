@@ -58,6 +58,15 @@ class FastSummarizer:
         """
         self.logger = logging.getLogger(__name__)
         
+        # Get API key from environment if not provided
+        if not api_key:
+            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                raise APIError("Anthropic API key not found")
+        
+        # Initialize Anthropic client
+        self.client = Anthropic(api_key=api_key)
+        
         # Create base summarizer
         self.summarizer = ArticleSummarizer(api_key=api_key)
         
@@ -746,9 +755,6 @@ def create_fast_summarizer(
     
     # If an original summarizer is provided, copy its settings
     if original_summarizer:
-        # Copy client
-        summarizer.client = original_summarizer.client
-        
         # Copy other attributes if they exist
         if hasattr(original_summarizer, 'cache'):
             summarizer.cache = original_summarizer.cache
