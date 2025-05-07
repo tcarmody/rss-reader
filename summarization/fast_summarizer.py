@@ -5,7 +5,7 @@ Fast and optimized summarizer implementation with batch processing.
 import asyncio
 import logging
 import os
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Generator, Callable
 
 from common.batch_processing import BatchProcessor
 from common.errors import retry_with_backoff  # Add this line
@@ -13,6 +13,14 @@ from models.selection import get_model_identifier, estimate_complexity, select_m
 from summarization.article_summarizer import ArticleSummarizer
 from cache.tiered_cache import TieredCache
 from api.rate_limiter import RateLimiter
+from common.logging import StructuredLogger
+from anthropic import Anthropic
+import time
+from summarization.text_processing import (
+    clean_text, extract_source_from_url, create_summary_prompt, 
+    get_system_prompt, parse_summary_response
+)
+from common.errors import APIError, RateLimitError, AuthenticationError, ConnectionError
 
 class FastSummarizer:
     """
@@ -113,7 +121,7 @@ class FastSummarizer:
         # Choose approach based on text length
         if len(text) > 12000:
             self.logger.info(f"Using long article approach for {url} ({len(text)} chars)")
-            return self.summarizer.summarize_long_article(
+            return self.summarize_long_article(
                 text=text,
                 title=title,
                 url=url,
@@ -175,22 +183,146 @@ class FastSummarizer:
                 selected_model = select_model_by_complexity(complexity)
                 
                 # Add to group
-    """
-    Base class for article summarization with core functionality.
-    """
+                if selected_model not in article_groups:
+                    article_groups[selected_model] = []
+                article_groups[selected_model].append(article)
+                
+            # Process each group in parallel
+            tasks = []
+            for model_name, group_articles in article_groups.items():
+                task = self._process_article_group(
+                    articles=group_articles,
+                    model=model_name,
+                    max_concurrent=max_concurrent,
+                    temperature=temperature,
+                    timeout=timeout
+                )
+                tasks.append(task)
+                
+            # Wait for all groups to complete
+            results = []
+            for completed_task in await asyncio.gather(*tasks):
+                results.extend(completed_task)
+                
+            return results
+        else:
+            # Process all articles with the same model
+            return await self._process_article_group(
+                articles=articles,
+                model=model,
+                max_concurrent=max_concurrent,
+                temperature=temperature,
+                timeout=timeout
+            )
     
-    def __init__(self, api_key, cache=None):
+    async def _process_article_group(
+        self,
+        articles: List[Dict[str, str]],
+        model: Optional[str] = None,
+        max_concurrent: int = 3,
+        temperature: float = 0.3,
+        timeout: Optional[float] = None
+    ) -> List[Dict[str, Dict[str, str]]]:
         """
-        Initialize the base summarizer.
+        Process a group of articles with the same model.
         
         Args:
-            api_key: Anthropic API key
-            cache: Optional cache implementation
+            articles: List of article dicts
+            model: Claude model to use
+            max_concurrent: Maximum concurrent processes
+            temperature: Temperature setting
+            timeout: Optional timeout in seconds
+            
+        Returns:
+            List of processed article summaries
         """
-        self.logger = StructuredLogger(__name__)
-        self.client = Anthropic(api_key=api_key)
-        self.cache = cache
+        # Create a semaphore to limit concurrency
+        semaphore = asyncio.Semaphore(max_concurrent)
+        
+        # Create tasks for each article
+        tasks = []
+        for article in articles:
+            task = self._process_single_article(
+                article=article,
+                model=model,
+                semaphore=semaphore,
+                temperature=temperature
+            )
+            tasks.append(task)
+        
+        # Wait for all tasks to complete with optional timeout
+        if timeout:
+            try:
+                return await asyncio.wait_for(asyncio.gather(*tasks), timeout=timeout)
+            except asyncio.TimeoutError:
+                self.logger.warning(f"Batch processing timed out after {timeout} seconds")
+                # Return any completed results
+                completed_results = []
+                for task in tasks:
+                    if task.done() and not task.exception():
+                        completed_results.append(task.result())
+                return completed_results
+        else:
+            # No timeout
+            return await asyncio.gather(*tasks)
     
+    async def _process_single_article(
+        self,
+        article: Dict[str, str],
+        model: Optional[str],
+        semaphore: asyncio.Semaphore,
+        temperature: float = 0.3
+    ) -> Dict[str, Dict[str, str]]:
+        """
+        Process a single article with rate limiting.
+        
+        Args:
+            article: Article dict
+            model: Claude model to use
+            semaphore: Semaphore for concurrency control
+            temperature: Temperature setting
+            
+        Returns:
+            Article summary with original metadata
+        """
+        async with semaphore:
+            # Apply rate limiting
+            await self.rate_limiter.acquire()
+            
+            try:
+                # Get article data
+                text = article.get('text', article.get('content', ''))
+                title = article.get('title', 'Untitled')
+                url = article.get('url', article.get('link', '#'))
+                
+                # Run in a thread to avoid blocking
+                loop = asyncio.get_event_loop()
+                summary = await loop.run_in_executor(
+                    None,
+                    lambda: self.summarize(
+                        text=text,
+                        title=title,
+                        url=url,
+                        model=model,
+                        temperature=temperature
+                    )
+                )
+                
+                return {
+                    'original': article,
+                    'summary': summary
+                }
+                
+            except Exception as e:
+                self.logger.error(f"Error processing article: {str(e)}")
+                return {
+                    'original': article,
+                    'summary': {
+                        'headline': article.get('title', 'Error'),
+                        'summary': f"Error generating summary: {str(e)}"
+                    }
+                }
+
     def clean_text(self, text: str) -> str:
         """Clean HTML and normalize text for summarization."""
         return clean_text(text)
@@ -583,3 +715,42 @@ class FastSummarizer:
         )
         
         return result
+
+def create_fast_summarizer(
+    original_summarizer=None,
+    api_key=None,
+    rpm_limit=50,
+    cache_size=256,
+    max_batch_workers=3
+):
+    """
+    Factory function to create a configured FastSummarizer instance.
+    
+    Args:
+        original_summarizer: An existing summarizer to build upon
+        api_key: API key for Anthropic
+        rpm_limit: Rate limit in requests per minute
+        cache_size: Cache size
+        max_batch_workers: Max concurrent workers
+        
+    Returns:
+        FastSummarizer instance
+    """
+    # Create the summarizer
+    summarizer = FastSummarizer(
+        api_key=api_key,
+        rpm_limit=rpm_limit,
+        cache_size=cache_size,
+        max_batch_workers=max_batch_workers
+    )
+    
+    # If an original summarizer is provided, copy its settings
+    if original_summarizer:
+        # Copy client
+        summarizer.client = original_summarizer.client
+        
+        # Copy other attributes if they exist
+        if hasattr(original_summarizer, 'cache'):
+            summarizer.cache = original_summarizer.cache
+    
+    return summarizer
