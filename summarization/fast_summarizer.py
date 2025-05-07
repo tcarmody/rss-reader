@@ -8,6 +8,7 @@ import os
 from typing import Dict, List, Optional, Any
 
 from common.batch_processing import BatchProcessor
+from common.errors import retry_with_backoff  # Add this line
 from models.selection import get_model_identifier, estimate_complexity, select_model_by_complexity
 from summarization.article_summarizer import ArticleSummarizer
 from cache.tiered_cache import TieredCache
