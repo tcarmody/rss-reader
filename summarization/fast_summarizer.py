@@ -389,7 +389,7 @@ class FastSummarizer:
                 cache_key = f"{text}:{model or 'default'}:{temperature}"
                 cached_result = self.cache.get(cache_key)
                 if cached_result:
-                    self.logger.info("Retrieved summary from cache", cache_hit=True)
+                    self.logger.info("Retrieved summary from cache")
                     return cached_result
             
             # Clean the text first
@@ -420,10 +420,10 @@ class FastSummarizer:
                 cache_key = f"{text}:{model_id}:{temperature}"
                 self.cache.set(cache_key, result)
             
+            # Modified: Use standard string formatting for logging
             self.logger.info(
-                "Summary generated successfully", 
-                headline_length=len(result['headline']),
-                summary_length=len(result['summary'])
+                f"Summary generated successfully - Headline length: {len(result['headline'])}, "
+                f"Summary length: {len(result['summary'])}"
             )
             
             # Return the complete summary result
@@ -522,10 +522,10 @@ class FastSummarizer:
                 cache_key = f"{text}:{model_id}:{temperature}"
                 self.cache.set(cache_key, result)
             
+            # Modified: Use standard string formatting for logging
             self.logger.info(
-                "Streaming summary completed", 
-                headline_length=len(result['headline']),
-                summary_length=len(result['summary'])
+                f"Streaming summary completed - Headline length: {len(result['headline'])}, "
+                f"Summary length: {len(result['summary'])}"
             )
             
             return result
