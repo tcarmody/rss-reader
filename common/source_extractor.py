@@ -1,14 +1,29 @@
 """
-Source extractor for article links in RSS feeds.
+Enhanced source extractor for article links in aggregator sites.
 
 This module provides functions to detect and extract original article URLs
-from aggregator sites like Techmeme, Google News, etc.
+from aggregator sites like Techmeme, Google News, and other news aggregators.
+It supports both direct URL parameter extraction and HTML parsing when needed.
 """
 
 import re
-import urllib.parse
-from typing import Optional, List, Dict, Union
 import logging
+import urllib.parse
+from typing import Optional, List, Dict, Union, Set
+from urllib.parse import urlparse, parse_qs
+
+# Optional imports - module will work without these but with reduced functionality
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
+
+try:
+    from bs4 import BeautifulSoup
+    BS4_AVAILABLE = True
+except ImportError:
+    BS4_AVAILABLE = False
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -40,6 +55,19 @@ AGGREGATOR_DOMAINS = [
     'bing.com/news',
 ]
 
+# Known news sources for prioritization
+KNOWN_NEWS_SOURCES = [
+    'techcrunch.com', 'theverge.com', 'wired.com', 'bloomberg.com', 'wsj.com',
+    'nytimes.com', 'washingtonpost.com', 'cnn.com', 'bbc.com', 'reuters.com',
+    'arstechnica.com', 'engadget.com', 'cnet.com', 'zdnet.com', 'venturebeat.com'
+]
+
+# Domains to exclude from valid source consideration
+EXCLUDED_DOMAINS = [
+    'twitter.com', 'facebook.com', 'linkedin.com', 't.co',
+    'instagram.com', 'youtube.com', 'reddit.com', 'techmeme.com'
+]
+
 def is_aggregator_link(url: str) -> bool:
     """
     Check if the URL is from a known news aggregator.
@@ -55,7 +83,7 @@ def is_aggregator_link(url: str) -> bool:
         
     try:
         # Parse the URL and extract domain
-        parsed_url = urllib.parse.urlparse(url)
+        parsed_url = urlparse(url)
         domain = parsed_url.netloc.lower()
         
         # Check if domain matches any known aggregator
@@ -64,7 +92,7 @@ def is_aggregator_link(url: str) -> bool:
                 return True
                 
         # Check for redirect parameters in query string
-        query_params = urllib.parse.parse_qs(parsed_url.query)
+        query_params = parse_qs(parsed_url.query)
         for param in query_params:
             param_lower = param.lower()
             # Common redirect parameter names
@@ -78,12 +106,63 @@ def is_aggregator_link(url: str) -> bool:
         logger.error(f"Error checking if URL is from aggregator: {str(e)}")
         return False
 
-def extract_original_source_url(url: str) -> str:
+def is_valid_source_url(url: str) -> bool:
+    """
+    Check if a URL is likely to be a valid news source.
+    
+    Args:
+        url: URL to validate
+        
+    Returns:
+        bool: True if the URL appears to be a valid news source
+    """
+    # Skip if URL is None or empty
+    if not url:
+        return False
+        
+    # Skip common non-news domains
+    for domain in EXCLUDED_DOMAINS:
+        if domain in url:
+            return False
+    
+    # Check if the URL has a proper protocol
+    if not url.startswith('http'):
+        return False
+    
+    # Make sure URL isn't too short
+    if len(url) < 12:  # http://a.com is minimum valid URL (11 chars)
+        return False
+    
+    return True
+
+def prioritize_known_news_sources(urls: List[str]) -> Optional[str]:
+    """
+    Give priority to URLs from known news sources.
+    
+    Args:
+        urls: List of URLs to prioritize
+        
+    Returns:
+        str: The highest priority URL, or None if the list is empty
+    """
+    if not urls:
+        return None
+        
+    for url in urls:
+        for source in KNOWN_NEWS_SOURCES:
+            if source in url:
+                return url
+    
+    return urls[0]  # Return the first URL if no known sources found
+
+def extract_original_source_url(url: str, session=None, use_html_parsing: bool = True) -> str:
     """
     Extract the original source URL from an aggregator link.
     
     Args:
         url: The aggregator URL
+        session: Optional requests session to use for HTML parsing
+        use_html_parsing: Whether to use HTML parsing (requires requests and BeautifulSoup)
         
     Returns:
         str: The original source URL if found, or the original URL if not
@@ -92,35 +171,74 @@ def extract_original_source_url(url: str) -> str:
         return url
         
     try:
+        # Try URL parameter extraction first (doesn't require requests/BS4)
+        extracted_url = _extract_from_url_params(url)
+        if extracted_url != url:
+            return extracted_url
+            
+        # If parameter extraction didn't work and HTML parsing is enabled
+        if use_html_parsing and REQUESTS_AVAILABLE and BS4_AVAILABLE:
+            # Parse the URL
+            parsed_url = urlparse(url)
+            domain = parsed_url.netloc.lower()
+            
+            if not session:
+                session = requests.Session()
+                session.headers.update({
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                })
+            
+            # Handle domain-specific extraction methods
+            if 'techmeme.com' in domain:
+                extracted_url = _extract_techmeme_source(url, session)
+                if extracted_url:
+                    return extracted_url
+            elif 'news.google.com' in domain:
+                extracted_url = _extract_google_news_source(url, session)
+                if extracted_url:
+                    return extracted_url
+        
+        # If all else fails, return the original URL
+        return url
+    except Exception as e:
+        logger.error(f"Error extracting original source URL: {str(e)}")
+        return url
+
+def _extract_from_url_params(url: str) -> str:
+    """
+    Extract source URL from parameters in the URL.
+    
+    Args:
+        url: The URL to extract from
+        
+    Returns:
+        str: The extracted URL or the original URL if extraction failed
+    """
+    try:
         # Parse the URL
-        parsed_url = urllib.parse.urlparse(url)
+        parsed_url = urlparse(url)
         domain = parsed_url.netloc.lower()
+        query_params = parse_qs(parsed_url.query)
         
         # Handle Google News links
         if 'news.google.com' in domain:
-            # Google News format: .../articles/[source]/[article-id]
-            if '/articles/' in url:
-                query_params = urllib.parse.parse_qs(parsed_url.query)
-                if 'url' in query_params:
-                    return query_params['url'][0]
+            # Check for URL parameter
+            if 'url' in query_params and query_params['url']:
+                return query_params['url'][0]
                 
-                # Try to find URL in path
+            # Try to extract from path for article format
+            if '/articles/' in url:
                 path_parts = parsed_url.path.split('/')
                 if len(path_parts) > 3 and path_parts[-3] == 'articles':
-                    # Extract the article URL, which is often in the format:
-                    # ./articles/CBMiXGh0dHBzOi8vdGhlY...
                     article_part = path_parts[-1]
                     if article_part.startswith('CBMi'):
                         try:
-                            # Google uses a custom encoding, but often the URL is 
-                            # included as a parameter after the ? character
                             return url.split('?')[1].split('&')[0]
                         except:
                             pass
             
         # Handle Techmeme links
         elif 'techmeme.com' in domain:
-            query_params = urllib.parse.parse_qs(parsed_url.query)
             if 'u' in query_params:
                 return query_params['u'][0]
             
@@ -128,19 +246,13 @@ def extract_original_source_url(url: str) -> str:
         elif 'reddit.com' in domain:
             if '/comments/' in url and 'url=' in url:
                 try:
-                    return url.split('url=')[1].split('&')[0]
+                    extracted = url.split('url=')[1].split('&')[0]
+                    return urllib.parse.unquote(extracted)
                 except:
                     pass
                     
-        # Handle Twitter/X t.co links
-        elif 't.co' in domain:
-            # t.co links are redirects, we would need to follow the redirect
-            # but we'll return the original for now
-            return url
-            
-        # Handle other aggregators with common URL params
-        query_params = urllib.parse.parse_qs(parsed_url.query)
-        for param in ['url', 'u', 'link', 'target', 'redirect']:
+        # Handle common redirect parameters
+        for param in ['url', 'u', 'link', 'target', 'redirect', 'to']:
             if param in query_params and query_params[param][0].startswith('http'):
                 extracted_url = query_params[param][0]
                 # URL decode if needed
@@ -150,5 +262,205 @@ def extract_original_source_url(url: str) -> str:
                 
         return url
     except Exception as e:
-        logger.error(f"Error extracting original source URL: {str(e)}")
+        logger.error(f"Error extracting from URL parameters: {str(e)}")
         return url
+
+def _extract_techmeme_source(url: str, session, debug: bool = False) -> Optional[str]:
+    """
+    Extract the original source URL from a Techmeme link using HTML parsing.
+    
+    Args:
+        url: Techmeme URL
+        session: Requests session to use
+        debug: Whether to log additional debug information
+        
+    Returns:
+        str: Original source URL or None if extraction failed
+    """
+    if not BS4_AVAILABLE:
+        logger.warning("BeautifulSoup is not available, cannot extract from Techmeme HTML")
+        return None
+        
+    try:
+        # Fetch the Techmeme page
+        response = session.get(url, timeout=10)
+        if response.status_code != 200:
+            logger.warning(f"Failed to fetch Techmeme page: {url}, status code: {response.status_code}")
+            return None
+            
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        if debug:
+            # Dump HTML structure to log for inspection
+            logger.debug(f"HTML structure of Techmeme page: {soup.prettify()[:1000]}")
+            
+            # Log all potential source links found
+            all_links = soup.find_all('a')
+            logger.debug(f"All links on the page: {[link['href'] for link in all_links if link.has_attr('href')][:20]}")
+        
+        candidate_urls = []
+        
+        # Method 1: Look for the main headline's primary source
+        news_item = soup.select_one('.newsItem')
+        if news_item:
+            headline = news_item.select_one('strong.title')
+            if headline:
+                source_container = headline.find_next_sibling()
+                if source_container and source_container.find('a'):
+                    source_url = source_container.find('a')['href']
+                    if is_valid_source_url(source_url):
+                        logger.info(f"Method 1: Found source URL from main headline: {source_url}")
+                        candidate_urls.append(source_url)
+        
+        # Method 2: Look for the "More:" section which contains additional sources
+        more_section = soup.select_one('.continuation')
+        if more_section:
+            source_link = more_section.select_one('a')
+            if source_link and source_link.has_attr('href'):
+                source_url = source_link['href']
+                if is_valid_source_url(source_url):
+                    logger.info(f"Method 2: Found source URL from 'More:' section: {source_url}")
+                    candidate_urls.append(source_url)
+        
+        # Method 3: Find any author attribution links
+        attribution = soup.select_one('.itemsource')
+        if attribution:
+            source_link = attribution.select_one('a')
+            if source_link and source_link.has_attr('href'):
+                source_url = source_link['href']
+                if is_valid_source_url(source_url):
+                    logger.info(f"Method 3: Found source URL from attribution: {source_url}")
+                    candidate_urls.append(source_url)
+        
+        # Method 4: Try original selectors as fallback
+        for selector in ['.ii a', '.ourh a']:
+            source_link = soup.select_one(selector)
+            if source_link and source_link.has_attr('href'):
+                source_url = source_link['href']
+                if is_valid_source_url(source_url):
+                    logger.info(f"Method 4: Found source URL using legacy selector '{selector}': {source_url}")
+                    candidate_urls.append(source_url)
+        
+        # Method 5: Look for any news source links (last resort fallback)
+        if not candidate_urls:
+            all_links = soup.select('a')
+            for link in all_links:
+                if link.has_attr('href'):
+                    href = link['href']
+                    if is_valid_source_url(href):
+                        if any(domain in href for domain in ['.com', '.org', '.net', '.io']):
+                            source_url = href
+                            logger.info(f"Method 5: Found potential source URL: {source_url}")
+                            candidate_urls.append(source_url)
+                            if len(candidate_urls) >= 5:
+                                break
+        
+        # Choose the best URL from candidates
+        if candidate_urls:
+            best_url = prioritize_known_news_sources(candidate_urls)
+            logger.info(f"Selected source URL: {best_url} from {len(candidate_urls)} candidates")
+            return best_url
+            
+        logger.warning(f"Failed to extract source URL from Techmeme: {url}")
+    
+    except Exception as e:
+        logger.warning(f"Error extracting source from Techmeme: {str(e)}")
+    
+    return None
+
+def _extract_google_news_source(url: str, session) -> Optional[str]:
+    """
+    Extract the original source URL from a Google News link using HTML parsing.
+    
+    Args:
+        url: Google News URL
+        session: Requests session to use
+        
+    Returns:
+        str: Original source URL or None if extraction failed
+    """
+    if not BS4_AVAILABLE:
+        logger.warning("BeautifulSoup is not available, cannot extract from Google News HTML")
+        return None
+        
+    try:
+        # Check if the URL contains the source URL as a parameter
+        parsed_url = urlparse(url)
+        query_params = parse_qs(parsed_url.query)
+        
+        # Google News often includes the source URL in the 'url' parameter
+        if 'url' in query_params and query_params['url']:
+            source_url = query_params['url'][0]
+            if is_valid_source_url(source_url):
+                logger.info(f"Extracted original source URL from Google News URL parameter: {source_url}")
+                return source_url
+        
+        # If not in the URL, fetch the page and look for redirects or source links
+        response = session.get(url, timeout=10, allow_redirects=False)
+        
+        # Check if there's a redirect
+        if response.status_code in (301, 302, 303, 307, 308) and 'Location' in response.headers:
+            redirect_url = response.headers['Location']
+            if is_valid_source_url(redirect_url):
+                logger.info(f"Extracted original source URL from Google News redirect: {redirect_url}")
+                return redirect_url
+            
+        # If no redirect, parse the page
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Look for the main article link
+            article_links = soup.select('a[data-n-au]')
+            if article_links:
+                source_url = article_links[0]['href']
+                # If it's a relative URL, complete it
+                if source_url.startswith('/'):
+                    source_url = f"https://news.google.com{source_url}"
+                if is_valid_source_url(source_url):
+                    logger.info(f"Extracted original source URL from Google News HTML: {source_url}")
+                    return source_url
+                    
+            # Try alternative selectors
+            for selector in ['a.VDXfz', '.DY5T1d', 'a[target="_blank"]']:
+                links = soup.select(selector)
+                for link in links:
+                    if link.has_attr('href'):
+                        source_url = link['href']
+                        if is_valid_source_url(source_url):
+                            logger.info(f"Extracted original source URL using alternative selector '{selector}': {source_url}")
+                            return source_url
+    
+    except Exception as e:
+        logger.warning(f"Error extracting source from Google News: {str(e)}")
+    
+    return None
+
+def batch_extract_sources(urls: List[str], use_html_parsing: bool = True) -> Dict[str, str]:
+    """
+    Process a batch of URLs to extract original sources.
+    
+    Args:
+        urls: List of URLs to process
+        use_html_parsing: Whether to use HTML parsing for extraction
+        
+    Returns:
+        dict: Mapping from original URLs to extracted source URLs
+    """
+    results = {}
+    
+    # Create a single session for all requests (more efficient)
+    session = None
+    if use_html_parsing and REQUESTS_AVAILABLE:
+        session = requests.Session()
+        session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        })
+    
+    for url in urls:
+        if is_aggregator_link(url):
+            source_url = extract_original_source_url(url, session, use_html_parsing)
+            results[url] = source_url
+        else:
+            results[url] = url  # Not an aggregator, keep original
+            
+    return results
