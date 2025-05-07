@@ -14,7 +14,7 @@ from common.http import create_http_session
 from common.performance import track_performance
 from common.archive import fetch_article_content, is_paywalled
 from common.source_extractor import is_aggregator_link, extract_original_source_url
-from batch import BatchProcessor
+from common.batch_processing import BatchProcessor
 from summarization.article_summarizer import ArticleSummarizer
 from clustering.base import ArticleClusterer
 
@@ -25,7 +25,6 @@ try:
 except ImportError:
     logging.warning("Enhanced clustering module not available. Using basic clustering.")
     ENHANCED_CLUSTERING_AVAILABLE = False
-
 
 class RSSReader:
     """
