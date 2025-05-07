@@ -8,10 +8,9 @@ import os
 from typing import Dict, List, Optional, Any, Generator, Callable
 
 from common.batch_processing import BatchProcessor
-from common.errors import retry_with_backoff  # Add this line
+from common.errors import retry_with_backoff
 from models.selection import get_model_identifier, estimate_complexity, select_model_by_complexity
 from summarization.article_summarizer import ArticleSummarizer
-from summarization.base import BaseSummarizer  # Import BaseSummarizer
 from cache.tiered_cache import TieredCache
 from api.rate_limiter import RateLimiter
 from common.logging import StructuredLogger
@@ -23,7 +22,7 @@ from summarization.text_processing import (
 )
 from common.errors import APIError, RateLimitError, AuthenticationError, ConnectionError
 
-class FastSummarizer(BaseSummarizer):  # Inherit from BaseSummarizer
+class FastSummarizer:
     """
     Optimized summarizer with batch processing capabilities.
     
@@ -57,16 +56,16 @@ class FastSummarizer(BaseSummarizer):  # Inherit from BaseSummarizer
             max_batch_workers: Maximum concurrent workers
             rate_limit_delay: Delay between API calls
         """
+        self.logger = logging.getLogger(__name__)
+        
         # Get API key from environment if not provided
         if not api_key:
             api_key = os.environ.get("ANTHROPIC_API_KEY")
             if not api_key:
                 raise APIError("Anthropic API key not found")
         
-        # Initialize the base class
-        super().__init__(api_key=api_key, cache=None)
-        
-        self.logger = logging.getLogger(__name__)
+        # Initialize Anthropic client
+        self.client = Anthropic(api_key=api_key)
         
         # Create base summarizer
         self.summarizer = ArticleSummarizer(api_key=api_key)
@@ -124,7 +123,7 @@ class FastSummarizer(BaseSummarizer):  # Inherit from BaseSummarizer
         """
         # Auto-select model if requested
         if auto_select_model and not model:
-            clean_text_content = self.clean_text(text)
+            clean_text_content = clean_text(text)
             complexity = estimate_complexity(clean_text_content)
             model = select_model_by_complexity(complexity)
             
@@ -186,7 +185,7 @@ class FastSummarizer(BaseSummarizer):  # Inherit from BaseSummarizer
             for article in articles:
                 # Get text and clean it
                 text = article.get('text', article.get('content', ''))
-                text = self.clean_text(text)
+                text = clean_text(text)
                 
                 # Estimate complexity and select model
                 complexity = estimate_complexity(text)
@@ -342,7 +341,104 @@ class FastSummarizer(BaseSummarizer):  # Inherit from BaseSummarizer
                     }
                 }
 
-    # Note: We're keeping these methods as they override BaseSummarizer methods
+    def clean_text(self, text: str) -> str:
+        """Clean HTML and normalize text for summarization."""
+        return clean_text(text)
+    
+    def extract_source_from_url(self, url: str) -> str:
+        """Extract publication name from URL."""
+        return extract_source_from_url(url)
+    
+    @retry_with_backoff(max_retries=3, initial_backoff=2)
+    def call_api(self, model_id: str, prompt: str, temperature: float, max_tokens: int) -> str:
+        """
+        Call the Claude API with retry logic.
+        
+        Args:
+            model_id: Claude model identifier
+            prompt: The prompt to send
+            temperature: Temperature setting
+            max_tokens: Maximum tokens for the response
+            
+        Returns:
+            The response text from Claude
+        """
+        try:
+            self.logger.info(f"Calling Claude API with model {model_id}")
+            start_time = time.time()
+            
+            response = self.client.messages.create(
+                model=model_id,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                system=get_system_prompt(),
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
+            elapsed_time = time.time() - start_time
+            self.logger.info(f"API call completed in {elapsed_time:.2f}s")
+            
+            return response.content[0].text
+        except Exception as e:
+            self.logger.error(f"API call failed: {str(e)}")
+            # Convert to our custom exceptions
+            if "rate limit" in str(e).lower():
+                raise RateLimitError(str(e))
+            elif "auth" in str(e).lower():
+                raise AuthenticationError(str(e))
+            elif "connect" in str(e).lower():
+                raise ConnectionError(str(e))
+            else:
+                raise APIError(str(e))
+    
+    @retry_with_backoff(max_retries=2, initial_backoff=1)
+    def call_api_streaming(self, model_id: str, prompt: str, 
+                          temperature: float, max_tokens: int) -> Generator[str, None, None]:
+        """
+        Call the Claude API with streaming.
+        
+        Args:
+            model_id: Claude model identifier
+            prompt: The prompt to send
+            temperature: Temperature setting
+            max_tokens: Maximum tokens for the response
+            
+        Yields:
+            Text chunks from the Claude API
+        """
+        try:
+            self.logger.info(f"Starting streaming API call with model {model_id}")
+            start_time = time.time()
+            
+            stream = self.client.messages.create(
+                model=model_id,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                system=get_system_prompt(),
+                messages=[{"role": "user", "content": prompt}],
+                stream=True
+            )
+            
+            # Process each chunk
+            for chunk in stream:
+                if chunk.type == "content_block_delta" and hasattr(chunk.delta, 'text'):
+                    yield chunk.delta.text
+            
+            elapsed_time = time.time() - start_time
+            self.logger.info(f"Streaming API call completed in {elapsed_time:.2f}s")
+            
+        except Exception as e:
+            self.logger.error(f"Streaming API call failed: {str(e)}")
+            # Convert to our custom exceptions
+            if "rate limit" in str(e).lower():
+                raise RateLimitError(str(e))
+            elif "auth" in str(e).lower():
+                raise AuthenticationError(str(e))
+            elif "connect" in str(e).lower():
+                raise ConnectionError(str(e))
+            else:
+                raise APIError(str(e))
+    
     def summarize_article(
         self, 
         text: str, 
@@ -367,14 +463,15 @@ class FastSummarizer(BaseSummarizer):  # Inherit from BaseSummarizer
             dict: The summary with headline and text
         """
         # Set up request-specific context for structured logging
-        self.logger.add_context(
-            operation="summarize_article",
-            url=url,
-            title=title,
-            text_length=len(text),
-            requested_model=model,
-            temperature=temperature
-        )
+        if hasattr(self.logger, 'add_context'):
+            self.logger.add_context(
+                operation="summarize_article",
+                url=url,
+                title=title,
+                text_length=len(text),
+                requested_model=model,
+                temperature=temperature
+            )
         
         try:
             # Check cache first if not forcing refresh
@@ -386,10 +483,10 @@ class FastSummarizer(BaseSummarizer):  # Inherit from BaseSummarizer
                     return cached_result
             
             # Clean the text first
-            text = self.clean_text(text)
+            text = clean_text(text)
             
             # Extract source from URL for attribution
-            source_name = self.extract_source_from_url(url)
+            source_name = extract_source_from_url(url)
             
             # Get the actual model identifier
             model_id = get_model_identifier(model)
@@ -424,14 +521,15 @@ class FastSummarizer(BaseSummarizer):  # Inherit from BaseSummarizer
         except Exception as e:
             self.logger.exception(f"Error in summarize_article: {str(e)}")
             # Return a fallback summary
-            source_name = self.extract_source_from_url(url)
+            source_name = extract_source_from_url(url)
             return {
                 'headline': title,
                 'summary': f"Failed to generate summary: {str(e)}\n\nSource: {source_name}\n{url}"
             }
         finally:
             # Clear context after the operation
-            self.logger.clear_context()
+            if hasattr(self.logger, 'clear_context'):
+                self.logger.clear_context()
     
     def summarize_article_streaming(
         self, 
@@ -460,21 +558,22 @@ class FastSummarizer(BaseSummarizer):  # Inherit from BaseSummarizer
             dict: The complete summary with headline and text when finished
         """
         # Set up request-specific context for structured logging
-        self.logger.add_context(
-            operation="summarize_article_streaming",
-            url=url,
-            title=title,
-            text_length=len(text),
-            requested_model=model,
-            temperature=temperature
-        )
+        if hasattr(self.logger, 'add_context'):
+            self.logger.add_context(
+                operation="summarize_article_streaming",
+                url=url,
+                title=title,
+                text_length=len(text),
+                requested_model=model,
+                temperature=temperature
+            )
         
         try:
             # Clean the text first
-            text = self.clean_text(text)
+            text = clean_text(text)
 
             # Extract source from URL for attribution
-            source_name = self.extract_source_from_url(url)
+            source_name = extract_source_from_url(url)
             
             # Get the actual model identifier
             model_id = get_model_identifier(model)
@@ -523,14 +622,15 @@ class FastSummarizer(BaseSummarizer):  # Inherit from BaseSummarizer
         except Exception as e:
             self.logger.exception(f"Error in summarize_article_streaming: {str(e)}")
             # Return a fallback summary
-            source_name = self.extract_source_from_url(url)
+            source_name = extract_source_from_url(url)
             return {
                 'headline': title,
                 'summary': f"Failed to generate summary: {str(e)}\n\nSource: {source_name}\n{url}"
             }
         finally:
             # Clear context after the operation
-            self.logger.clear_context()
+            if hasattr(self.logger, 'clear_context'):
+                self.logger.clear_context()
     
     def summarize_long_article(
         self, 
@@ -558,7 +658,7 @@ class FastSummarizer(BaseSummarizer):  # Inherit from BaseSummarizer
         from summarization.text_processing import chunk_text
         
         # Clean the text first
-        text = self.clean_text(text)
+        text = clean_text(text)
         
         # If text is short enough, use regular summarization
         if len(text) < 12000:
@@ -604,7 +704,7 @@ class FastSummarizer(BaseSummarizer):  # Inherit from BaseSummarizer
             for i, summary in enumerate(chunk_summaries)
         ])
         
-        source_name = self.extract_source_from_url(url)
+        source_name = extract_source_from_url(url)
         
         meta_prompt = (
             "Based on these section summaries, create a coherent overall summary "
@@ -658,6 +758,10 @@ def create_fast_summarizer(
     Returns:
         FastSummarizer instance
     """
+    # Get the API key either from the original summarizer or the parameter
+    if original_summarizer and hasattr(original_summarizer, 'client') and hasattr(original_summarizer.client, 'api_key'):
+        api_key = original_summarizer.client.api_key
+    
     # Create the summarizer
     summarizer = FastSummarizer(
         api_key=api_key,
@@ -666,10 +770,8 @@ def create_fast_summarizer(
         max_batch_workers=max_batch_workers
     )
     
-    # If an original summarizer is provided, copy its settings
-    if original_summarizer:
-        # Copy other attributes if they exist
-        if hasattr(original_summarizer, 'cache'):
-            summarizer.cache = original_summarizer.cache
+    # If an original summarizer is provided, copy its cache
+    if original_summarizer and hasattr(original_summarizer, 'cache'):
+        summarizer.cache = original_summarizer.cache
     
     return summarizer
