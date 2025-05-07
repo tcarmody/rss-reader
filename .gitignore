@@ -34,10 +34,6 @@ var/
 *.egg
 
 # Caches
-.cache/
-caches/
-cache/
-*/.cache/
 .pytest_cache/
 .coverage
 htmlcov/
