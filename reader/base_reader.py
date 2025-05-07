@@ -66,7 +66,7 @@ class RSSReader:
         self.batch_size = batch_size
         self.batch_delay = batch_delay
         self.session = create_http_session()
-        self.batch_processor = BatchProcessor(batch_size=5)  # Process 5 API calls at a time
+        self.batch_processor = BatchProcessor(max_workers=5)
         self.summarizer = ArticleSummarizer()
         
         # Use the enhanced clusterer if available, otherwise fall back to basic
