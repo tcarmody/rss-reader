@@ -9,7 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 
 # Import source extractor utilities
-from utils.source_extractor import is_aggregator_link, extract_original_source_url
+from common.source_extractor import is_aggregator_link, extract_original_source_url
 
 # List of known paywall domains
 PAYWALL_DOMAINS = [
