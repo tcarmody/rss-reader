@@ -123,8 +123,8 @@ class FastSummarizer:
         """
         # Auto-select model if requested
         if auto_select_model and not model:
-            clean_text = self.summarizer.clean_text(text)
-            complexity = estimate_complexity(clean_text)
+            clean_text_content = self.summarizer.clean_text(text)
+            complexity = estimate_complexity(clean_text_content)
             model = select_model_by_complexity(complexity)
             
         # Choose approach based on text length
@@ -295,8 +295,17 @@ class FastSummarizer:
             Article summary with original metadata
         """
         async with semaphore:
-            # Apply rate limiting
-            await self.rate_limiter.acquire()
+            # Apply rate limiting using the async method if available
+            try:
+                # First try the async acquire method
+                if hasattr(self.rate_limiter, 'acquire_async'):
+                    await self.rate_limiter.acquire_async()
+                else:
+                    # Fall back to running the synchronous method in a thread pool
+                    loop = asyncio.get_event_loop()
+                    await loop.run_in_executor(None, self.rate_limiter.acquire)
+            except Exception as e:
+                self.logger.warning(f"Rate limiting error (proceeding anyway): {str(e)}")
             
             try:
                 # Get article data
