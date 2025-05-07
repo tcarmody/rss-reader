@@ -22,7 +22,8 @@ IMPORT_REDIRECTS = {
     'utils.config': 'common.config',
     'utils.http': 'common.http',
     'utils.archive': 'common.archive',
-    'utils.performance': 'common.performance'
+    'utils.performance': 'common.performance',
+    'utils.source_extractor': 'common.source_extractor'
 }
 
 # Class name redirections

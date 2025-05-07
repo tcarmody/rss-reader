@@ -11,6 +11,7 @@ from common.batch_processing import BatchProcessor
 from common.errors import retry_with_backoff  # Add this line
 from models.selection import get_model_identifier, estimate_complexity, select_model_by_complexity
 from summarization.article_summarizer import ArticleSummarizer
+from summarization.base import BaseSummarizer  # Import BaseSummarizer
 from cache.tiered_cache import TieredCache
 from api.rate_limiter import RateLimiter
 from common.logging import StructuredLogger
@@ -22,7 +23,7 @@ from summarization.text_processing import (
 )
 from common.errors import APIError, RateLimitError, AuthenticationError, ConnectionError
 
-class FastSummarizer:
+class FastSummarizer(BaseSummarizer):  # Inherit from BaseSummarizer
     """
     Optimized summarizer with batch processing capabilities.
     
@@ -56,16 +57,16 @@ class FastSummarizer:
             max_batch_workers: Maximum concurrent workers
             rate_limit_delay: Delay between API calls
         """
-        self.logger = logging.getLogger(__name__)
-        
         # Get API key from environment if not provided
         if not api_key:
             api_key = os.environ.get("ANTHROPIC_API_KEY")
             if not api_key:
                 raise APIError("Anthropic API key not found")
         
-        # Initialize Anthropic client
-        self.client = Anthropic(api_key=api_key)
+        # Initialize the base class
+        super().__init__(api_key=api_key, cache=None)
+        
+        self.logger = logging.getLogger(__name__)
         
         # Create base summarizer
         self.summarizer = ArticleSummarizer(api_key=api_key)
@@ -123,7 +124,7 @@ class FastSummarizer:
         """
         # Auto-select model if requested
         if auto_select_model and not model:
-            clean_text_content = self.summarizer.clean_text(text)
+            clean_text_content = self.clean_text(text)
             complexity = estimate_complexity(clean_text_content)
             model = select_model_by_complexity(complexity)
             
@@ -185,7 +186,7 @@ class FastSummarizer:
             for article in articles:
                 # Get text and clean it
                 text = article.get('text', article.get('content', ''))
-                text = self.summarizer.clean_text(text)
+                text = self.clean_text(text)
                 
                 # Estimate complexity and select model
                 complexity = estimate_complexity(text)
@@ -341,104 +342,7 @@ class FastSummarizer:
                     }
                 }
 
-    def clean_text(self, text: str) -> str:
-        """Clean HTML and normalize text for summarization."""
-        return clean_text(text)
-    
-    def extract_source_from_url(self, url: str) -> str:
-        """Extract publication name from URL."""
-        return extract_source_from_url(url)
-    
-    @retry_with_backoff(max_retries=3, initial_backoff=2)
-    def call_api(self, model_id: str, prompt: str, temperature: float, max_tokens: int) -> str:
-        """
-        Call the Claude API with retry logic.
-        
-        Args:
-            model_id: Claude model identifier
-            prompt: The prompt to send
-            temperature: Temperature setting
-            max_tokens: Maximum tokens for the response
-            
-        Returns:
-            The response text from Claude
-        """
-        try:
-            self.logger.info(f"Calling Claude API with model {model_id}")
-            start_time = time.time()
-            
-            response = self.client.messages.create(
-                model=model_id,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                system=get_system_prompt(),
-                messages=[{"role": "user", "content": prompt}]
-            )
-            
-            elapsed_time = time.time() - start_time
-            self.logger.info(f"API call completed in {elapsed_time:.2f}s")
-            
-            return response.content[0].text
-        except Exception as e:
-            self.logger.error(f"API call failed: {str(e)}")
-            # Convert to our custom exceptions
-            if "rate limit" in str(e).lower():
-                raise RateLimitError(str(e))
-            elif "auth" in str(e).lower():
-                raise AuthenticationError(str(e))
-            elif "connect" in str(e).lower():
-                raise ConnectionError(str(e))
-            else:
-                raise APIError(str(e))
-    
-    @retry_with_backoff(max_retries=2, initial_backoff=1)
-    def call_api_streaming(self, model_id: str, prompt: str, 
-                          temperature: float, max_tokens: int) -> Generator[str, None, None]:
-        """
-        Call the Claude API with streaming.
-        
-        Args:
-            model_id: Claude model identifier
-            prompt: The prompt to send
-            temperature: Temperature setting
-            max_tokens: Maximum tokens for the response
-            
-        Yields:
-            Text chunks from the Claude API
-        """
-        try:
-            self.logger.info(f"Starting streaming API call with model {model_id}")
-            start_time = time.time()
-            
-            stream = self.client.messages.create(
-                model=model_id,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                system=get_system_prompt(),
-                messages=[{"role": "user", "content": prompt}],
-                stream=True
-            )
-            
-            # Process each chunk
-            for chunk in stream:
-                if chunk.type == "content_block_delta" and hasattr(chunk.delta, 'text'):
-                    yield chunk.delta.text
-            
-            elapsed_time = time.time() - start_time
-            self.logger.info(f"Streaming API call completed in {elapsed_time:.2f}s")
-            
-        except Exception as e:
-            self.logger.error(f"Streaming API call failed: {str(e)}")
-            # Convert to our custom exceptions
-            if "rate limit" in str(e).lower():
-                raise RateLimitError(str(e))
-            elif "auth" in str(e).lower():
-                raise AuthenticationError(str(e))
-            elif "connect" in str(e).lower():
-                raise ConnectionError(str(e))
-            else:
-                raise APIError(str(e))
-    
+    # Note: We're keeping these methods as they override BaseSummarizer methods
     def summarize_article(
         self, 
         text: str, 
