@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Data Points AI - Error</title>
   <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
-</head>
+  </head>
 <body>
   <div class="app-container">
     <nav class="nav">
       <div class="nav-container">
-        <a href="/" class="logo">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <a href="{{ url_for('index') }}" class="logo" aria-label="Data Points AI Home">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <title>Data Points AI Logo</title>
             <circle cx="12" cy="12" r="10"></circle>
             <path d="M12 6v6l4 2"></path>
           </svg>
@@ -23,7 +24,8 @@
     <main class="main standard">
       <div class="card">
         <h1 class="card-title">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right: 8px;">
+            <title>Error Icon</title>
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" y1="8" x2="12" y2="12"></line>
             <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -31,13 +33,13 @@
           Error Occurred
         </h1>
         
-        <div class="error-message">
+        <div class="error-message" role="alert">
           <p><strong>Something went wrong:</strong> {{ message }}</p>
         </div>
         
         <div class="error-actions">
-          <a href="/" class="button">Back to Home</a>
-        </div>
+          <a href="{{ url_for('index') }}" class="button">Back to Home</a>
+          </div>
       </div>
     </main>
     
