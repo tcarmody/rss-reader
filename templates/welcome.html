@@ -43,14 +43,14 @@
               <form action="/toggle_paywall_bypass" method="post" id="paywallToggleFormWelcome">
                 <div class="toggle-container danger-toggle">
                   <span class="toggle-label">
-                    {% if paywall_bypass_enabled %}
+                    {% if paywall_bypass_enabled is defined and paywall_bypass_enabled %}
                       Enabled
                     {% else %}
                       Disabled
                     {% endif %}
                   </span>
                   <label class="toggle-switch">
-                    <input type="checkbox" {% if paywall_bypass_enabled %}checked{% endif %} onChange="this.form.submit()" aria-labelledby="paywallAccessLabel">
+                    <input type="checkbox" {% if paywall_bypass_enabled is defined and paywall_bypass_enabled %}checked{% endif %} onChange="this.form.submit()" aria-labelledby="paywallAccessLabel">
                     <span class="toggle-slider"></span>
                   </label>
                 </div>
@@ -73,12 +73,12 @@
               <form id="globalSettingsForm"> <div class="input-group">
                   <div class="form-group">
                     <label class="form-label" for="global_batch_size">Batch Size</label>
-                    <input class="form-input" type="number" id="global_batch_size" name="global_batch_size" value="{% if global_settings is defined %}{{ global_settings.batch_size | default(25) }}{% else %}25{% endif %}" min="1" aria-describedby="batchSizeHint">
+                    <input class="form-input" type="number" id="global_batch_size" name="global_batch_size" value="{% if global_settings is defined and global_settings.batch_size is defined %}{{ global_settings.batch_size | default(25) }}{% else %}25{% endif %}" min="1" aria-describedby="batchSizeHint">
                     <p class="form-hint" id="batchSizeHint" style="font-size: 0.75rem; color: var(--neutral-500);">Articles per batch.</p>
                   </div>
                   <div class="form-group">
                     <label class="form-label" for="global_batch_delay">Delay (sec)</label>
-                     <input class="form-input" type="number" id="global_batch_delay" name="global_batch_delay" value="{% if global_settings is defined %}{{ global_settings.batch_delay | default(15) }}{% else %}15{% endif %}" min="1" aria-describedby="batchDelayHint">
+                     <input class="form-input" type="number" id="global_batch_delay" name="global_batch_delay" value="{% if global_settings is defined and global_settings.batch_delay is defined %}{{ global_settings.batch_delay | default(15) }}{% else %}15{% endif %}" min="1" aria-describedby="batchDelayHint">
                     <p class="form-hint" id="batchDelayHint" style="font-size: 0.75rem; color: var(--neutral-500);">Delay between batches.</p>
                   </div>
                 </div>
@@ -135,7 +135,7 @@
                 </label>
               </div>
 
-              <div class="setting-row" {% if clustering_settings is not defined or not clustering_settings.time_range_enabled %}style="display: none;"{% endif %} id="timeRangeOptions" role="region" aria-labelledby="timeRangeFilterLabel">
+              <div class="setting-row" {% if not (clustering_settings is defined and clustering_settings.time_range_enabled) %}style="display: none;"{% endif %} id="timeRangeOptions" role="region" aria-labelledby="timeRangeFilterLabel">
                 <div>
                   <div class="setting-name">Time Range</div>
                   <div class="setting-description">How far back to look for articles</div>
@@ -146,8 +146,7 @@
                   <label for="time_range_unit" class="sr-only">Time Range Unit</label>
                   <select id="time_range_unit" name="time_range_unit" class="form-input" style="max-width: 100px;">
                     <option value="hours" {% if clustering_settings is defined and clustering_settings.time_range_unit == 'hours' %}selected{% endif %}>Hours</option>
-                    <option value="days" {% if clustering_settings is defined and clustering_settings.time_range_unit == 'days' %}selected{% endif %}>Days</option>
-                    <option value="weeks" {% if clustering_settings is defined and clustering_settings.time_range_unit == 'weeks' %}selected{% endif %}>Weeks</option>
+                    <option value="days" {% if clustering_settings is defined and clustering_settings.time_range_unit == 'days' or clustering_settings is not defined %}selected{% endif %}>Days</option> <option value="weeks" {% if clustering_settings is defined and clustering_settings.time_range_unit == 'weeks' %}selected{% endif %}>Weeks</option>
                     <option value="months" {% if clustering_settings is defined and clustering_settings.time_range_unit == 'months' %}selected{% endif %}>Months</option>
                   </select>
                 </div>
@@ -179,7 +178,7 @@
           </div>
         </section>
         
-        {% if not initial_summaries_loaded %} <div class="info-banner" role="status" style="margin-top: 2rem;">
+        {% if initial_summaries_loaded is defined and not initial_summaries_loaded %} <div class="info-banner" role="status" style="margin-top: 2rem;">
           <p><strong>No summaries available yet.</strong> Use the options below to process feeds or summarize URLs.</p>
         </div>
         {% endif %}
@@ -200,7 +199,7 @@
           </div>
           
           <div class="tab-content active" id="default-feeds-panel" role="tabpanel" aria-labelledby="default-feeds-tab">
-            {% if has_default_feeds %}
+            {% if has_default_feeds is defined and has_default_feeds %}
             <div class="feed-section">
               <h3>Process Default Feeds</h3>
               <p>Process articles from the default feed list in <code class="code">rss_feeds.txt</code>.</p>
@@ -208,9 +207,7 @@
               
               <form action="/refresh" method="post" style="margin-top: 1rem" id="defaultFeedsForm">
                 <input type="hidden" name="use_default" value="true">
-                <input type="hidden" name="batch_size" id="default_batch_size">
-                <input type="hidden" name="batch_delay" id="default_batch_delay">
-                <button type="submit" class="button success large">
+                <input type="hidden" name="batch_size" id="default_batch_size"> <input type="hidden" name="batch_delay" id="default_batch_delay"> <button type="submit" class="button success large">
                   Process Default Feeds
                   </button>
               </form>
@@ -231,10 +228,7 @@
                 <p class="form-hint" id="customFeedsHint" style="font-size: 0.75rem; color: var(--neutral-500);">Enter one URL per line.</p>
               </div>
               
-              <input type="hidden" name="batch_size" id="custom_batch_size">
-              <input type="hidden" name="batch_delay" id="custom_batch_delay">
-              
-              <button type="submit" class="button">
+              <input type="hidden" name="use_default" value="false"> <input type="hidden" name="batch_size" id="custom_batch_size"> <input type="hidden" name="batch_delay" id="custom_batch_delay"> <button type="submit" class="button">
                 Process Custom Feeds
                 </button>
             </form>
@@ -251,7 +245,6 @@
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       // Tab switching functionality
-      const tablist = document.querySelector('.tabs[role="tablist"]');
       const tabs = document.querySelectorAll('.tab[role="tab"]');
       const tabPanels = document.querySelectorAll('.tab-content[role="tabpanel"]');
       
@@ -260,26 +253,34 @@
           const clickedTab = e.currentTarget;
           const targetPanelId = clickedTab.getAttribute('aria-controls');
           
+          // Deactivate all tabs and hide all panels
           tabs.forEach(t => {
             t.classList.remove('active');
             t.setAttribute('aria-selected', 'false');
             t.setAttribute('tabindex', '-1');
           });
           
+          tabPanels.forEach(panel => {
+            panel.classList.remove('active'); // Ensure active class is removed
+            panel.setAttribute('hidden', ''); // Hide all panels
+          });
+          
+          // Activate the clicked tab
           clickedTab.classList.add('active');
           clickedTab.setAttribute('aria-selected', 'true');
           clickedTab.removeAttribute('tabindex');
           
-          tabPanels.forEach(panel => {
-            if (panel.id === targetPanelId) {
-              panel.removeAttribute('hidden');
-            } else {
-              panel.setAttribute('hidden', '');
-            }
-          });
+          // Show the target panel
+          const targetPanel = document.getElementById(targetPanelId);
+          if (targetPanel) {
+            targetPanel.classList.add('active');    // Add active class to show it
+            targetPanel.removeAttribute('hidden'); // Remove hidden attribute
+          }
+          
           clickedTab.focus(); // Optional: move focus to the activated tab
         });
 
+        // ARIA keydown navigation for tabs
         tab.addEventListener('keydown', (e) => {
             let index = Array.from(tabs).indexOf(e.currentTarget);
             let newIndex = index;
@@ -300,67 +301,59 @@
         });
       });
       
-      // Synchronize global settings with the form submissions
+      // Synchronize global settings with the form submissions for batch_size and batch_delay
       const globalBatchSizeInput = document.getElementById('global_batch_size');
       const globalBatchDelayInput = document.getElementById('global_batch_delay');
+      
       const defaultBatchSizeInput = document.getElementById('default_batch_size');
       const defaultBatchDelayInput = document.getElementById('default_batch_delay');
       const customBatchSizeInput = document.getElementById('custom_batch_size');
       const customBatchDelayInput = document.getElementById('custom_batch_delay');
       
-      function updateHiddenFields() {
-        if (defaultBatchSizeInput) defaultBatchSizeInput.value = globalBatchSizeInput.value;
-        if (defaultBatchDelayInput) defaultBatchDelayInput.value = globalBatchDelayInput.value;
-        if (customBatchSizeInput) customBatchSizeInput.value = globalBatchSizeInput.value;
-        if (customBatchDelayInput) customBatchDelayInput.value = globalBatchDelayInput.value;
+      function updateHiddenFeedProcessingFields() {
+        const currentBatchSize = globalBatchSizeInput ? globalBatchSizeInput.value : '25';
+        const currentBatchDelay = globalBatchDelayInput ? globalBatchDelayInput.value : '15';
+
+        if (defaultBatchSizeInput) defaultBatchSizeInput.value = currentBatchSize;
+        if (defaultBatchDelayInput) defaultBatchDelayInput.value = currentBatchDelay;
+        if (customBatchSizeInput) customBatchSizeInput.value = currentBatchSize;
+        if (customBatchDelayInput) customBatchDelayInput.value = currentBatchDelay;
       }
       
       if (globalBatchSizeInput && globalBatchDelayInput) {
-        updateHiddenFields(); // Initialize
-        globalBatchSizeInput.addEventListener('change', updateHiddenFields);
-        globalBatchDelayInput.addEventListener('change', updateHiddenFields);
+        updateHiddenFeedProcessingFields(); // Initialize on load
+        globalBatchSizeInput.addEventListener('change', updateHiddenFeedProcessingFields);
+        globalBatchDelayInput.addEventListener('change', updateHiddenFeedProcessingFields);
       }
       
-      // Update before form submission for forms that use these global settings
+      // Ensure hidden fields are updated before form submission
       const defaultFeedsForm = document.getElementById('defaultFeedsForm');
-      if (defaultFeedsForm) defaultFeedsForm.addEventListener('submit', updateHiddenFields);
+      if (defaultFeedsForm) {
+        defaultFeedsForm.addEventListener('submit', updateHiddenFeedProcessingFields);
+      }
       
       const customFeedsForm = document.getElementById('customFeedsForm');
-      if (customFeedsForm) customFeedsForm.addEventListener('submit', updateHiddenFields);
+      if (customFeedsForm) {
+        // Also ensure the 'use_default' hidden field in customFeedsForm is correctly set to 'false'.
+        // It's already hardcoded in the HTML, but this JS confirms it if needed dynamically.
+        // const useDefaultHiddenInput = customFeedsForm.querySelector('input[name="use_default"]');
+        // if (useDefaultHiddenInput) useDefaultHiddenInput.value = 'false';
+        customFeedsForm.addEventListener('submit', updateHiddenFeedProcessingFields);
+      }
       
       // Handle time range options visibility for Clustering Settings
       const timeRangeEnabledToggle = document.querySelector('input[name="time_range_enabled"]');
       const timeRangeOptionsDiv = document.getElementById('timeRangeOptions');
       
       if (timeRangeEnabledToggle && timeRangeOptionsDiv) {
-        timeRangeEnabledToggle.addEventListener('change', function() {
-          timeRangeOptionsDiv.style.display = this.checked ? 'flex' : 'none';
-          timeRangeOptionsDiv.setAttribute('aria-hidden', !this.checked);
-        });
-        // Initial state set by server-side rendering is now more robust
-        // Ensure JS reflects the possibly hidden-by-default state
-        if (timeRangeOptionsDiv.style.display === 'none') {
-             timeRangeOptionsDiv.setAttribute('aria-hidden', 'true');
-        } else {
-             timeRangeOptionsDiv.setAttribute('aria-hidden', 'false');
+        function updateTimeRangeVisibility() {
+            const isChecked = timeRangeEnabledToggle.checked;
+            timeRangeOptionsDiv.style.display = isChecked ? 'flex' : 'none'; // Assuming flex is the desired display
+            timeRangeOptionsDiv.setAttribute('aria-hidden', String(!isChecked));
         }
+        timeRangeEnabledToggle.addEventListener('change', updateTimeRangeVisibility);
+        updateTimeRangeVisibility(); // Call on load to set initial state
       }
-
-      // Add similar JS for other forms to show loading states if desired.
-      // E.g., for clusteringSettingsForm, defaultFeedsForm, customFeedsForm:
-      // const formsToTrack = ['clusteringSettingsForm', 'defaultFeedsForm', 'customFeedsForm'];
-      // formsToTrack.forEach(formId => {
-      //   const form = document.getElementById(formId);
-      //   if (form) {
-      //     form.addEventListener('submit', function() {
-      //       const submitButton = form.querySelector('button[type="submit"]');
-      //       const spinner = submitButton.querySelector('.loading-spinner');
-      //       if (submitButton) submitButton.disabled = true;
-      //       if (spinner) spinner.style.display = 'inline-block';
-      //       // Add logic to hide spinner and re-enable button on completion/error
-      //     });
-      //   }
-      // });
     });
   </script>
 </body>
