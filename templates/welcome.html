@@ -73,12 +73,12 @@
               <form id="globalSettingsForm"> <div class="input-group">
                   <div class="form-group">
                     <label class="form-label" for="global_batch_size">Batch Size</label>
-                    <input class="form-input" type="number" id="global_batch_size" name="global_batch_size" value="{{ global_settings.batch_size | default(25) }}" min="1" aria-describedby="batchSizeHint">
+                    <input class="form-input" type="number" id="global_batch_size" name="global_batch_size" value="{% if global_settings is defined %}{{ global_settings.batch_size | default(25) }}{% else %}25{% endif %}" min="1" aria-describedby="batchSizeHint">
                     <p class="form-hint" id="batchSizeHint" style="font-size: 0.75rem; color: var(--neutral-500);">Articles per batch.</p>
                   </div>
                   <div class="form-group">
                     <label class="form-label" for="global_batch_delay">Delay (sec)</label>
-                     <input class="form-input" type="number" id="global_batch_delay" name="global_batch_delay" value="{{ global_settings.batch_delay | default(15) }}" min="1" aria-describedby="batchDelayHint">
+                     <input class="form-input" type="number" id="global_batch_delay" name="global_batch_delay" value="{% if global_settings is defined %}{{ global_settings.batch_delay | default(15) }}{% else %}15{% endif %}" min="1" aria-describedby="batchDelayHint">
                     <p class="form-hint" id="batchDelayHint" style="font-size: 0.75rem; color: var(--neutral-500);">Delay between batches.</p>
                   </div>
                 </div>
@@ -108,7 +108,7 @@
                   <div class="setting-description">Enable Claude to analyze multiple articles at once</div>
                 </div>
                 <label class="toggle-switch">
-                  <input type="checkbox" name="enable_multi_article" {% if clustering_settings.enable_multi_article %}checked{% endif %} aria-labelledby="multiArticleLabel">
+                  <input type="checkbox" name="enable_multi_article" {% if clustering_settings is defined and clustering_settings.enable_multi_article %}checked{% endif %} aria-labelledby="multiArticleLabel">
                   <span class="toggle-slider"></span>
                 </label>
               </div>
@@ -119,7 +119,7 @@
                   <div class="setting-description">Use advanced clustering algorithms</div>
                 </div>
                 <label class="toggle-switch">
-                  <input type="checkbox" name="use_enhanced_clustering" {% if clustering_settings.use_enhanced_clustering %}checked{% endif %} aria-labelledby="enhancedClusteringLabel">
+                  <input type="checkbox" name="use_enhanced_clustering" {% if clustering_settings is defined and clustering_settings.use_enhanced_clustering %}checked{% endif %} aria-labelledby="enhancedClusteringLabel">
                   <span class="toggle-slider"></span>
                 </label>
               </div>
@@ -130,25 +130,25 @@
                   <div class="setting-description">Only include articles from the selected time range</div>
                 </div>
                 <label class="toggle-switch">
-                  <input type="checkbox" name="time_range_enabled" {% if clustering_settings.time_range_enabled %}checked{% endif %} aria-labelledby="timeRangeFilterLabel" aria-controls="timeRangeOptions">
+                  <input type="checkbox" name="time_range_enabled" {% if clustering_settings is defined and clustering_settings.time_range_enabled %}checked{% endif %} aria-labelledby="timeRangeFilterLabel" aria-controls="timeRangeOptions">
                   <span class="toggle-slider"></span>
                 </label>
               </div>
 
-              <div class="setting-row" {% if not clustering_settings.time_range_enabled %}style="display: none;"{% endif %} id="timeRangeOptions" role="region" aria-labelledby="timeRangeFilterLabel">
+              <div class="setting-row" {% if clustering_settings is not defined or not clustering_settings.time_range_enabled %}style="display: none;"{% endif %} id="timeRangeOptions" role="region" aria-labelledby="timeRangeFilterLabel">
                 <div>
                   <div class="setting-name">Time Range</div>
                   <div class="setting-description">How far back to look for articles</div>
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
                   <label for="time_range_value" class="sr-only">Time Range Value</label>
-                  <input type="number" id="time_range_value" name="time_range_value" class="form-input-number" value="{{ clustering_settings.time_range_value | default(7) }}" min="1" style="max-width: 70px;">
+                  <input type="number" id="time_range_value" name="time_range_value" class="form-input-number" value="{% if clustering_settings is defined %}{{ clustering_settings.time_range_value | default(7) }}{% else %}7{% endif %}" min="1" style="max-width: 70px;">
                   <label for="time_range_unit" class="sr-only">Time Range Unit</label>
                   <select id="time_range_unit" name="time_range_unit" class="form-input" style="max-width: 100px;">
-                    <option value="hours" {% if clustering_settings.time_range_unit == 'hours' %}selected{% endif %}>Hours</option>
-                    <option value="days" {% if clustering_settings.time_range_unit == 'days' %}selected{% endif %}>Days</option>
-                    <option value="weeks" {% if clustering_settings.time_range_unit == 'weeks' %}selected{% endif %}>Weeks</option>
-                    <option value="months" {% if clustering_settings.time_range_unit == 'months' %}selected{% endif %}>Months</option>
+                    <option value="hours" {% if clustering_settings is defined and clustering_settings.time_range_unit == 'hours' %}selected{% endif %}>Hours</option>
+                    <option value="days" {% if clustering_settings is defined and clustering_settings.time_range_unit == 'days' %}selected{% endif %}>Days</option>
+                    <option value="weeks" {% if clustering_settings is defined and clustering_settings.time_range_unit == 'weeks' %}selected{% endif %}>Weeks</option>
+                    <option value="months" {% if clustering_settings is defined and clustering_settings.time_range_unit == 'months' %}selected{% endif %}>Months</option>
                   </select>
                 </div>
               </div>
@@ -158,7 +158,7 @@
                   <label for="similarity_threshold" class="setting-name">Similarity Threshold</label>
                   <div class="setting-description">Minimum similarity score to group articles (0.0-1.0)</div>
                 </div>
-                <input type="number" id="similarity_threshold" name="similarity_threshold" class="form-input-number" value="{{ clustering_settings.similarity_threshold | default(0.7) }}" min="0" max="1" step="0.05" style="max-width: 70px;">
+                <input type="number" id="similarity_threshold" name="similarity_threshold" class="form-input-number" value="{% if clustering_settings is defined %}{{ clustering_settings.similarity_threshold | default(0.7) }}{% else %}0.7{% endif %}" min="0" max="1" step="0.05" style="max-width: 70px;">
               </div>
               
               <div class="setting-row">
@@ -166,7 +166,7 @@
                   <label for="max_articles_per_batch" class="setting-name">Max Articles Per Cluster Batch</label>
                   <div class="setting-description">Maximum articles to analyze for clustering at once</div>
                 </div>
-                <input type="number" id="max_articles_per_batch" name="max_articles_per_batch" class="form-input-number" value="{{ clustering_settings.max_articles_per_batch | default(5) }}" min="1" max="20" style="max-width: 70px;">
+                <input type="number" id="max_articles_per_batch" name="max_articles_per_batch" class="form-input-number" value="{% if clustering_settings is defined %}{{ clustering_settings.max_articles_per_batch | default(5) }}{% else %}5{% endif %}" min="1" max="20" style="max-width: 70px;">
               </div>
               
               <div class="buttons-container">
@@ -337,9 +337,13 @@
           timeRangeOptionsDiv.style.display = this.checked ? 'flex' : 'none';
           timeRangeOptionsDiv.setAttribute('aria-hidden', !this.checked);
         });
-        // Initial state
-        timeRangeOptionsDiv.style.display = timeRangeEnabledToggle.checked ? 'flex' : 'none';
-        timeRangeOptionsDiv.setAttribute('aria-hidden', !timeRangeEnabledToggle.checked);
+        // Initial state set by server-side rendering is now more robust
+        // Ensure JS reflects the possibly hidden-by-default state
+        if (timeRangeOptionsDiv.style.display === 'none') {
+             timeRangeOptionsDiv.setAttribute('aria-hidden', 'true');
+        } else {
+             timeRangeOptionsDiv.setAttribute('aria-hidden', 'false');
+        }
       }
 
       // Add similar JS for other forms to show loading states if desired.
