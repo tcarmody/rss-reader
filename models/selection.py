@@ -120,17 +120,13 @@ def select_model_by_complexity(complexity_score: float) -> str:
     Returns:
         Model identifier string
     """
-    # Sort models by complexity threshold
-    sorted_models = sorted(
-        MODEL_PROPERTIES.items(),
-        key=lambda x: x[1].get('complexity_threshold', 0)
-    )
-    
-    # Find the most appropriate model
-    selected_model = DEFAULT_MODEL
-    for model_name, properties in sorted_models:
-        if complexity_score >= properties.get('complexity_threshold', 0):
-            selected_model = model_name
+    # Simplified model selection for our streamlined models
+    if complexity_score >= 0.6:
+        # High complexity content goes to the most capable model
+        selected_model = "claude-3.7-sonnet"
+    else:
+        # Low to medium complexity content goes to the faster model
+        selected_model = "claude-3.5-haiku"
     
     logger.info(f"Selected {selected_model} for content with complexity score {complexity_score:.2f}")
     return MODEL_IDENTIFIERS.get(selected_model, MODEL_IDENTIFIERS[DEFAULT_MODEL])
