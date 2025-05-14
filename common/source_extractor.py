@@ -155,17 +155,23 @@ def prioritize_known_news_sources(urls: List[str]) -> Optional[str]:
     
     return urls[0]  # Return the first URL if no known sources found
 
-def extract_original_source_url(url: str, session=None, use_html_parsing: bool = True) -> str:
+def extract_original_source_url(url: str, session=None, use_html_parsing: bool = True, extract_all_homepage_stories: bool = False) -> Union[str, List[Dict[str, str]]]:
     """
-    Extract the original source URL from an aggregator link.
+    Extract the original source URL(s) from an aggregator link.
     
     Args:
         url: The aggregator URL
         session: Optional requests session to use for HTML parsing
         use_html_parsing: Whether to use HTML parsing (requires requests and BeautifulSoup)
+        extract_all_homepage_stories: Whether to return all stories from homepage-like URLs (changes return type)
         
     Returns:
-        str: The original source URL if found, or the original URL if not
+        str: The original source URL if found for a single story (default behavior)
+        List[Dict[str, str]]: List of stories with source URLs if extract_all_homepage_stories=True and URL is a homepage
+        
+    Note:
+        When extract_all_homepage_stories=True, the return type changes to List[Dict] for homepage URLs,
+        which may break existing code expecting a string. Use with caution.
     """
     if not url:
         return url
@@ -190,6 +196,17 @@ def extract_original_source_url(url: str, session=None, use_html_parsing: bool =
             
             # Handle domain-specific extraction methods
             if 'techmeme.com' in domain:
+                # Special case for Techmeme homepage if extract_all_homepage_stories is True
+                if extract_all_homepage_stories:
+                    # Check if this is likely the homepage
+                    is_homepage = url.rstrip('/') == 'https://techmeme.com' or url.rstrip('/') == 'https://www.techmeme.com'
+                    
+                    if is_homepage:
+                        homepage_stories = extract_techmeme_homepage_stories(url, session)
+                        if homepage_stories:
+                            return homepage_stories
+                
+                # Otherwise, use the standard extraction for story pages (maintains backwards compatibility)
                 extracted_url = _extract_techmeme_source(url, session)
                 if extracted_url:
                     return extracted_url
@@ -267,10 +284,11 @@ def _extract_from_url_params(url: str) -> str:
 
 def _extract_techmeme_source(url: str, session, debug: bool = False) -> Optional[str]:
     """
-    Extract the original source URL from a Techmeme link using HTML parsing.
+    Extract the original source URL from a Techmeme story page using HTML parsing.
+    This improved version handles different page layouts and has better error recovery.
     
     Args:
-        url: Techmeme URL
+        url: Techmeme URL (story page)
         session: Requests session to use
         debug: Whether to log additional debug information
         
@@ -298,48 +316,80 @@ def _extract_techmeme_source(url: str, session, debug: bool = False) -> Optional
             all_links = soup.find_all('a')
             logger.debug(f"All links on the page: {[link['href'] for link in all_links if link.has_attr('href')][:20]}")
         
+        # Check if this is a story page or the homepage
+        if soup.select('.clus') and not soup.select('.newsItem'):
+            # This is likely the homepage, not a story page
+            logger.warning(f"URL appears to be the Techmeme homepage, not a story page: {url}")
+            # Try to extract sources using homepage extraction logic instead
+            homepage_stories = extract_techmeme_homepage_stories(url, session, debug)
+            if homepage_stories and len(homepage_stories) > 0:
+                # Return the first story's source URL to maintain backward compatibility
+                return homepage_stories[0]['source_url']
+            return None
+        
         candidate_urls = []
         
-        # Method 1: Look for the main headline's primary source
-        news_item = soup.select_one('.newsItem')
-        if news_item:
-            headline = news_item.select_one('strong.title')
-            if headline:
-                source_container = headline.find_next_sibling()
-                if source_container and source_container.find('a'):
-                    source_url = source_container.find('a')['href']
-                    if is_valid_source_url(source_url):
-                        logger.info(f"Method 1: Found source URL from main headline: {source_url}")
-                        candidate_urls.append(source_url)
+        # Enhanced Method 1: Look for the main headline's primary source
+        # Try multiple selectors to handle different page layouts
+        for news_selector in ['.newsItem', '.item']:
+            news_items = soup.select(news_selector)
+            for news_item in news_items:
+                # Try to find the headline
+                for headline_selector in ['strong.title', 'b.title', '.title', 'h2']:
+                    headline = news_item.select_one(headline_selector)
+                    if headline:
+                        # Try to find the source link
+                        # First check if there's a direct link in a sibling element
+                        source_container = headline.find_next_sibling()
+                        if source_container and source_container.find('a'):
+                            source_url = source_container.find('a')['href']
+                            if is_valid_source_url(source_url):
+                                logger.info(f"Method 1: Found source URL from main headline: {source_url}")
+                                candidate_urls.append(source_url)
+                                
+                        # Also check if the source is in a span inside the headline
+                        source_spans = headline.select('span')
+                        for span in source_spans:
+                            source_link = span.find('a')
+                            if source_link and source_link.has_attr('href'):
+                                source_url = source_link['href']
+                                if is_valid_source_url(source_url):
+                                    logger.info(f"Method 1b: Found source URL in headline span: {source_url}")
+                                    candidate_urls.append(source_url)
         
         # Method 2: Look for the "More:" section which contains additional sources
-        more_section = soup.select_one('.continuation')
-        if more_section:
-            source_link = more_section.select_one('a')
-            if source_link and source_link.has_attr('href'):
-                source_url = source_link['href']
-                if is_valid_source_url(source_url):
-                    logger.info(f"Method 2: Found source URL from 'More:' section: {source_url}")
-                    candidate_urls.append(source_url)
+        for more_selector in ['.continuation', '.more', '.readmore']:
+            more_sections = soup.select(more_selector)
+            for more_section in more_sections:
+                source_links = more_section.select('a')
+                for source_link in source_links:
+                    if source_link.has_attr('href'):
+                        source_url = source_link['href']
+                        if is_valid_source_url(source_url):
+                            logger.info(f"Method 2: Found source URL from 'More:' section: {source_url}")
+                            candidate_urls.append(source_url)
         
         # Method 3: Find any author attribution links
-        attribution = soup.select_one('.itemsource')
-        if attribution:
-            source_link = attribution.select_one('a')
-            if source_link and source_link.has_attr('href'):
-                source_url = source_link['href']
-                if is_valid_source_url(source_url):
-                    logger.info(f"Method 3: Found source URL from attribution: {source_url}")
-                    candidate_urls.append(source_url)
+        for attr_selector in ['.itemsource', '.source', '.byline', '.attribution']:
+            attributions = soup.select(attr_selector)
+            for attribution in attributions:
+                source_links = attribution.select('a')
+                for source_link in source_links:
+                    if source_link.has_attr('href'):
+                        source_url = source_link['href']
+                        if is_valid_source_url(source_url):
+                            logger.info(f"Method 3: Found source URL from attribution: {source_url}")
+                            candidate_urls.append(source_url)
         
         # Method 4: Try original selectors as fallback
-        for selector in ['.ii a', '.ourh a']:
-            source_link = soup.select_one(selector)
-            if source_link and source_link.has_attr('href'):
-                source_url = source_link['href']
-                if is_valid_source_url(source_url):
-                    logger.info(f"Method 4: Found source URL using legacy selector '{selector}': {source_url}")
-                    candidate_urls.append(source_url)
+        for selector in ['.ii a', '.ourh a', '.quote a', '.entry a']:
+            source_links = soup.select(selector)
+            for source_link in source_links:
+                if source_link.has_attr('href'):
+                    source_url = source_link['href']
+                    if is_valid_source_url(source_url):
+                        logger.info(f"Method 4: Found source URL using selector '{selector}': {source_url}")
+                        candidate_urls.append(source_url)
         
         # Method 5: Look for any news source links (last resort fallback)
         if not candidate_urls:
@@ -349,11 +399,13 @@ def _extract_techmeme_source(url: str, session, debug: bool = False) -> Optional
                     href = link['href']
                     if is_valid_source_url(href):
                         if any(domain in href for domain in ['.com', '.org', '.net', '.io']):
-                            source_url = href
-                            logger.info(f"Method 5: Found potential source URL: {source_url}")
-                            candidate_urls.append(source_url)
-                            if len(candidate_urls) >= 5:
-                                break
+                            # Skip Techmeme's own links
+                            if 'techmeme.com' not in href:
+                                source_url = href
+                                logger.info(f"Method 5: Found potential source URL: {source_url}")
+                                candidate_urls.append(source_url)
+                                if len(candidate_urls) >= 5:
+                                    break
         
         # Choose the best URL from candidates
         if candidate_urls:
@@ -367,6 +419,113 @@ def _extract_techmeme_source(url: str, session, debug: bool = False) -> Optional
         logger.warning(f"Error extracting source from Techmeme: {str(e)}")
     
     return None
+
+def extract_techmeme_homepage_stories(url: str, session=None, debug: bool = False) -> List[Dict[str, str]]:
+    """
+    Extract all stories with their source URLs from the Techmeme homepage.
+    
+    Args:
+        url: Techmeme homepage URL
+        session: Optional requests session to use
+        debug: Whether to log additional debug information
+        
+    Returns:
+        List of dicts with 'headline', 'techmeme_link', 'source_url', and 'source_name' keys
+    """
+    if not BS4_AVAILABLE:
+        logger.warning("BeautifulSoup is not available, cannot extract from Techmeme HTML")
+        return []
+        
+    try:
+        if not session:
+            session = requests.Session()
+            session.headers.update({
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            })
+        
+        # Fetch the Techmeme page
+        response = session.get(url, timeout=10)
+        if response.status_code != 200:
+            logger.warning(f"Failed to fetch Techmeme page: {url}, status code: {response.status_code}")
+            return []
+            
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        results = []
+        
+        # Find all story clusters
+        clusters = soup.select('.clus')
+        
+        if debug:
+            logger.debug(f"Found {len(clusters)} story clusters on Techmeme homepage")
+        
+        for cluster in clusters:
+            # Find the main headline
+            headline_elem = cluster.select_one('strong.title')
+            if not headline_elem:
+                continue
+                
+            headline_text = headline_elem.get_text().strip()
+            
+            # Find the Techmeme link for this story
+            headline_link = headline_elem.find('a')
+            if not headline_link or not headline_link.has_attr('href'):
+                continue
+                
+            techmeme_link = headline_link['href']
+            if not techmeme_link.startswith('http'):
+                techmeme_link = f"https://techmeme.com{techmeme_link}"
+            
+            # Find the source link
+            source_container = headline_elem.find_next_sibling()
+            if not source_container or not source_container.find('a'):
+                continue
+                
+            source_link = source_container.find('a')
+            if not source_link.has_attr('href'):
+                continue
+                
+            source_url = source_link['href']
+            source_name = source_link.get_text().strip()
+            
+            if is_valid_source_url(source_url):
+                results.append({
+                    'headline': headline_text,
+                    'techmeme_link': techmeme_link,
+                    'source_url': source_url,
+                    'source_name': source_name
+                })
+                
+                if debug:
+                    logger.debug(f"Extracted headline: {headline_text}, source: {source_name}, URL: {source_url}")
+            
+            # Also check for related items in this cluster
+            related_items = cluster.select('.ii')
+            for item in related_items:
+                item_link = item.find('a')
+                if not item_link or not item_link.has_attr('href'):
+                    continue
+                    
+                item_url = item_link['href']
+                item_text = item_link.get_text().strip()
+                
+                if is_valid_source_url(item_url):
+                    results.append({
+                        'headline': f"Related: {item_text}",
+                        'techmeme_link': techmeme_link,  # Same Techmeme link as the main story
+                        'source_url': item_url,
+                        'source_name': item_link.get_text().strip()
+                    })
+                    
+                    if debug:
+                        logger.debug(f"Extracted related item: {item_text}, URL: {item_url}")
+        
+        logger.info(f"Extracted {len(results)} stories from Techmeme homepage")
+        return results
+        
+    except Exception as e:
+        logger.warning(f"Error extracting stories from Techmeme homepage: {str(e)}")
+        return []
 
 def _extract_google_news_source(url: str, session) -> Optional[str]:
     """
