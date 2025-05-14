@@ -9,9 +9,8 @@ logger = logging.getLogger(__name__)
 
 # Complete model identifiers for API calls
 MODEL_IDENTIFIERS = {
-    "claude-3.7-sonnet": "claude-3-7-sonnet-20250219",
-    "claude-3.5-haiku": "claude-3-5-haiku-20240307",
-    "claude-3-haiku": "claude-3-haiku-20240307"  # Added for backward compatibility
+    "claude-3.7-sonnet": "claude-3-7-sonnet-20250219",  # Latest Sonnet version
+    "claude-3.5-haiku": "claude-3-5-haiku-20250426"     # Latest Haiku version
 }
 
 # Model properties and characteristics
@@ -35,16 +34,6 @@ MODEL_PROPERTIES = {
         "max_tokens": 200000,
         "complexity_threshold": 0.0,
         "recommended_for": ["Simple content", "Quick summaries", "High-volume processing"]
-    },
-    "claude-3-haiku": {
-        "name": "Claude 3 Haiku",
-        "description": "Original fast model for basic tasks",
-        "strengths": ["Speed", "Efficiency", "Basic summarization"],
-        "speed": "fast",
-        "cost": "low",
-        "max_tokens": 200000,
-        "complexity_threshold": 0.0,
-        "recommended_for": ["Simple content", "Basic summaries", "High-volume processing"]
     }
 }
 
@@ -55,7 +44,27 @@ DEFAULT_MODEL = "claude-3.7-sonnet"
 SHORTHAND_MAPPING = {
     "sonnet-3.7": "claude-3.7-sonnet",
     "haiku-3.5": "claude-3.5-haiku",
-    "haiku-3": "claude-3-haiku",
-    "haiku": "claude-3.5-haiku",  # Map generic "haiku" to 3.5 version
-    "sonnet": "claude-3.7-sonnet"  # Default for backward compatibility
+    "haiku": "claude-3.5-haiku",    # All Haiku references point to 3.5
+    "sonnet": "claude-3.7-sonnet"   # Default Sonnet is 3.7
 }
+
+def select_model_by_complexity(complexity_score: float) -> str:
+    """
+    Select the appropriate model based on content complexity.
+    
+    Args:
+        complexity_score: Content complexity score (0.0-1.0)
+        
+    Returns:
+        Model identifier string
+    """
+    # Simplified model selection
+    if complexity_score >= 0.6:
+        # High complexity content goes to the most capable model
+        selected_model = "claude-3.7-sonnet"
+    else:
+        # Low to medium complexity content goes to the faster model
+        selected_model = "claude-3.5-haiku"
+    
+    logger.info(f"Selected {selected_model} for content with complexity score {complexity_score:.2f}")
+    return MODEL_IDENTIFIERS.get(selected_model, MODEL_IDENTIFIERS[DEFAULT_MODEL])
