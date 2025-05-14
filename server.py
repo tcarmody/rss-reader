@@ -355,8 +355,8 @@ async def summarize_single_get(request: Request):
     return templates.TemplateResponse("summarize-form.html", {**common_vars})
 
 @app.post("/summarize")
-async def summarize_single_post(request: Request, url: str = Form(...)):
-    """Handle POST request for multiple URL summarization."""
+async def summarize_single_post(request: Request, url: str = Form(...), style: str = Form("default")):
+    """Handle POST request for URL summarization."""
     common_vars = get_common_template_vars(request)
     clustering_settings = common_vars['clustering_settings']
     urls_input = [u.strip() for u in url.splitlines() if u.strip()] # Use splitlines for robustness
@@ -403,7 +403,10 @@ async def summarize_single_post(request: Request, url: str = Form(...)):
         summarized_clusters = []
         if processed_articles:
             batch_results = await fast_summarizer_instance.batch_summarize(
-                articles=processed_articles, max_concurrent=max_workers, auto_select_model=True
+                articles=processed_articles, 
+                max_concurrent=max_workers, 
+                auto_select_model=True,
+                style=style  # Add style parameter
             )
             for result in batch_results:
                 if 'original' in result and 'summary' in result:
