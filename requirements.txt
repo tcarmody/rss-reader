@@ -11,6 +11,10 @@ requests>=2.27.0
 tqdm>=4.64.0
 psutil>=5.9.0
 
+# JavaScript rendering for paywall bypass
+playwright>=1.30.0  # For headless browser automation
+selenium>=4.10.0  # Alternative for JavaScript rendering
+
 # Added dependency for Anthropic's Google Vertex integration
 google-auth>=2.22.0
 
@@ -59,3 +63,4 @@ pylint>=2.12.0  # For code quality (development only)
 
 # Post-install commands:
 # python -m spacy download en_core_web_sm
+# python -m playwright install chromium  # Install Chromium for playwright
