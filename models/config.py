@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 
 # Complete model identifiers for API calls
 MODEL_IDENTIFIERS = {
-    "claude-3.7-sonnet": "claude-3-7-sonnet-20250219",  # Latest Sonnet version
-    "claude-3.5-haiku": "claude-3-5-haiku-20250426"     # Latest Haiku version
+    "claude-3.7-sonnet": "claude-3-7-sonnet-latest",  # Latest Sonnet version
+    "claude-3.5-haiku": "claude-3-5-haiku-latest"     # Latest Haiku version
 }
 
 # Model properties and characteristics
