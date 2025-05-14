@@ -575,6 +575,8 @@ def get_content_from_archive(archive_url, session=None):
 def get_javascript_rendered_content(url, session=None):
     """
     Get content from a URL using a headless browser to render JavaScript.
+    This function automatically detects if it's in an async context and uses
+    the appropriate Playwright API.
     
     Args:
         url: The URL to render
@@ -583,6 +585,23 @@ def get_javascript_rendered_content(url, session=None):
     Returns:
         str: Extracted content or None if failed
     """
+    # Check if we're in an async context
+    try:
+        import asyncio
+        in_async_context = asyncio.get_event_loop().is_running()
+    except (ImportError, RuntimeError):
+        in_async_context = False
+    
+    # If we're in an async context, use the async version
+    if in_async_context:
+        try:
+            import asyncio
+            return asyncio.get_event_loop().run_until_complete(get_javascript_rendered_content_async(url))
+        except Exception as e:
+            logging.error(f"Error running async JavaScript rendering: {str(e)}")
+            return None
+    
+    # Otherwise, use the sync version
     try:
         # Try to import playwright
         try:
@@ -631,29 +650,7 @@ def get_javascript_rendered_content(url, session=None):
                     browser.close()
                     
                     # Process with BeautifulSoup
-                    soup = BeautifulSoup(content, 'html.parser')
-                    
-                    # Remove unwanted elements
-                    for unwanted in soup.select('script, style, nav, header, footer, .ads, .comments, .related, .sidebar'):
-                        unwanted.decompose()
-                    
-                    main_content = None
-                    
-                    for selector in ['article', '.article', '.post-content', '.entry-content', '.content', 'main']:
-                        elements = soup.select(selector)
-                        if elements:
-                            main_content = elements[0]
-                            break
-                    
-                    if main_content:
-                        paragraphs = main_content.find_all('p')
-                        text_content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
-                        
-                        if text_content:
-                            return text_content
-                        else:
-                            # Fallback to all text if no paragraphs
-                            return main_content.get_text().strip()
+                    return _process_html_content(content)
                 except Exception as page_error:
                     logging.error(f"Error in Playwright rendering: {str(page_error)}")
                     browser.close()
@@ -696,34 +693,108 @@ def get_javascript_rendered_content(url, session=None):
                 html_content = driver.page_source
                 
                 # Process with BeautifulSoup
-                soup = BeautifulSoup(html_content, 'html.parser')
-                
-                # Remove unwanted elements
-                for unwanted in soup.select('script, style, nav, header, footer, .ads, .comments, .related, .sidebar'):
-                    unwanted.decompose()
-                
-                main_content = None
-                
-                for selector in ['article', '.article', '.post-content', '.entry-content', '.content', 'main']:
-                    elements = soup.select(selector)
-                    if elements:
-                        main_content = elements[0]
-                        break
-                
-                if main_content:
-                    paragraphs = main_content.find_all('p')
-                    text_content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
-                    
-                    if text_content:
-                        return text_content
-                    else:
-                        # Fallback to all text if no paragraphs
-                        return main_content.get_text().strip()
+                return _process_html_content(html_content)
             finally:
                 driver.quit()
     
     except Exception as e:
         logging.error(f"Error rendering JavaScript content: {str(e)}")
+    
+    return None
+
+
+async def get_javascript_rendered_content_async(url, session=None):
+    """
+    Async version of get_javascript_rendered_content that uses Playwright's async API.
+    
+    Args:
+        url: The URL to render
+        session: Optional requests session (not used for JS rendering)
+        
+    Returns:
+        str: Extracted content or None if failed
+    """
+    try:
+        # Try to import playwright async API
+        try:
+            from playwright.async_api import async_playwright
+            has_playwright = True
+        except ImportError:
+            logging.warning("Playwright not installed. Cannot render JavaScript.")
+            has_playwright = False
+            return None
+        
+        # Use Playwright async API
+        if has_playwright:
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True)
+                page = await browser.new_page()
+                
+                # Set Google referrer to help bypass some paywalls
+                await page.set_extra_http_headers({
+                    'Referer': 'https://www.google.com/',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                })
+                
+                try:
+                    await page.goto(url, wait_until='networkidle', timeout=30000)
+                    
+                    # Wait for content to load
+                    await page.wait_for_selector('article, .article, .content, p', timeout=10000)
+                    
+                    # Sleep to allow JS to fully execute
+                    await asyncio.sleep(2)
+                    
+                    # Extract content
+                    content = await page.content()
+                    
+                    await browser.close()
+                    
+                    # Process with BeautifulSoup
+                    return _process_html_content(content)
+                except Exception as page_error:
+                    logging.error(f"Error in async Playwright rendering: {str(page_error)}")
+                    await browser.close()
+    
+    except Exception as e:
+        logging.error(f"Error in async JavaScript rendering: {str(e)}")
+    
+    return None
+
+
+def _process_html_content(html_content):
+    """
+    Process HTML content to extract article text.
+    
+    Args:
+        html_content: HTML content to process
+        
+    Returns:
+        str: Extracted text content
+    """
+    soup = BeautifulSoup(html_content, 'html.parser')
+    
+    # Remove unwanted elements
+    for unwanted in soup.select('script, style, nav, header, footer, .ads, .comments, .related, .sidebar'):
+        unwanted.decompose()
+    
+    main_content = None
+    
+    for selector in ['article', '.article', '.post-content', '.entry-content', '.content', 'main']:
+        elements = soup.select(selector)
+        if elements:
+            main_content = elements[0]
+            break
+    
+    if main_content:
+        paragraphs = main_content.find_all('p')
+        text_content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
+        
+        if text_content:
+            return text_content
+        else:
+            # Fallback to all text if no paragraphs
+            return main_content.get_text().strip()
     
     return None
 
