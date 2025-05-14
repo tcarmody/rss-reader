@@ -130,12 +130,12 @@
                   <div class="setting-description">Only include articles from the selected time range</div>
                 </div>
                 <label class="toggle-switch">
-                  <input type="checkbox" name="time_range_enabled" {% if clustering_settings is defined and clustering_settings.time_range_enabled %}checked{% endif %} aria-labelledby="timeRangeFilterLabel" aria-controls="timeRangeOptions">
+                  <input type="checkbox" name="time_range_enabled" {% if clustering_settings is defined and clustering_settings.time_range_enabled %}checked{% endif %} aria-labelledby="timeRangeFilterLabel" aria-controls="timeRangeOptionsWelcome">
                   <span class="toggle-slider"></span>
                 </label>
               </div>
     
-              <div class="setting-row" {% if not (clustering_settings is defined and clustering_settings.time_range_enabled) %}style="display: none;"{% endif %} id="timeRangeOptions" role="region" aria-labelledby="timeRangeFilterLabel">
+              <div class="setting-row" {% if not (clustering_settings is defined and clustering_settings.time_range_enabled) %}style="display: none;"{% endif %} id="timeRangeOptionsWelcome" role="region" aria-labelledby="timeRangeFilterLabel">
                 <div>
                   <div class="setting-name">Time Range</div>
                   <div class="setting-description">How far back to look for articles</div>
@@ -152,7 +152,6 @@
                 </div>
               </div>
               
-              <!-- New setting for Default Summary Style -->
               <div class="setting-row">
                 <div>
                   <label for="default_summary_style" class="setting-name">Default Summary Style</label>
@@ -220,7 +219,7 @@
               
               <form action="/refresh" method="post" style="margin-top: 1rem" id="defaultFeedsForm">
                 <input type="hidden" name="use_default" value="true">
-                <input type="hidden" name="batch_size" id="default_batch_size"> <input type="hidden" name="batch_delay" id="default_batch_delay"> <button type="submit" class="button success large">
+                <input type="hidden" name="batch_size" id="default_batch_size_hidden"> <input type="hidden" name="batch_delay" id="default_batch_delay_hidden"> <button type="submit" class="button success large">
                   Process Default Feeds
                   </button>
               </form>
@@ -241,7 +240,7 @@
                 <p class="form-hint" id="customFeedsHint" style="font-size: 0.75rem; color: var(--neutral-500);">Enter one URL per line.</p>
               </div>
               
-              <input type="hidden" name="use_default" value="false"> <input type="hidden" name="batch_size" id="custom_batch_size"> <input type="hidden" name="batch_delay" id="custom_batch_delay"> <button type="submit" class="button">
+              <input type="hidden" name="use_default" value="false"> <input type="hidden" name="batch_size" id="custom_batch_size_hidden"> <input type="hidden" name="batch_delay" id="custom_batch_delay_hidden"> <button type="submit" class="button">
                 Process Custom Feeds
                 </button>
             </form>
@@ -253,3 +252,90 @@
     <footer class="footer">
       <p>Powered by Data Points AI with Anthropic Claude API</p>
     </footer>
+  </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Tab functionality for Feed Management
+    const tabs = document.querySelectorAll('.tabs .tab');
+    const tabPanels = document.querySelectorAll('.tab-content');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent any default button action
+        // Deactivate all tabs and hide all panels
+        tabs.forEach(t => {
+          t.classList.remove('active');
+          t.setAttribute('aria-selected', 'false');
+          t.setAttribute('tabindex', '-1'); // Make non-active tabs not focusable with Tab key initially
+        });
+        tabPanels.forEach(panel => {
+          panel.classList.remove('active');
+          panel.setAttribute('hidden', ''); // Use hidden attribute for accessibility
+        });
+
+        // Activate the clicked tab and show its panel
+        this.classList.add('active');
+        this.setAttribute('aria-selected', 'true');
+        this.removeAttribute('tabindex'); // Make active tab focusable
+        
+        const targetPanelId = this.getAttribute('aria-controls');
+        const targetPanel = document.getElementById(targetPanelId);
+        if (targetPanel) {
+          targetPanel.classList.add('active');
+          targetPanel.removeAttribute('hidden');
+        }
+      });
+    });
+
+    // Time range options visibility in Clustering Settings on Welcome page
+    const timeRangeEnabledWelcome = document.querySelector('#clusteringSettingsForm input[name="time_range_enabled"]');
+    const timeRangeOptionsWelcome = document.getElementById('timeRangeOptionsWelcome');
+    
+    if (timeRangeEnabledWelcome && timeRangeOptionsWelcome) {
+      timeRangeEnabledWelcome.addEventListener('change', function() {
+        timeRangeOptionsWelcome.style.display = this.checked ? 'flex' : 'none';
+        timeRangeOptionsWelcome.setAttribute('aria-hidden', String(!this.checked));
+      });
+      // Initial state
+      timeRangeOptionsWelcome.style.display = timeRangeEnabledWelcome.checked ? 'flex' : 'none';
+      timeRangeOptionsWelcome.setAttribute('aria-hidden', String(!timeRangeEnabledWelcome.checked));
+    }
+
+    // Function to update hidden batch size/delay fields before form submission
+    function updateHiddenFeedParams(formId, batchSizeInputId, batchDelayInputId) {
+        const form = document.getElementById(formId);
+        if (form) {
+            const batchSizeHidden = form.querySelector('input[name="batch_size"]');
+            const batchDelayHidden = form.querySelector('input[name="batch_delay"]');
+            const globalBatchSize = document.getElementById('global_batch_size');
+            const globalBatchDelay = document.getElementById('global_batch_delay');
+
+            if (batchSizeHidden && globalBatchSize) {
+                batchSizeHidden.value = globalBatchSize.value;
+            }
+            if (batchDelayHidden && globalBatchDelay) {
+                batchDelayHidden.value = globalBatchDelay.value;
+            }
+        }
+    }
+
+    // Add event listeners to feed forms to update hidden fields on submit
+    const defaultFeedsForm = document.getElementById('defaultFeedsForm');
+    if (defaultFeedsForm) {
+        defaultFeedsForm.addEventListener('submit', function() {
+            updateHiddenFeedParams('defaultFeedsForm', 'global_batch_size', 'global_batch_delay');
+        });
+    }
+
+    const customFeedsForm = document.getElementById('customFeedsForm');
+    if (customFeedsForm) {
+        customFeedsForm.addEventListener('submit', function() {
+            updateHiddenFeedParams('customFeedsForm', 'global_batch_size', 'global_batch_delay');
+        });
+    }
+
+  });
+</script>
+</body>
+</html>
