@@ -48,6 +48,7 @@ class BaseSummarizer:
         model: Optional[str] = None,
         force_refresh: bool = False,
         temperature: float = 0.3,
+        style: str = "default",  # Add style parameter
     ) -> Dict[str, str]:
         """
         Generate a concise summary of the article text.
@@ -59,6 +60,7 @@ class BaseSummarizer:
             model: Claude model to use (shorthand name or full identifier)
             force_refresh: Whether to force a new summary instead of using cache
             temperature: Temperature setting for generation (0.0-1.0)
+            style: Summary style ('default', 'bullet', 'newswire')
             
         Returns:
             dict: The summary with headline and text
@@ -71,13 +73,14 @@ class BaseSummarizer:
                 title=title,
                 text_length=len(text),
                 requested_model=model,
-                temperature=temperature
+                temperature=temperature,
+                style=style  # Add style to logging
             )
         
         try:
             # Check cache first if not forcing refresh
             if not force_refresh and self.cache:
-                cache_key = f"{text}:{model or 'default'}:{temperature}"
+                cache_key = f"{text}:{model or 'default'}:{temperature}:{style}"  # Update cache key
                 cached_result = self.cache.get(cache_key)
                 if cached_result:
                     self.logger.info("Retrieved summary from cache")
@@ -92,8 +95,8 @@ class BaseSummarizer:
             # Get the actual model identifier
             model_id = get_model_identifier(model)
             
-            # Create the prompt
-            prompt = create_summary_prompt(text, url, source_name)
+            # Create the prompt with style
+            prompt = create_summary_prompt(text, url, source_name, style)
             
             # Generate summary using Claude
             summary_text = self.call_api(
@@ -104,15 +107,15 @@ class BaseSummarizer:
             )
             
             # Parse the response
-            result = parse_summary_response(summary_text, title, url, source_name)
+            result = parse_summary_response(summary_text, title, url, source_name, style)
             
             # Cache the result
             if self.cache:
-                cache_key = f"{text}:{model_id}:{temperature}"
+                cache_key = f"{text}:{model_id}:{temperature}:{style}"
                 self.cache.set(cache_key, result)
             
             self.logger.info(
-                f"Summary generated successfully - Headline length: {len(result['headline'])}, "
+                f"Summary generated successfully - Style: {style}, Headline length: {len(result['headline'])}, "
                 f"Summary length: {len(result['summary'])}"
             )
             
@@ -124,7 +127,8 @@ class BaseSummarizer:
             source_name = extract_source_from_url(url)
             return {
                 'headline': title,
-                'summary': f"Failed to generate summary: {str(e)}\n\nSource: {source_name}\n{url}"
+                'summary': f"Failed to generate summary: {str(e)}\n\nSource: {source_name}\n{url}",
+                'style': style
             }
         finally:
             # Clear context after the operation
@@ -139,6 +143,7 @@ class BaseSummarizer:
         model: Optional[str] = None,
         callback: Optional[Callable[[str], None]] = None,
         temperature: float = 0.3,
+        style: str = "default",  # Add style parameter
     ) -> Generator[str, None, Dict[str, str]]:
         """
         Generate a summary of the article with streaming response.
@@ -150,6 +155,7 @@ class BaseSummarizer:
             model: Claude model to use (shorthand name or full identifier)
             callback: Optional callback function to process streamed chunks
             temperature: Temperature setting for generation (0.0-1.0)
+            style: Summary style ('default', 'bullet', 'newswire')
             
         Yields:
             str: Chunks of the summary as they are generated
@@ -165,7 +171,8 @@ class BaseSummarizer:
                 title=title,
                 text_length=len(text),
                 requested_model=model,
-                temperature=temperature
+                temperature=temperature,
+                style=style  # Add style to logging
             )
         
         try:
@@ -178,8 +185,8 @@ class BaseSummarizer:
             # Get the actual model identifier
             model_id = get_model_identifier(model)
             
-            # Create the prompt
-            prompt = create_summary_prompt(text, url, source_name)
+            # Create the prompt with style
+            prompt = create_summary_prompt(text, url, source_name, style)
 
             # Collect the full text as we stream
             full_text = ""
@@ -205,15 +212,15 @@ class BaseSummarizer:
                         self.logger.warning(f"Callback error (continuing streaming): {str(callback_error)}")
             
             # Parse the complete response
-            result = parse_summary_response(full_text, title, url, source_name)
+            result = parse_summary_response(full_text, title, url, source_name, style)
             
             # Cache the result
             if self.cache:
-                cache_key = f"{text}:{model_id}:{temperature}"
+                cache_key = f"{text}:{model_id}:{temperature}:{style}"
                 self.cache.set(cache_key, result)
             
             self.logger.info(
-                f"Streaming summary completed - Headline length: {len(result['headline'])}, "
+                f"Streaming summary completed - Style: {style}, Headline length: {len(result['headline'])}, "
                 f"Summary length: {len(result['summary'])}"
             )
             
@@ -224,7 +231,8 @@ class BaseSummarizer:
             source_name = extract_source_from_url(url)
             return {
                 'headline': title,
-                'summary': f"Failed to generate summary: {str(e)}\n\nSource: {source_name}\n{url}"
+                'summary': f"Failed to generate summary: {str(e)}\n\nSource: {source_name}\n{url}",
+                'style': style
             }
         finally:
             # Clear context after the operation

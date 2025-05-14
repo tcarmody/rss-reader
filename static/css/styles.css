@@ -945,3 +945,20 @@ textarea.form-input {
     transform: translateX(-70%) translateY(-5px); /* Adjust positioning */
   }
 }
+/* Bullet-point summary style */
+.bullet-style {
+  line-height: 1.6;
+}
+
+.bullet-style strong {
+  color: var(--primary-color);
+}
+
+.bullet-style ul {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.bullet-style li {
+  margin-bottom: 0.7rem;
+}

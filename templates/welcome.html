@@ -134,7 +134,7 @@
                   <span class="toggle-slider"></span>
                 </label>
               </div>
-
+    
               <div class="setting-row" {% if not (clustering_settings is defined and clustering_settings.time_range_enabled) %}style="display: none;"{% endif %} id="timeRangeOptions" role="region" aria-labelledby="timeRangeFilterLabel">
                 <div>
                   <div class="setting-name">Time Range</div>
@@ -150,6 +150,19 @@
                     <option value="months" {% if clustering_settings is defined and clustering_settings.time_range_unit == 'months' %}selected{% endif %}>Months</option>
                   </select>
                 </div>
+              </div>
+              
+              <!-- New setting for Default Summary Style -->
+              <div class="setting-row">
+                <div>
+                  <label for="default_summary_style" class="setting-name">Default Summary Style</label>
+                  <div class="setting-description">Choose how article summaries are formatted</div>
+                </div>
+                <select id="default_summary_style" name="default_summary_style" class="form-input" style="max-width: 200px;">
+                  <option value="default" {% if clustering_settings is defined and clustering_settings.default_summary_style == 'default' or clustering_settings.default_summary_style is not defined %}selected{% endif %}>Standard Summary</option>
+                  <option value="bullet" {% if clustering_settings is defined and clustering_settings.default_summary_style == 'bullet' %}selected{% endif %}>Axios-Style Bullets</option>
+                  <option value="newswire" {% if clustering_settings is defined and clustering_settings.default_summary_style == 'newswire' %}selected{% endif %}>Newswire Style</option>
+                </select>
               </div>
               
               <div class="setting-row">
@@ -240,121 +253,3 @@
     <footer class="footer">
       <p>Powered by Data Points AI with Anthropic Claude API</p>
     </footer>
-  </div>
-  
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Tab switching functionality
-      const tabs = document.querySelectorAll('.tab[role="tab"]');
-      const tabPanels = document.querySelectorAll('.tab-content[role="tabpanel"]');
-      
-      tabs.forEach(tab => {
-        tab.addEventListener('click', (e) => {
-          const clickedTab = e.currentTarget;
-          const targetPanelId = clickedTab.getAttribute('aria-controls');
-          
-          // Deactivate all tabs and hide all panels
-          tabs.forEach(t => {
-            t.classList.remove('active');
-            t.setAttribute('aria-selected', 'false');
-            t.setAttribute('tabindex', '-1');
-          });
-          
-          tabPanels.forEach(panel => {
-            panel.classList.remove('active'); // Ensure active class is removed
-            panel.setAttribute('hidden', ''); // Hide all panels
-          });
-          
-          // Activate the clicked tab
-          clickedTab.classList.add('active');
-          clickedTab.setAttribute('aria-selected', 'true');
-          clickedTab.removeAttribute('tabindex');
-          
-          // Show the target panel
-          const targetPanel = document.getElementById(targetPanelId);
-          if (targetPanel) {
-            targetPanel.classList.add('active');    // Add active class to show it
-            targetPanel.removeAttribute('hidden'); // Remove hidden attribute
-          }
-          
-          clickedTab.focus(); // Optional: move focus to the activated tab
-        });
-
-        // ARIA keydown navigation for tabs
-        tab.addEventListener('keydown', (e) => {
-            let index = Array.from(tabs).indexOf(e.currentTarget);
-            let newIndex = index;
-            if (e.key === 'ArrowRight') {
-                newIndex = (index + 1) % tabs.length;
-            } else if (e.key === 'ArrowLeft') {
-                newIndex = (index - 1 + tabs.length) % tabs.length;
-            } else if (e.key === 'Home') {
-                newIndex = 0;
-            } else if (e.key === 'End') {
-                newIndex = tabs.length - 1;
-            }
-
-            if (newIndex !== index) {
-                tabs[newIndex].click(); // Programmatically click the new tab
-                tabs[newIndex].focus();   // And move focus to it
-            }
-        });
-      });
-      
-      // Synchronize global settings with the form submissions for batch_size and batch_delay
-      const globalBatchSizeInput = document.getElementById('global_batch_size');
-      const globalBatchDelayInput = document.getElementById('global_batch_delay');
-      
-      const defaultBatchSizeInput = document.getElementById('default_batch_size');
-      const defaultBatchDelayInput = document.getElementById('default_batch_delay');
-      const customBatchSizeInput = document.getElementById('custom_batch_size');
-      const customBatchDelayInput = document.getElementById('custom_batch_delay');
-      
-      function updateHiddenFeedProcessingFields() {
-        const currentBatchSize = globalBatchSizeInput ? globalBatchSizeInput.value : '25';
-        const currentBatchDelay = globalBatchDelayInput ? globalBatchDelayInput.value : '15';
-
-        if (defaultBatchSizeInput) defaultBatchSizeInput.value = currentBatchSize;
-        if (defaultBatchDelayInput) defaultBatchDelayInput.value = currentBatchDelay;
-        if (customBatchSizeInput) customBatchSizeInput.value = currentBatchSize;
-        if (customBatchDelayInput) customBatchDelayInput.value = currentBatchDelay;
-      }
-      
-      if (globalBatchSizeInput && globalBatchDelayInput) {
-        updateHiddenFeedProcessingFields(); // Initialize on load
-        globalBatchSizeInput.addEventListener('change', updateHiddenFeedProcessingFields);
-        globalBatchDelayInput.addEventListener('change', updateHiddenFeedProcessingFields);
-      }
-      
-      // Ensure hidden fields are updated before form submission
-      const defaultFeedsForm = document.getElementById('defaultFeedsForm');
-      if (defaultFeedsForm) {
-        defaultFeedsForm.addEventListener('submit', updateHiddenFeedProcessingFields);
-      }
-      
-      const customFeedsForm = document.getElementById('customFeedsForm');
-      if (customFeedsForm) {
-        // Also ensure the 'use_default' hidden field in customFeedsForm is correctly set to 'false'.
-        // It's already hardcoded in the HTML, but this JS confirms it if needed dynamically.
-        // const useDefaultHiddenInput = customFeedsForm.querySelector('input[name="use_default"]');
-        // if (useDefaultHiddenInput) useDefaultHiddenInput.value = 'false';
-        customFeedsForm.addEventListener('submit', updateHiddenFeedProcessingFields);
-      }
-      
-      // Handle time range options visibility for Clustering Settings
-      const timeRangeEnabledToggle = document.querySelector('input[name="time_range_enabled"]');
-      const timeRangeOptionsDiv = document.getElementById('timeRangeOptions');
-      
-      if (timeRangeEnabledToggle && timeRangeOptionsDiv) {
-        function updateTimeRangeVisibility() {
-            const isChecked = timeRangeEnabledToggle.checked;
-            timeRangeOptionsDiv.style.display = isChecked ? 'flex' : 'none'; // Assuming flex is the desired display
-            timeRangeOptionsDiv.setAttribute('aria-hidden', String(!isChecked));
-        }
-        timeRangeEnabledToggle.addEventListener('change', updateTimeRangeVisibility);
-        updateTimeRangeVisibility(); // Call on load to set initial state
-      }
-    });
-  </script>
-</body>
-</html>
