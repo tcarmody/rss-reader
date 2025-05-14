@@ -92,3 +92,4 @@ test_*.csv
 test_*.json
 test_*.xml
 .DS_Store
+performance_logs.txt
