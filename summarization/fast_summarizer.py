@@ -112,6 +112,7 @@ class FastSummarizer:
         force_refresh: bool = False,
         auto_select_model: bool = True,
         temperature: float = 0.3,
+        style: str = "default",  # Add style parameter
     ) -> Dict[str, str]:
         """
         Smart summarization that automatically selects best approach.
@@ -124,6 +125,7 @@ class FastSummarizer:
             force_refresh: Whether to force a new summary
             auto_select_model: Whether to select model based on content
             temperature: Temperature setting
+            style: Summary style ('default', 'bullet', 'newswire')
             
         Returns:
             dict: The summary with headline and text
@@ -143,7 +145,8 @@ class FastSummarizer:
                 url=url,
                 model=model,
                 force_refresh=force_refresh,
-                temperature=temperature
+                temperature=temperature,
+                style=style  # Pass style parameter
             )
         else:
             self.logger.info(f"Using standard approach for {url} ({len(text)} chars)")
@@ -154,7 +157,8 @@ class FastSummarizer:
                 url=url,
                 model=model,
                 force_refresh=force_refresh,
-                temperature=temperature
+                temperature=temperature,
+                style=style  # Pass style parameter
             )
     
     async def batch_summarize(
@@ -164,7 +168,8 @@ class FastSummarizer:
         model: Optional[str] = None,
         auto_select_model: bool = True,
         temperature: float = 0.3,
-        timeout: Optional[float] = None
+        timeout: Optional[float] = None,
+        style: str = "default",  # Add style parameter
     ) -> List[Dict[str, Dict[str, str]]]:
         """
         Process a batch of articles in parallel.
@@ -176,6 +181,7 @@ class FastSummarizer:
             auto_select_model: Whether to select model based on content
             temperature: Temperature setting
             timeout: Optional timeout in seconds
+            style: Summary style ('default', 'bullet', 'newswire')
             
         Returns:
             List of article summaries with original metadata
@@ -212,7 +218,8 @@ class FastSummarizer:
                     model=model_name,
                     max_concurrent=max_concurrent,
                     temperature=temperature,
-                    timeout=timeout
+                    timeout=timeout,
+                    style=style  # Pass style parameter
                 )
                 tasks.append(task)
                 
@@ -229,7 +236,8 @@ class FastSummarizer:
                 model=model,
                 max_concurrent=max_concurrent,
                 temperature=temperature,
-                timeout=timeout
+                timeout=timeout,
+                style=style  # Pass style parameter
             )
     
     async def _process_article_group(
@@ -238,7 +246,8 @@ class FastSummarizer:
         model: Optional[str] = None,
         max_concurrent: int = 3,
         temperature: float = 0.3,
-        timeout: Optional[float] = None
+        timeout: Optional[float] = None,
+        style: str = "default",  # Add style parameter
     ) -> List[Dict[str, Dict[str, str]]]:
         """
         Process a group of articles with the same model.
@@ -249,6 +258,7 @@ class FastSummarizer:
             max_concurrent: Maximum concurrent processes
             temperature: Temperature setting
             timeout: Optional timeout in seconds
+            style: Summary style ('default', 'bullet', 'newswire')
             
         Returns:
             List of processed article summaries
@@ -263,7 +273,8 @@ class FastSummarizer:
                 article=article,
                 model=model,
                 semaphore=semaphore,
-                temperature=temperature
+                temperature=temperature,
+                style=style  # Pass style parameter
             )
             tasks.append(task)
         
@@ -288,7 +299,8 @@ class FastSummarizer:
         article: Dict[str, str],
         model: Optional[str],
         semaphore: asyncio.Semaphore,
-        temperature: float = 0.3
+        temperature: float = 0.3,
+        style: str = "default",  # Add style parameter
     ) -> Dict[str, Dict[str, str]]:
         """
         Process a single article with rate limiting.
@@ -298,6 +310,7 @@ class FastSummarizer:
             model: Claude model to use
             semaphore: Semaphore for concurrency control
             temperature: Temperature setting
+            style: Summary style ('default', 'bullet', 'newswire')
             
         Returns:
             Article summary with original metadata
@@ -330,7 +343,8 @@ class FastSummarizer:
                         title=title,
                         url=url,
                         model=model,
-                        temperature=temperature
+                        temperature=temperature,
+                        style=style  # Pass style parameter
                     )
                 )
                 
@@ -345,7 +359,8 @@ class FastSummarizer:
                     'original': article,
                     'summary': {
                         'headline': article.get('title', 'Error'),
-                        'summary': f"Error generating summary: {str(e)}"
+                        'summary': f"Error generating summary: {str(e)}",
+                        'style': style  # Add style to error summary
                     }
                 }
     
@@ -357,6 +372,7 @@ class FastSummarizer:
         model: Optional[str] = None,
         force_refresh: bool = False,
         temperature: float = 0.3,
+        style: str = "default",  # Add style parameter
     ) -> Dict[str, str]:
         """
         Generate a concise summary of the article text.
@@ -368,6 +384,7 @@ class FastSummarizer:
             model: Claude model to use (shorthand name or full identifier)
             force_refresh: Whether to force a new summary instead of using cache
             temperature: Temperature setting for generation (0.0-1.0)
+            style: Summary style ('default', 'bullet', 'newswire')
             
         Returns:
             dict: The summary with headline and text
@@ -380,13 +397,14 @@ class FastSummarizer:
                 title=title,
                 text_length=len(text),
                 requested_model=model,
-                temperature=temperature
+                temperature=temperature,
+                style=style  # Add style to logging
             )
         
         try:
             # Check cache first if not forcing refresh
             if not force_refresh and self.cache:
-                cache_key = f"{text}:{model or 'default'}:{temperature}"
+                cache_key = f"{text}:{model or 'default'}:{temperature}:{style}"  # Update cache key
                 cached_result = self.cache.get(cache_key)
                 if cached_result:
                     self.logger.info("Retrieved summary from cache")
@@ -401,8 +419,8 @@ class FastSummarizer:
             # Get the actual model identifier
             model_id = get_model_identifier(model)
             
-            # Create the prompt
-            prompt = create_summary_prompt(text, url, source_name)
+            # Create the prompt with style
+            prompt = create_summary_prompt(text, url, source_name, style)
             
             # Generate summary using Claude
             summary_text = self._call_api(
@@ -413,16 +431,16 @@ class FastSummarizer:
             )
             
             # Parse the response
-            result = parse_summary_response(summary_text, title, url, source_name)
+            result = parse_summary_response(summary_text, title, url, source_name, style)
             
             # Cache the result
             if self.cache:
-                cache_key = f"{text}:{model_id}:{temperature}"
+                cache_key = f"{text}:{model_id}:{temperature}:{style}"
                 self.cache.set(cache_key, result)
             
             # Modified: Use standard string formatting for logging
             self.logger.info(
-                f"Summary generated successfully - Headline length: {len(result['headline'])}, "
+                f"Summary generated successfully - Style: {style}, Headline length: {len(result['headline'])}, "
                 f"Summary length: {len(result['summary'])}"
             )
             
@@ -434,7 +452,8 @@ class FastSummarizer:
             source_name = extract_source_from_url(url)
             return {
                 'headline': title,
-                'summary': f"Failed to generate summary: {str(e)}\n\nSource: {source_name}\n{url}"
+                'summary': f"Failed to generate summary: {str(e)}\n\nSource: {source_name}\n{url}",
+                'style': style
             }
         finally:
             # Clear context after the operation
@@ -449,6 +468,7 @@ class FastSummarizer:
         model: Optional[str] = None,
         callback: Optional[Callable[[str], None]] = None,
         temperature: float = 0.3,
+        style: str = "default",  # Add style parameter
     ) -> Generator[str, None, Dict[str, str]]:
         """
         Generate a summary of the article with streaming response.
@@ -460,6 +480,7 @@ class FastSummarizer:
             model: Claude model to use (shorthand name or full identifier)
             callback: Optional callback function to process streamed chunks
             temperature: Temperature setting for generation (0.0-1.0)
+            style: Summary style ('default', 'bullet', 'newswire')
             
         Yields:
             str: Chunks of the summary as they are generated
@@ -475,7 +496,8 @@ class FastSummarizer:
                 title=title,
                 text_length=len(text),
                 requested_model=model,
-                temperature=temperature
+                temperature=temperature,
+                style=style  # Add style to logging
             )
         
         try:
@@ -488,8 +510,8 @@ class FastSummarizer:
             # Get the actual model identifier
             model_id = get_model_identifier(model)
             
-            # Create the prompt
-            prompt = create_summary_prompt(text, url, source_name)
+            # Create the prompt with style
+            prompt = create_summary_prompt(text, url, source_name, style)
 
             # Collect the full text as we stream
             full_text = ""
@@ -515,16 +537,16 @@ class FastSummarizer:
                         self.logger.warning(f"Callback error (continuing streaming): {str(callback_error)}")
             
             # Parse the complete response
-            result = parse_summary_response(full_text, title, url, source_name)
+            result = parse_summary_response(full_text, title, url, source_name, style)
             
             # Cache the result
             if self.cache:
-                cache_key = f"{text}:{model_id}:{temperature}"
+                cache_key = f"{text}:{model_id}:{temperature}:{style}"
                 self.cache.set(cache_key, result)
             
             # Modified: Use standard string formatting for logging
             self.logger.info(
-                f"Streaming summary completed - Headline length: {len(result['headline'])}, "
+                f"Streaming summary completed - Style: {style}, Headline length: {len(result['headline'])}, "
                 f"Summary length: {len(result['summary'])}"
             )
             
@@ -535,7 +557,8 @@ class FastSummarizer:
             source_name = extract_source_from_url(url)
             return {
                 'headline': title,
-                'summary': f"Failed to generate summary: {str(e)}\n\nSource: {source_name}\n{url}"
+                'summary': f"Failed to generate summary: {str(e)}\n\nSource: {source_name}\n{url}",
+                'style': style
             }
         finally:
             # Clear context after the operation
@@ -550,6 +573,7 @@ class FastSummarizer:
         model: Optional[str] = None,
         force_refresh: bool = False,
         temperature: float = 0.3,
+        style: str = "default",  # Add style parameter
     ) -> Dict[str, str]:
         """
         Generate summary for long articles by chunking and meta-summarization.
@@ -561,6 +585,7 @@ class FastSummarizer:
             model: Claude model to use (shorthand name or full identifier)
             force_refresh: Whether to force a new summary instead of using cache
             temperature: Temperature setting for generation
+            style: Summary style ('default', 'bullet', 'newswire')
             
         Returns:
             dict: The summary with headline and text
@@ -578,7 +603,8 @@ class FastSummarizer:
                 url=url,
                 model=model,
                 force_refresh=force_refresh,
-                temperature=temperature
+                temperature=temperature,
+                style=style  # Pass style parameter
             )
             
         # Split into chunks
@@ -616,19 +642,50 @@ class FastSummarizer:
         
         source_name = extract_source_from_url(url)
         
-        meta_prompt = (
-            "Based on these section summaries, create a coherent overall summary "
-            "of the complete article following these guidelines:\n\n"
-            "1. First line: Create a headline in sentence case\n"
-            "2. Then a blank line\n"
-            "3. Then a summary of three to five sentences that captures the key points\n"
-            "4. Then a blank line\n"
-            "5. Then add 'Source: [publication name]' followed by the URL\n\n"
-            f"Article title: {title}\n\n"
-            f"Section summaries:\n{combined_chunks}\n\n"
-            f"URL: {url}\n"
-            f"Publication: {source_name}"
-        )
+        # Adjust meta prompt based on style
+        if style == "bullet":
+            meta_prompt = (
+                "Based on these section summaries, create a coherent overall bullet-point summary "
+                "of the complete article following these guidelines:\n\n"
+                "1. First line: Create a headline in sentence case\n"
+                "2. Then a blank line\n"
+                "3. Then a bullet point summary with 3-5 key points (use • for bullets)\n"
+                "4. Then a blank line\n"
+                "5. Then add 'Source: [publication name]' followed by the URL\n\n"
+                f"Article title: {title}\n\n"
+                f"Section summaries:\n{combined_chunks}\n\n"
+                f"URL: {url}\n"
+                f"Publication: {source_name}"
+            )
+        elif style == "newswire":
+            meta_prompt = (
+                "Based on these section summaries, create a coherent overall newswire-style summary "
+                "of the complete article following these guidelines:\n\n"
+                "1. First line: Create a headline in sentence case\n"
+                "2. Then a blank line\n"
+                "3. First paragraph: A concise lead that answers who, what, when, where, and why\n"
+                "4. Following paragraphs: 2-3 short paragraphs with supporting details\n"
+                "5. Then a blank line\n"
+                "6. Then add 'Source: [publication name]' followed by the URL\n\n"
+                f"Article title: {title}\n\n"
+                f"Section summaries:\n{combined_chunks}\n\n"
+                f"URL: {url}\n"
+                f"Publication: {source_name}"
+            )
+        else:  # default style
+            meta_prompt = (
+                "Based on these section summaries, create a coherent overall summary "
+                "of the complete article following these guidelines:\n\n"
+                "1. First line: Create a headline in sentence case\n"
+                "2. Then a blank line\n"
+                "3. Then a summary of three to five sentences that captures the key points\n"
+                "4. Then a blank line\n"
+                "5. Then add 'Source: [publication name]' followed by the URL\n\n"
+                f"Article title: {title}\n\n"
+                f"Section summaries:\n{combined_chunks}\n\n"
+                f"URL: {url}\n"
+                f"Publication: {source_name}"
+            )
         
         # Generate the final meta-summary
         final_summary = self._call_api(
@@ -643,7 +700,8 @@ class FastSummarizer:
             final_summary, 
             title, 
             url, 
-            source_name
+            source_name,
+            style  # Pass style parameter
         )
         
         return result

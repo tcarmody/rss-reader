@@ -60,6 +60,62 @@
             <p class="form-hint" id="urlHint" style="margin-top: 0.25rem; font-size: 0.75rem; color: var(--neutral-500);">Enter one URL per line to summarize multiple articles at once.</p>
           </div>
           
+          <div class="form-group">
+            <label class="form-label" for="style">Summary Style</label>
+            <select id="style" name="style" class="form-input">
+              <option value="default" {% if clustering_settings.default_summary_style == 'default' or clustering_settings.default_summary_style is not defined %}selected{% endif %}>Standard Summary (3-5 sentences)</option>
+              <option value="bullet" {% if clustering_settings.default_summary_style == 'bullet' %}selected{% endif %}>Axios-Style Bullet Points</option>
+              <option value="newswire" {% if clustering_settings.default_summary_style == 'newswire' %}selected{% endif %}>Traditional Newswire Style</option>
+            </select>
+            <p class="form-hint" style="margin-top: 0.25rem; font-size: 0.75rem; color: var(--neutral-500);">Choose how you want your summaries to be formatted.</p>
+          </div>
+          
+          <div class="style-previews" style="margin-bottom: 1.5rem;">
+            <details>
+              <summary style="cursor: pointer; color: var(--primary-color); margin-bottom: 0.5rem; font-weight: 500;">
+                See style preview examples
+              </summary>
+              <div class="style-preview-container" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 0.5rem;">
+                <div class="style-preview">
+                  <h4 style="font-size: 0.9rem; margin-bottom: 0.25rem;">Standard Summary</h4>
+                  <div style="background-color: var(--neutral-100); padding: 0.75rem; border-radius: 0.25rem; font-size: 0.85rem;">
+                    <p style="margin-bottom: 0.5rem;"><strong>New AI model achieves breakthrough in medical diagnostics</strong></p>
+                    <p>Researchers have developed an AI system that can detect early signs of disease from medical scans with 95 percent accuracy. The model, trained on over two million anonymized patient records, outperforms human radiologists in identifying subtle patterns indicating early-stage conditions. The technology could reduce diagnostic errors by 30 percent while cutting analysis time from hours to minutes. The system will be deployed in select research hospitals next month for further validation before wider release.</p>
+                  </div>
+                </div>
+                
+                <div class="style-preview">
+                  <h4 style="font-size: 0.9rem; margin-bottom: 0.25rem;">Axios-Style Bullet Points</h4>
+                  <div style="background-color: var(--neutral-100); padding: 0.75rem; border-radius: 0.25rem; font-size: 0.85rem;">
+                    <p style="margin-bottom: 0.5rem;"><strong>AI is rewriting the rules for medical diagnostics</strong></p>
+                    <p>A new AI model is demonstrating unprecedented accuracy in detecting early disease markers from medical scans.</p>
+                    <p><strong>The big picture:</strong> This breakthrough could fundamentally change how diseases are diagnosed, potentially saving millions of lives through earlier intervention.</p>
+                    <p><strong>Key points:</strong></p>
+                    <ul style="margin-left: 1rem;">
+                      <li><strong>95% accuracy rate</strong> surpasses human radiologists in controlled tests.</li>
+                      <li><strong>Training included 2M+ patient records</strong>, giving the system exposure to rare conditions most doctors seldom encounter.</li>
+                      <li><strong>Analysis time drops from hours to minutes</strong>, potentially eliminating diagnostic backlogs in busy hospitals.</li>
+                      <li><strong>The surprising twist:</strong> The system works even with lower-quality imaging equipment, making it valuable for underserved regions.</li>
+                    </ul>
+                    <p><strong>What's next:</strong> Initial deployment in research hospitals next month, with wider rollout planned pending validation results.</p>
+                  </div>
+                </div>
+                
+                <div class="style-preview">
+                  <h4 style="font-size: 0.9rem; margin-bottom: 0.25rem;">Traditional Newswire Style</h4>
+                  <div style="background-color: var(--neutral-100); padding: 0.75rem; border-radius: 0.25rem; font-size: 0.85rem;">
+                    <p style="margin-bottom: 0.5rem;"><strong>AI System Outperforms Radiologists in Early Disease Detection</strong></p>
+                    <p>BOSTON — A new artificial intelligence system can detect early signs of disease from medical scans with 95 percent accuracy, according to research published Wednesday.</p>
+                    <p>The system, developed by a team of computer scientists and medical researchers, analyzed more than two million anonymized patient records to identify subtle patterns indicative of early-stage conditions.</p>
+                    <p>"This represents a significant leap forward in diagnostic capabilities," said Dr. Sarah Chen, lead researcher on the project. "The AI consistently identifies markers that even experienced radiologists might miss."</p>
+                    <p>The technology reduces analysis time from hours to minutes and could cut diagnostic errors by approximately 30 percent, researchers reported.</p>
+                    <p>Several research hospitals will begin testing the system next month before a wider release is considered.</p>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+          
           <button type="submit" class="button success large">
             Generate Summaries
             </button>
@@ -70,6 +126,3 @@
     <footer class="footer">
       <p>Powered by Data Points AI with Anthropic Claude API</p>
     </footer>
-  </div>
-  </body>
-</html>

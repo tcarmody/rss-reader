@@ -108,7 +108,7 @@ def chunk_text(text: str, max_chunk_size: int = 8000) -> List[str]:
     logger.info(f"Split text ({len(text)} chars) into {len(chunks)} chunks")
     return chunks
 
-def create_summary_prompt(text: str, url: str, source_name: str) -> str:
+def create_summary_prompt(text: str, url: str, source_name: str, style: str = "default") -> str:
     """
     Create the prompt for article summarization.
     
@@ -116,37 +116,92 @@ def create_summary_prompt(text: str, url: str, source_name: str) -> str:
         text: Cleaned article text
         url: Article URL
         source_name: Publication source name
+        style: Summary style ('default', 'bullet', 'newswire')
         
     Returns:
         Formatted prompt for Claude
     """
-    return (
-        "Summarize the article below following these guidelines:\n\n"
-        "Structure:\n"
-        "1. First line: Create a headline in sentence case\n"
-        "2. Then a blank line\n"
-        "3. Then a summary of three to five sentences that:\n"
-        "   - Presents key information directly and factually\n"
-        "   - Includes technical details relevant to AI developers\n"
-        "   - Covers implications for the AI industry or technology landscape\n"
-        "   - Mentions price and availability details for new models/tools (if applicable)\n"
-        "4. Then a blank line\n"
-        "5. Then add 'Source: [publication name]' followed by the URL\n\n"
-        "Style guidelines:\n"
-        "- Use active voice (e.g., 'Company released product' not 'Product was released by company')\n"
-        "- Use non-compound verbs (e.g., 'banned' instead of 'has banned')\n"
-        "- Avoid self-explanatory phrases like 'This article explains...', 'This is important because...', or 'The author discusses...'\n"
-        "- Present information directly without meta-commentary\n"
-        "- Avoid the words 'content' and 'creator'\n"
-        "- Spell out numbers (e.g., '8 billion' not '8B', '100 million' not '100M')\n"
-        "- Spell out 'percent' instead of using the '%' symbol\n"
-        "- Use 'U.S.' and 'U.K.' with periods; use 'AI' without periods\n"
-        "- Use smart quotes, not straight quotes\n"
-        "- Ensure the headline doesn't repeat too many words from the summary\n\n"
-        f"Article:\n{text}\n\n"
-        f"URL: {url}\n"
-        f"Publication: {source_name}"
-    )
+    if style == "bullet":
+        return (
+            "Summarize the article below following these guidelines:\n\n"
+            "Structure:\n"
+            "1. First line: Create a headline in sentence case\n"
+            "2. Then a blank line\n"
+            "3. Then a bullet point summary with 3-5 key points that:\n"
+            "   - Uses bullet points (•) for each main point\n"
+            "   - Presents key information directly and factually\n"
+            "   - Includes technical details relevant to AI developers\n"
+            "   - Covers implications for the AI industry or technology landscape\n"
+            "   - Mentions price and availability details for new models/tools (if applicable)\n"
+            "4. Then a blank line\n"
+            "5. Then add 'Source: [publication name]' followed by the URL\n\n"
+            "Style guidelines:\n"
+            "- Use active voice (e.g., 'Company released product' not 'Product was released by company')\n"
+            "- Use non-compound verbs (e.g., 'banned' instead of 'has banned')\n"
+            "- Avoid self-explanatory phrases like 'This article explains...', 'This is important because...', or 'The author discusses...'\n"
+            "- Present information directly without meta-commentary\n"
+            "- Avoid the words 'content' and 'creator'\n"
+            "- Spell out numbers (e.g., '8 billion' not '8B', '100 million' not '100M')\n"
+            "- Spell out 'percent' instead of using the '%' symbol\n"
+            "- Use 'U.S.' and 'U.K.' with periods; use 'AI' without periods\n"
+            "- Use smart quotes, not straight quotes\n"
+            "- Ensure the headline doesn't repeat too many words from the summary\n\n"
+            f"Article:\n{text}\n\n"
+            f"URL: {url}\n"
+            f"Publication: {source_name}"
+        )
+    elif style == "newswire":
+        return (
+            "Summarize the article below in a concise newswire style following these guidelines:\n\n"
+            "Structure:\n"
+            "1. First line: Create a headline in sentence case that's clear and direct\n"
+            "2. Then a blank line\n"
+            "3. First paragraph: A concise lead that answers who, what, when, where, and why\n"
+            "4. Following paragraphs: 2-3 short paragraphs with supporting details in descending order of importance\n"
+            "5. Then a blank line\n"
+            "6. Then add 'Source: [publication name]' followed by the URL\n\n"
+            "Style guidelines:\n"
+            "- Use the inverted pyramid structure (most important info first)\n"
+            "- Keep sentences short and direct (15-20 words max)\n"
+            "- Use active voice exclusively\n"
+            "- Avoid adjectives and adverbs when possible\n"
+            "- Include specific numbers, statistics and quotes when relevant\n"
+            "- Use present tense for immediate events, past tense for completed actions\n"
+            "- Spell out numbers (e.g., '8 billion' not '8B', '100 million' not '100M')\n"
+            "- Spell out 'percent' instead of using the '%' symbol\n"
+            "- Use 'U.S.' and 'U.K.' with periods; use 'AI' without periods\n\n"
+            f"Article:\n{text}\n\n"
+            f"URL: {url}\n"
+            f"Publication: {source_name}"
+        )
+    else:  # default style
+        return (
+            "Summarize the article below following these guidelines:\n\n"
+            "Structure:\n"
+            "1. First line: Create a headline in sentence case\n"
+            "2. Then a blank line\n"
+            "3. Then a summary of three to five sentences that:\n"
+            "   - Presents key information directly and factually\n"
+            "   - Includes technical details relevant to AI developers\n"
+            "   - Covers implications for the AI industry or technology landscape\n"
+            "   - Mentions price and availability details for new models/tools (if applicable)\n"
+            "4. Then a blank line\n"
+            "5. Then add 'Source: [publication name]' followed by the URL\n\n"
+            "Style guidelines:\n"
+            "- Use active voice (e.g., 'Company released product' not 'Product was released by company')\n"
+            "- Use non-compound verbs (e.g., 'banned' instead of 'has banned')\n"
+            "- Avoid self-explanatory phrases like 'This article explains...', 'This is important because...', or 'The author discusses...'\n"
+            "- Present information directly without meta-commentary\n"
+            "- Avoid the words 'content' and 'creator'\n"
+            "- Spell out numbers (e.g., '8 billion' not '8B', '100 million' not '100M')\n"
+            "- Spell out 'percent' instead of using the '%' symbol\n"
+            "- Use 'U.S.' and 'U.K.' with periods; use 'AI' without periods\n"
+            "- Use smart quotes, not straight quotes\n"
+            "- Ensure the headline doesn't repeat too many words from the summary\n\n"
+            f"Article:\n{text}\n\n"
+            f"URL: {url}\n"
+            f"Publication: {source_name}"
+        )
 
 def get_system_prompt() -> str:
     """
@@ -165,7 +220,7 @@ def get_system_prompt() -> str:
         "Focus on conveying the key points and implications without explicitly stating that you're doing so."
     )
 
-def parse_summary_response(summary_text: str, title: str, url: str, source_name: str) -> Dict[str, str]:
+def parse_summary_response(summary_text: str, title: str, url: str, source_name: str, style: str = "default") -> Dict[str, str]:
     """
     Parse the summary response from Claude.
     
@@ -174,6 +229,7 @@ def parse_summary_response(summary_text: str, title: str, url: str, source_name:
         title: Original article title
         url: Article URL
         source_name: Publication source name
+        style: Summary style used ('default', 'bullet', 'newswire')
         
     Returns:
         Dictionary with headline and summary
@@ -211,17 +267,19 @@ def parse_summary_response(summary_text: str, title: str, url: str, source_name:
 
         logger.debug(
             f"Parsed summary response: format_type={format_type}, "
-            f"headline_length={len(headline)}, summary_length={len(summary)}"
+            f"style={style}, headline_length={len(headline)}, summary_length={len(summary)}"
         )
 
         return {
             'headline': headline,
-            'summary': summary
+            'summary': summary,
+            'style': style  # Add style to the result
         }
     except Exception as e:
         logger.error(f"Failed to parse summary response: {str(e)}")
         # Return a fallback summary
         return {
             'headline': title,
-            'summary': f"Failed to parse summary: {str(e)}\n\nSource: {source_name}\n{url}"
+            'summary': f"Failed to parse summary: {str(e)}\n\nSource: {source_name}\n{url}",
+            'style': style  # Add style to the fallback result
         }
