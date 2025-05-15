@@ -1,14 +1,16 @@
 # Enhanced RSS Reader with Multi-Article Clustering
 
-An advanced RSS feed reader with AI-powered summarization and intelligent article clustering.
+An advanced RSS feed reader with AI-powered summarization, intelligent article clustering, and source extraction capabilities.
 
 ## Features
 
-- **Smart Clustering**: Automatically groups related articles using sentence embeddings and ML-based clustering
+- **Advanced Clustering**: Automatically groups related articles using optimized sentence embeddings and ML-based clustering with HDBSCAN
+- **Intelligent Topic Extraction**: Extracts meaningful topics from article clusters using specialized algorithms for different cluster sizes
 - **AI Summaries**: Generates concise summaries of articles using the Claude API
+- **Source Extraction**: Automatically extracts and follows original source URLs from aggregator sites like Techmeme and Google News
+- **Paywall Bypass**: Capability to retrieve content from paywalled sites (configurable)
 - **Batch Processing**: Efficient parallel processing of multiple feeds and articles
 - **Web Interface**: Clean, simple interface for browsing feed summaries
-- **Paywall Bypass**: Optional capability to retrieve content from paywalled sites (configurable)
 - **Performance Optimization**: Tiered caching system and optimized batch processing
 
 ## Quick Start
@@ -35,6 +37,8 @@ An advanced RSS feed reader with AI-powered summarization and intelligent articl
 3. Install dependencies:
    ```bash
    pip install -r requirements.txt
+   # For minimal installation with essential dependencies only:
+   # pip install -r essential_requirements.txt
    python -m spacy download en_core_web_sm
    ```
 
@@ -94,23 +98,46 @@ The system consists of several key components:
 - **Reader (`reader.py`)**: Manages feed fetching and processing
 - **Summarizer (`summarizer.py`)**: Handles article summarization with Claude API
 - **Fast Summarizer (`fast_summarizer.py`)**: Optimized wrapper with enhanced batching
-- **Clustering (`clustering.py`)**: Manages article clustering using sentence embeddings
-- **Enhanced Clustering (`enhanced_clustering.py`)**: Advanced multi-article clustering
+- **Clustering (`clustering.py`)**: Manages article clustering using sentence embeddings with HDBSCAN
+- **Topic Extraction (`topic_extraction.py`)**: Extracts meaningful topics from article clusters
 - **Server (`server.py`)**: Web interface and API
 
 ### Support Modules
 
-- **Batch Processing (`batch.py`, `batch_processing.py`)**: Efficient parallel processing
-- **Caching (`cache.py`, `tiered_cache.py`)**: Multi-level caching system
+- **Batch Processing (`batch.py`, `batch_processing.py`)**: Efficient parallel processing with CompatibilityWrapper
+- **Caching (`cache.py`, `tiered_cache.py`)**: Multi-level caching system with SummaryCache
 - **Archive Utilities (`utils/archive.py`)**: Handling paywalled content
+- **Source Extractor (`utils/source_extractor.py`)**: Extracts original source URLs from aggregator sites
 - **Performance Tracking (`utils/performance.py`)**: Track and log performance metrics
 
-## Recent Changes and Fixes
+## Recent Changes and Improvements
 
+### Clustering and Topic Extraction
+- Improved clustering with optimized HDBSCAN algorithm and lower distance threshold (0.08)
+- Enhanced topic extraction with specialized methods for different cluster sizes
+- Added support for bigrams to capture multi-word topics
+- Implemented text cleaning to remove URLs and special characters
+- Added extended stopwords list to filter out non-informative terms
+- Weighted article titles more heavily than content for better topic relevance
+
+### Source Extraction
+- Added specialized handling for Techmeme and Google News aggregator links
+- Implemented automatic extraction of original source URLs from aggregator pages
+- Added capability to follow links to original sources, bypassing aggregator pages
+- Enhanced article fetching to bypass paywalls on original source articles
+- Added support for summarizing full content from original sources
+
+### Bug Fixes
+- Fixed missing import for SummaryCache in summarizer.py
+- Resolved indentation errors in nested try-except blocks in ArticleSummarizer
+- Fixed issues with CompatibilityWrapper implementation in batch_processing.py
+- Removed incorrectly placed docstring fragment in summarizer.py
+- Added proper error handling for initialization failures
+
+### Dependencies
+- Added hdbscan, numpy, safetensors, and transformers to requirements.txt
+- Updated version specifications for key dependencies
 - Added Google Auth dependency to resolve Anthropic API integration issues
-- Improved batch processing reliability with better worker management
-- Enhanced error handling for missing dependencies
-- Updated requirements with more specific version constraints
 - Added support for the latest Claude model (Claude 3.7 Sonnet)
 
 ## Troubleshooting
@@ -121,6 +148,12 @@ If you encounter errors about missing dependencies, run:
 
 ```bash
 pip install -r requirements.txt
+```
+
+For a minimal installation with only essential dependencies:
+
+```bash
+pip install -r essential_requirements.txt
 ```
 
 For issues with the Anthropic API and Google Auth, run the fix script:
