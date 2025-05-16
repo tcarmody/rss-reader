@@ -494,6 +494,12 @@ class AdvancedClusteringPipeline:
                 min_epsilon = 0.001
                 
             epsilon_value = float(max(min_epsilon, 0.05))
+            # Ensure epsilon is always positive - FIX: More robust validation
+            min_epsilon = float(CONFIG['min_epsilon'])
+            if min_epsilon <= 0:
+                min_epsilon = 0.001
+                
+            epsilon_value = float(max(min_epsilon, 0.05))
             
             self.hdbscan_model = hdbscan.HDBSCAN(
                 min_cluster_size=2,
