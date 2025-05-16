@@ -488,14 +488,18 @@ class AdvancedClusteringPipeline:
                 metric='cosine'
             )
             
-            # Ensure epsilon is always positive - FIX: Initialize with minimum value
-            epsilon_value = max(CONFIG['min_epsilon'], 0.05)
+            # Ensure epsilon is always positive - FIX: More robust validation
+            min_epsilon = float(CONFIG['min_epsilon'])
+            if min_epsilon <= 0:
+                min_epsilon = 0.001
+                
+            epsilon_value = float(max(min_epsilon, 0.05))
             
             self.hdbscan_model = hdbscan.HDBSCAN(
                 min_cluster_size=2,
                 min_samples=2,
                 metric='euclidean',
-                cluster_selection_epsilon=epsilon_value,  # Use positive epsilon value
+                cluster_selection_epsilon=epsilon_value,
                 prediction_data=True
             )
             
@@ -515,7 +519,7 @@ class AdvancedClusteringPipeline:
     def cluster(self, embeddings, threshold, publication_times=None):
         """Apply the UMAP+HDBSCAN clustering pipeline with fallbacks."""
         # Ensure threshold is always positive - FIX
-        threshold = max(CONFIG['min_epsilon'], threshold)
+        threshold = float(max(CONFIG['min_epsilon'], abs(threshold)))
         
         # Check if we should use the advanced pipeline
         if not CONFIG['use_umap'] or len(embeddings) < 5:
@@ -534,33 +538,63 @@ class AdvancedClusteringPipeline:
             # Apply HDBSCAN clustering
             logging.info("Applying HDBSCAN clustering")
             
-            # Ensure epsilon is always positive - FIX: Added this check
-            epsilon_value = max(CONFIG['min_epsilon'], threshold * 1.5)
-            logging.info(f"Setting cluster_selection_epsilon to {epsilon_value}")
-            self.hdbscan_model.cluster_selection_epsilon = epsilon_value
+            # FIXED: Create a new HDBSCAN instance with proper epsilon parameter
+            # Use extra validation to ensure epsilon is positive
+            import hdbscan
+            min_epsilon = float(CONFIG['min_epsilon'])
+            epsilon_value = max(min_epsilon, threshold * 1.5)
             
-            # For small datasets, adjust parameters
-            if len(embeddings) < 10:
-                self.hdbscan_model.min_cluster_size = 2
-                self.hdbscan_model.min_samples = 1
-            else:
-                self.hdbscan_model.min_cluster_size = 2
-                self.hdbscan_model.min_samples = 2
+            # Convert to string and back to float to eliminate potential floating-point issues
+            epsilon_str = str(epsilon_value)
+            epsilon_float = float(epsilon_str)
+            
+            # Extra safeguard
+            if epsilon_float <= 0:
+                epsilon_float = 0.001
                 
-            labels = self.hdbscan_model.fit_predict(reduced_embeddings)
+            logging.info(f"Setting cluster_selection_epsilon to {epsilon_float}")
+            
+            # Create a new instance with validated parameters
+            cluster_sizes = 2 if len(embeddings) < 10 else 2
+            min_samples = 1 if len(embeddings) < 10 else 2
+            
+            hdbscan_instance = hdbscan.HDBSCAN(
+                min_cluster_size=cluster_sizes,
+                min_samples=min_samples,
+                metric='euclidean',
+                cluster_selection_epsilon=epsilon_float,
+                prediction_data=True
+            )
+            
+            # Use the new instance directly
+            labels = hdbscan_instance.fit_predict(reduced_embeddings)
             
             # If we got only noise points, try with more permissive settings
             if np.all(labels == -1) and len(embeddings) > 3:
                 logging.info("All points classified as noise, trying more permissive clustering")
-                self.hdbscan_model.min_cluster_size = 2
-                self.hdbscan_model.min_samples = 1
                 
-                # Ensure epsilon is always positive - FIX: Added this check
-                epsilon_value = max(CONFIG['min_epsilon'], threshold * 2)
-                logging.info(f"Setting more permissive cluster_selection_epsilon to {epsilon_value}")
-                self.hdbscan_model.cluster_selection_epsilon = epsilon_value
+                # FIXED: Create another new instance with more permissive settings
+                # Again, ensure epsilon is positive with multiple validations
+                new_epsilon_value = max(0.001, threshold * 2)
+                new_epsilon_str = str(new_epsilon_value)
+                new_epsilon_float = float(new_epsilon_str)
                 
-                labels = self.hdbscan_model.fit_predict(reduced_embeddings)
+                # Extra safeguard
+                if new_epsilon_float <= 0:
+                    new_epsilon_float = 0.001
+                
+                logging.info(f"Setting more permissive cluster_selection_epsilon to {new_epsilon_float}")
+                
+                more_permissive_hdbscan = hdbscan.HDBSCAN(
+                    min_cluster_size=2,
+                    min_samples=1,
+                    metric='euclidean',
+                    cluster_selection_epsilon=new_epsilon_float,
+                    prediction_data=True
+                )
+                
+                # Use the new instance
+                labels = more_permissive_hdbscan.fit_predict(reduced_embeddings)
                 
             # If we still have all noise, fall back to agglomerative clustering
             if np.all(labels == -1) and len(embeddings) > 3:
@@ -585,7 +619,7 @@ class AdvancedClusteringPipeline:
         logging.info("Using fallback Agglomerative Clustering")
         
         # Ensure threshold is always positive - FIX
-        threshold = max(CONFIG['min_epsilon'], threshold)
+        threshold = float(max(CONFIG['min_epsilon'], abs(threshold)))
         
         # Time-weighted similarity matrix if we have publication times
         if publication_times and len(publication_times) == len(embeddings):
@@ -772,16 +806,18 @@ class ArticleClusterer:
                 adjusted_threshold = threshold - adjustment
                 
                 # Ensure threshold stays in reasonable bounds, but allow for lower values
-                # FIX: Add explicit check to ensure adjusted_threshold is positive
-                final_threshold = max(CONFIG['min_epsilon'], min(0.25, adjusted_threshold))
+                # FIX: Add explicit check to ensure adjusted_threshold is positive using string conversion
+                adjusted_threshold_str = str(max(CONFIG['min_epsilon'], min(0.25, adjusted_threshold)))
+                final_threshold = float(adjusted_threshold_str)
                 
                 logging.info(f"Adaptive threshold calculation: base={threshold}, adjusted={final_threshold}")
                 return final_threshold
             except Exception as e:
                 logging.warning(f"Error calculating adaptive threshold: {e}. Using base threshold.")
                 
-        # Ensure return value is never negative or zero - FIX
-        return max(CONFIG['min_epsilon'], threshold)
+        # Ensure return value is never negative or zero - FIX with string conversion
+        threshold_str = str(max(CONFIG['min_epsilon'], threshold))
+        return float(threshold_str)
     
     def _filter_recent_articles(self, articles, cutoff_date):
         """
