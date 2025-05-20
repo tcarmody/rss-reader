@@ -37,11 +37,11 @@ class ClusteringConfig:
     
     def __init__(self):
         # Core parameters with sensible defaults
-        self.model_name = os.environ.get('EMBEDDING_MODEL', 'all-mpnet-base-v2')
+        self.model_name = os.environ.get('EMBEDDING_MODEL', 'intfloat/e5-large-v2')
         self.fallback_model_name = os.environ.get('FALLBACK_MODEL', 'distiluse-base-multilingual-cased-v1')
         self.cache_dir = os.environ.get('EMBEDDING_CACHE_DIR', '/tmp/article_embeddings')
         # Reduced threshold for stricter clustering
-        self.distance_threshold = float(os.environ.get('DISTANCE_THRESHOLD', 0.03))
+        self.distance_threshold = float(os.environ.get('DISTANCE_THRESHOLD', 0.15))
         self.min_cluster_size = int(os.environ.get('MIN_CLUSTER_SIZE', 2))
         self.days_threshold = int(os.environ.get('DAYS_THRESHOLD', 7))
         self.use_cache = os.environ.get('USE_EMBEDDING_CACHE', 'true').lower() == 'true'
@@ -257,8 +257,8 @@ class ArticleClusterer:
             significant_entities = ' '.join(filtered_content_entities[:10])
             
             # Build combined text with content-focused weighting
-            # Title appears once, content appears in full, significant entities are included
-            combined_text = f"{title} {significant_entities} {content}".strip()
+            # Content appears in full, title appears once, significant entities are included
+            combined_text = f"{content} {content} {title} {significant_entities}".strip()
             
             # Ensure minimum text length
             if len(combined_text) < CONFIG.min_text_length and title:
