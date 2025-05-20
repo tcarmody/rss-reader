@@ -63,6 +63,14 @@ class LMClusterRefiner:
                 # Use more content and less title to reduce false clustering on headline terms
                 texts.append(f"{content[:500]}")  # Focus primarily on content
             
+            # Check if API is available 
+            api_available = hasattr(self.model, 'api_call_count') and self.model.api_call_count < self.model.max_api_calls
+            
+            # If API is not available, use a conservative approach
+            if not api_available:
+                self.logger.info("API not available - assuming cluster is coherent")
+                return 1.0  # Assume coherent to prevent unnecessary splitting
+            
             # Use the LM analyzer to check coherence
             similarities = []
             for i in range(len(texts)):
@@ -89,6 +97,14 @@ class LMClusterRefiner:
                 content = a.get('content', '')
                 # Use more content and less title to reduce false clustering on headline terms
                 texts.append(f"{content[:500]}")  # Focus primarily on content
+            
+            # Check if API is available
+            api_available = hasattr(self.model, 'api_call_count') and self.model.api_call_count < self.model.max_api_calls
+            
+            # If API is not available, use a conservative approach
+            if not api_available:
+                self.logger.info("API not available - assuming cluster is coherent")
+                return 1.0  # Assume coherent to prevent unnecessary splitting
             
             # Use the LM analyzer to check coherence
             similarities = []
@@ -119,7 +135,7 @@ class LMClusterRefiner:
                 for result in batch_results:
                     if isinstance(result, Exception):
                         self.logger.warning(f"Comparison error: {result}")
-                        similarities.append(0.5)  # Neutral score on error
+                        similarities.append(0.7)  # Default to higher value to prevent over-splitting
                     else:
                         similarities.append(result)
                 
@@ -139,6 +155,14 @@ class LMClusterRefiner:
             return [cluster]
             
         try:
+            # Check if API is available and has quota remaining
+            api_available = hasattr(self.model, 'api_call_count') and self.model.api_call_count < self.model.max_api_calls
+            
+            # If API is not available, be VERY conservative about splitting
+            if not api_available:
+                self.logger.warning("API not available - keeping cluster intact")
+                return [cluster]  # Don't split when API is unavailable
+            
             # Check coherence first
             coherence = self.check_cluster_coherence(cluster)
             
@@ -203,6 +227,14 @@ class LMClusterRefiner:
             return [cluster]
             
         try:
+            # Check if API is available and has quota remaining
+            api_available = hasattr(self.model, 'api_call_count') and self.model.api_call_count < self.model.max_api_calls
+            
+            # If API is not available, be VERY conservative about splitting
+            if not api_available:
+                self.logger.warning("API not available - keeping cluster intact")
+                return [cluster]  # Don't split when API is unavailable
+            
             # Check coherence first
             coherence = await self.check_cluster_coherence_async(cluster)
             
