@@ -658,3 +658,8 @@
 2025-05-20 15:07:57 | cluster_with_summaries | Time: 9.59s | Memory: 612.20MB
 2025-05-20 15:08:47 | process_cluster_summaries | Time: 50.54s | Memory: 0.14MB
 2025-05-20 15:08:47 | generate_html_output | Time: 0.02s | Memory: 0.12MB
+2025-05-20 15:19:41 | process_feeds | Time: 0.00s | Memory: 0.00MB
+2025-05-20 15:20:38 | _process_feed | Time: 56.60s | Memory: 31.39MB
+2025-05-20 15:20:48 | cluster_with_summaries | Time: 10.45s | Memory: 596.05MB
+2025-05-20 15:22:32 | process_cluster_summaries | Time: 103.92s | Memory: 0.36MB
+2025-05-20 15:22:32 | generate_html_output | Time: 0.03s | Memory: 0.33MB
