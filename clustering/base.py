@@ -7,6 +7,7 @@ This improved version includes:
 - UMAP+HDBSCAN clustering pipeline with fallbacks
 - Topic extraction
 - Performance optimizations
+- Asynchronous processing support
 """
 
 import logging
@@ -16,6 +17,7 @@ import os
 import pickle
 import hashlib
 import re
+import asyncio
 from datetime import datetime, timedelta
 from collections import defaultdict
 from typing import List, Dict, Tuple, Any, Optional, Union
@@ -50,6 +52,9 @@ class ClusteringConfig:
         # UMAP parameters
         self.umap_components = int(os.environ.get('UMAP_COMPONENTS', 5))
         self.umap_neighbors = int(os.environ.get('UMAP_NEIGHBORS', 15))
+        
+        # Async parameters
+        self.async_batch_size = int(os.environ.get('ASYNC_BATCH_SIZE', 8))
         
         # List of common stopwords - simplified from previous version
         self.stopwords = set([
@@ -160,6 +165,7 @@ class ArticleClusterer:
         # Initialize model and cache
         self.model = None
         self.embedding_cache = EmbeddingCache() if CONFIG.use_cache else None
+        self.logger = logging.getLogger("ArticleClusterer")
         
         # Load model (will happen on first use if not here)
         self._initialize_model()
@@ -282,6 +288,82 @@ class ArticleClusterer:
             
         return np.array(embeddings)
     
+    async def _get_embeddings_async(self, texts):
+        """Async version of _get_embeddings."""
+        if not self.model:
+            self._initialize_model()
+            
+        embeddings = []
+        # Process texts in batches for better efficiency
+        batch_size = CONFIG.async_batch_size
+        
+        for i in range(0, len(texts), batch_size):
+            batch_texts = texts[i:i+batch_size]
+            batch_embeddings = []
+            
+            # Create tasks for cache lookups
+            cache_tasks = []
+            for text in batch_texts:
+                if self.embedding_cache:
+                    # Use to_thread to make cache operations non-blocking
+                    task = asyncio.create_task(
+                        asyncio.to_thread(self.embedding_cache.get, text)
+                    )
+                    cache_tasks.append((text, task))
+                else:
+                    cache_tasks.append((text, None))
+            
+            # Process cache results and compute missing embeddings
+            compute_texts = []
+            compute_indices = []
+            
+            for idx, (text, task) in enumerate(cache_tasks):
+                if task:
+                    try:
+                        embedding = await task
+                        if embedding is not None:
+                            batch_embeddings.append((idx, embedding))
+                            continue
+                    except Exception as e:
+                        self.logger.warning(f"Cache lookup error: {e}")
+                
+                compute_texts.append(text)
+                compute_indices.append(idx)
+            
+            # Compute embeddings for cache misses
+            if compute_texts:
+                try:
+                    # Run encoding in a separate thread to avoid blocking
+                    computed = await asyncio.to_thread(
+                        self.model.encode, compute_texts
+                    )
+                    
+                    # Store in cache and add to results
+                    for sub_idx, (text_idx, text) in enumerate(zip(compute_indices, compute_texts)):
+                        embedding = computed[sub_idx]
+                        batch_embeddings.append((text_idx, embedding))
+                        
+                        if self.embedding_cache:
+                            # Cache in background
+                            asyncio.create_task(
+                                asyncio.to_thread(self.embedding_cache.set, text, embedding)
+                            )
+                except Exception as e:
+                    self.logger.error(f"Error encoding batch: {e}")
+                    # Create random embeddings as fallback
+                    for text_idx, text in zip(compute_indices, compute_texts):
+                        embedding = np.random.rand(768)
+                        batch_embeddings.append((text_idx, embedding))
+            
+            # Sort by original index and add to final results
+            batch_embeddings.sort(key=lambda x: x[0])
+            embeddings.extend([emb for _, emb in batch_embeddings])
+            
+            # Short sleep to allow other tasks to run
+            await asyncio.sleep(0)
+            
+        return np.array(embeddings)
+    
     def _cluster_embeddings(self, embeddings, threshold=None):
         """Cluster embeddings using UMAP+HDBSCAN if available, with fallback."""
         if threshold is None:
@@ -357,6 +439,13 @@ class ArticleClusterer:
             # Last resort: each item in its own cluster
             return np.arange(len(embeddings))
     
+    async def _cluster_embeddings_async(self, embeddings, threshold=None):
+        """Async version of _cluster_embeddings."""
+        # Run CPU-intensive clustering in a separate thread
+        return await asyncio.to_thread(
+            self._cluster_embeddings, embeddings, threshold
+        )
+    
     def _extract_topics(self, cluster_texts, top_n=5):
         """Extract topics from cluster texts using simple keyword extraction."""
         if not cluster_texts:
@@ -415,6 +504,12 @@ class ArticleClusterer:
             logging.error(f"Topic extraction failed: {e}")
             return []
     
+    async def _extract_topics_async(self, cluster_texts, top_n=5):
+        """Async version of _extract_topics."""
+        return await asyncio.to_thread(
+            self._extract_topics, cluster_texts, top_n
+        )
+    
     def cluster_articles(self, articles):
         """
         Cluster a list of article dicts into groups of similar articles.
@@ -445,6 +540,43 @@ class ArticleClusterer:
         
         # Perform clustering
         labels = self._cluster_embeddings(embeddings)
+        
+        # Group articles by cluster
+        clusters_dict = defaultdict(list)
+        for i, label in enumerate(labels):
+            clusters_dict[label].append(articles[i])
+            
+        # Convert to list of clusters
+        clusters = list(clusters_dict.values())
+        
+        return clusters
+    
+    async def cluster_articles_async(self, articles):
+        """
+        Async version of cluster_articles.
+        """
+        if not articles:
+            return []
+            
+        # Filter recent articles if days_threshold is set
+        if CONFIG.days_threshold > 0:
+            cutoff_date = datetime.now() - timedelta(days=CONFIG.days_threshold)
+            articles = self._filter_recent_articles(articles, cutoff_date)
+            
+        if not articles:
+            return []
+            
+        # Prepare article texts
+        texts, publication_times = self._prepare_article_texts(articles)
+        
+        if not texts:
+            return [[article] for article in articles]
+            
+        # Get embeddings asynchronously
+        embeddings = await self._get_embeddings_async(texts)
+        
+        # Perform clustering asynchronously
+        labels = await self._cluster_embeddings_async(embeddings)
         
         # Group articles by cluster
         clusters_dict = defaultdict(list)
@@ -506,5 +638,56 @@ class ArticleClusterer:
             
         except Exception as e:
             logging.error(f"Error in cluster_with_topics: {e}")
+            # Fallback to singleton clusters
+            return [[article] for article in articles]
+    
+    @track_performance
+    async def cluster_with_topics_async(self, articles, merge_clusters=True):
+        """
+        Async version of cluster_with_topics.
+        """
+        try:
+            # Get clusters asynchronously
+            clusters = await self.cluster_articles_async(articles)
+            
+            # Extract topics for each cluster concurrently
+            topic_tasks = []
+            for cluster_idx, cluster in enumerate(clusters):
+                if not cluster:
+                    continue
+                    
+                # Get texts for topic extraction
+                texts = []
+                for article in cluster:
+                    title = article.get('title', '')
+                    content = article.get('content', '')
+                    texts.append(f"{title} {content}")
+                    
+                # Create task for topic extraction
+                task = asyncio.create_task(self._extract_topics_async(texts))
+                topic_tasks.append((cluster_idx, task))
+                
+            # Process results as they complete
+            for cluster_idx, task in topic_tasks:
+                try:
+                    topics = await task
+                    
+                    # Add topics to each article in cluster
+                    if topics:
+                        for article in clusters[cluster_idx]:
+                            article['cluster_topics'] = topics
+                except Exception as e:
+                    logging.warning(f"Error extracting topics for cluster {cluster_idx}: {e}")
+            
+            # Log results
+            logging.info(f"Created {len(clusters)} clusters asynchronously")
+            for i, cluster in enumerate(clusters):
+                topics = cluster[0].get('cluster_topics', []) if cluster else []
+                logging.info(f"Cluster {i}: {len(cluster)} articles. Topics: {topics}")
+            
+            return clusters
+            
+        except Exception as e:
+            logging.error(f"Error in async cluster_with_topics: {e}")
             # Fallback to singleton clusters
             return [[article] for article in articles]
