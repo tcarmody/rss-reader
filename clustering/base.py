@@ -8,6 +8,7 @@ This improved version includes:
 - Topic extraction
 - Performance optimizations
 - Asynchronous processing support
+- Improved content-focused weighting to reduce false positives from headline terms
 """
 
 import logging
@@ -39,7 +40,8 @@ class ClusteringConfig:
         self.model_name = os.environ.get('EMBEDDING_MODEL', 'all-mpnet-base-v2')
         self.fallback_model_name = os.environ.get('FALLBACK_MODEL', 'distiluse-base-multilingual-cased-v1')
         self.cache_dir = os.environ.get('EMBEDDING_CACHE_DIR', '/tmp/article_embeddings')
-        self.distance_threshold = float(os.environ.get('DISTANCE_THRESHOLD', 0.05))
+        # Reduced threshold for stricter clustering
+        self.distance_threshold = float(os.environ.get('DISTANCE_THRESHOLD', 0.03))
         self.min_cluster_size = int(os.environ.get('MIN_CLUSTER_SIZE', 2))
         self.days_threshold = int(os.environ.get('DAYS_THRESHOLD', 7))
         self.use_cache = os.environ.get('USE_EMBEDDING_CACHE', 'true').lower() == 'true'
@@ -61,6 +63,13 @@ class ClusteringConfig:
             'this', 'that', 'with', 'from', 'what', 'when', 'where', 'which', 'about', 
             'have', 'will', 'your', 'their', 'there', 'they', 'these', 'those', 'some', 
             'were', 'after', 'before', 'could', 'should', 'would'
+        ])
+        
+        # Common entities that might cause false clustering
+        self.common_entities = set([
+            'AI', 'Artificial Intelligence', 'ChatGPT', 'Machine Learning', 'Deep Learning', 
+            'Data Science', 'LLM', 'Large Language Model', 'GPT', 'Model', 'Neural Network',
+            'ChatBot', 'Tech', 'Technology', 'Report', 'News', 'Today'
         ])
 
 # Create global configuration
@@ -227,7 +236,7 @@ class ArticleClusterer:
         return recent_articles
     
     def _prepare_article_texts(self, articles):
-        """Prepare article texts for embedding."""
+        """Prepare article texts for embedding with content-focused weighting."""
         texts = []
         publication_times = []
         
@@ -235,19 +244,25 @@ class ArticleClusterer:
             title = article.get('title', '')
             content = article.get('content', '')
             
-            # Extract potential entities using regex
+            # Extract potential entities from both title and content
             entity_pattern = r'\b[A-Z][a-zA-Z0-9]*(?:\s+[A-Z][a-zA-Z0-9]*)*\b'
-            entities = re.findall(entity_pattern, title)
+            title_entities = re.findall(entity_pattern, title)
+            content_entities = re.findall(entity_pattern, content[:500])  # Limit to first 500 chars for efficiency
             
-            # Weight entities from title
-            entity_text = ' '.join([entity for entity in entities for _ in range(2)])
+            # Filter out common entities that might cause false clustering
+            filtered_title_entities = [e for e in title_entities if e not in CONFIG.common_entities]
+            filtered_content_entities = [e for e in content_entities if e not in CONFIG.common_entities]
             
-            # Weight the title more heavily by repeating it
-            combined_text = f"{title} {title} {entity_text} {content}".strip()
+            # Get significant content entities (up to 10)
+            significant_entities = ' '.join(filtered_content_entities[:10])
+            
+            # Build combined text with content-focused weighting
+            # Title appears once, content appears in full, significant entities are included
+            combined_text = f"{title} {significant_entities} {content}".strip()
             
             # Ensure minimum text length
             if len(combined_text) < CONFIG.min_text_length and title:
-                combined_text = f"{title} {title} {title}"
+                combined_text = f"{title} {title}"
                 
             texts.append(combined_text)
             
@@ -455,10 +470,12 @@ class ArticleClusterer:
             # Try to use sklearn's CountVectorizer for better extraction
             from sklearn.feature_extraction.text import CountVectorizer
             
-            # Configure vectorizer with stopwords
+            # Configure vectorizer with stopwords and common entities to filter out
+            stopwords = list(CONFIG.stopwords) + list(CONFIG.common_entities)
+            
             vectorizer = CountVectorizer(
                 max_features=100,
-                stop_words=list(CONFIG.stopwords),
+                stop_words=stopwords,
                 ngram_range=(1, 2)
             )
             
@@ -490,10 +507,12 @@ class ArticleClusterer:
             entity_pattern = r'\b[A-Z][a-zA-Z0-9]*(?:\s+[A-Z][a-zA-Z0-9]*)*\b'
             entities = re.findall(entity_pattern, all_text)
             
-            # Count occurrences
+            # Count occurrences and filter common entities
             entity_counts = defaultdict(int)
             for entity in entities:
-                if len(entity) >= 3 and entity.lower() not in CONFIG.stopwords:
+                if (len(entity) >= 3 and 
+                    entity.lower() not in CONFIG.stopwords and
+                    entity not in CONFIG.common_entities):
                     entity_counts[entity] += 1
             
             # Get top entities

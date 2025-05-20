@@ -3,7 +3,8 @@ Enhanced article clustering with multi-article language model comparison.
 
 This module provides advanced clustering capabilities that use a language model
 to compare multiple articles simultaneously for better cluster accuracy.
-Includes asynchronous processing capabilities for better performance.
+Includes asynchronous processing capabilities for better performance and 
+improved content-focused weighting to reduce false positives from headline terms.
 """
 
 import logging
@@ -54,8 +55,13 @@ class LMClusterRefiner:
             return 1.0  # Default: assume coherent
             
         try:
-            # Get short text representations
-            texts = [f"{a.get('title', '')} {a.get('content', '')[:200]}" for a in cluster]
+            # Focus more on content than title for coherence check
+            texts = []
+            for a in cluster:
+                title = a.get('title', '')
+                content = a.get('content', '')
+                # Use more content and less title to reduce false clustering on headline terms
+                texts.append(f"{content[:500]}")  # Focus primarily on content
             
             # Use the LM analyzer to check coherence
             similarities = []
@@ -76,8 +82,13 @@ class LMClusterRefiner:
             return 1.0  # Default: assume coherent
             
         try:
-            # Get short text representations
-            texts = [f"{a.get('title', '')} {a.get('content', '')[:200]}" for a in cluster]
+            # Focus more on content than title for coherence check
+            texts = []
+            for a in cluster:
+                title = a.get('title', '')
+                content = a.get('content', '')
+                # Use more content and less title to reduce false clustering on headline terms
+                texts.append(f"{content[:500]}")  # Focus primarily on content
             
             # Use the LM analyzer to check coherence
             similarities = []
@@ -131,25 +142,34 @@ class LMClusterRefiner:
             # Check coherence first
             coherence = self.check_cluster_coherence(cluster)
             
-            # If reasonably coherent, don't split
-            if coherence >= 0.6:
+            # Use a stricter coherence threshold to be more aggressive about splitting clusters
+            # This helps reduce false positives for AI headline articles
+            if coherence >= 0.7:  # Increased from 0.6
                 return [cluster]
                 
-            # Extract text for clustering
+            # Extract text for clustering, focusing more on content than title
             cluster_articles = []
             for article in cluster:
                 content = article.get('content', '')
-                if len(content) > 500:
-                    content = content[:500]  # Truncate long content
+                title = article.get('title', '')
+                
+                # Filter out common AI terms from title that might cause false clustering
+                for term in CONFIG.common_entities:
+                    title = title.replace(term, "")
+                
+                if len(content) > 800:
+                    content = content[:800]  # Get more context than before
+                
+                # Give higher weight to content
                 cluster_articles.append({
-                    'content': f"{article.get('title', '')} {content}"
+                    'content': f"{content} {title}"  # Content first, then title
                 })
                 
-            # Use LM to suggest subclusters
+            # Use LM to suggest subclusters with a higher similarity threshold
             subclusters = self.model.cluster_articles(
                 cluster_articles,
                 text_extractor=lambda a: a.get('content', ''),
-                similarity_threshold=0.6
+                similarity_threshold=0.7  # Increased from 0.6 for stricter clustering
             )
             
             # If no meaningful subclusters found, return original
@@ -186,26 +206,33 @@ class LMClusterRefiner:
             # Check coherence first
             coherence = await self.check_cluster_coherence_async(cluster)
             
-            # If reasonably coherent, don't split
-            if coherence >= 0.6:
+            # Use a stricter coherence threshold
+            if coherence >= 0.7:  # Increased from 0.6
                 return [cluster]
                 
-            # Extract text for clustering
+            # Extract text for clustering, focusing more on content than title
             cluster_articles = []
             for article in cluster:
                 content = article.get('content', '')
-                if len(content) > 500:
-                    content = content[:500]  # Truncate long content
+                title = article.get('title', '')
+                
+                # Filter out common AI terms from title that might cause false clustering
+                for term in CONFIG.common_entities:
+                    title = title.replace(term, "")
+                
+                if len(content) > 800:
+                    content = content[:800]  # Get more context than before
+                
                 cluster_articles.append({
-                    'content': f"{article.get('title', '')} {content}"
+                    'content': f"{content} {title}"  # Content first, then title
                 })
                 
-            # Use LM to suggest subclusters in a non-blocking way
+            # Use LM to suggest subclusters in a non-blocking way with stricter threshold
             subclusters = await asyncio.to_thread(
                 self.model.cluster_articles,
                 cluster_articles,
                 text_extractor=lambda a: a.get('content', ''),
-                similarity_threshold=0.6
+                similarity_threshold=0.7  # Increased from 0.6
             )
             
             # Process results as before
@@ -235,8 +262,27 @@ class LMClusterRefiner:
             return []
             
         try:
-            topics = self.model.extract_cluster_topics(cluster)
-            return topics[:max_topics]
+            # Filter common AI terms that might dominate topic extraction
+            filtered_cluster = []
+            for article in cluster:
+                filtered_article = article.copy()
+                
+                # Filter title
+                title = filtered_article.get('title', '')
+                for term in CONFIG.common_entities:
+                    title = title.replace(term, "")
+                filtered_article['title'] = title
+                
+                filtered_cluster.append(filtered_article)
+            
+            # Extract topics after filtering
+            topics = self.model.extract_cluster_topics(filtered_cluster)
+            
+            # Filter out common AI terms from the topics as well
+            filtered_topics = [topic for topic in topics 
+                              if topic not in CONFIG.common_entities]
+            
+            return filtered_topics[:max_topics]
         except Exception as e:
             self.logger.error(f"Error extracting topics: {e}")
             return []
@@ -247,9 +293,29 @@ class LMClusterRefiner:
             return []
             
         try:
+            # Filter common AI terms that might dominate topic extraction
+            filtered_cluster = []
+            for article in cluster:
+                filtered_article = article.copy()
+                
+                # Filter title
+                title = filtered_article.get('title', '')
+                for term in CONFIG.common_entities:
+                    title = title.replace(term, "")
+                filtered_article['title'] = title
+                
+                filtered_cluster.append(filtered_article)
+            
             # Run topic extraction in a non-blocking way
-            topics = await asyncio.to_thread(self.model.extract_cluster_topics, cluster)
-            return topics[:max_topics]
+            topics = await asyncio.to_thread(
+                self.model.extract_cluster_topics, filtered_cluster
+            )
+            
+            # Filter out common AI terms from the topics as well
+            filtered_topics = [topic for topic in topics 
+                              if topic not in CONFIG.common_entities]
+            
+            return filtered_topics[:max_topics]
         except Exception as e:
             self.logger.error(f"Error in async topic extraction: {e}")
             return []
@@ -260,7 +326,8 @@ class EnhancedArticleClusterer(ArticleClusterer):
     Enhanced article clusterer with multi-article language model comparison.
     
     This clusterer can use a language model to refine clusters by understanding
-    semantic relationships across multiple articles simultaneously.
+    semantic relationships across multiple articles simultaneously, with improved
+    focus on content similarity rather than headline term matching.
     """
     
     def __init__(self, summarizer=None):
@@ -299,22 +366,29 @@ class EnhancedArticleClusterer(ArticleClusterer):
         uncertain_clusters = []
         
         for i, cluster in enumerate(clusters):
-            # Skip very small or large clusters
-            if len(cluster) < 3 or len(cluster) > 10:
+            # Skip very small clusters
+            if len(cluster) < 2:
                 continue
                 
+            # But don't skip large clusters anymore - they're more likely to need splitting
+            # if they contain "AI" or other common terms in headlines
+            
             # Use embedding similarity to check coherence
             coherence_score = 0.0
             pairs_count = 0
             
             for j in range(len(cluster)):
-                for k in range(j+1, len(cluster)):
+                for k in range(j+1, min(j+5, len(cluster))):  # Limit pairs to avoid O(n²) explosion
                     article1 = cluster[j]
                     article2 = cluster[k]
                     
-                    # Get short text representation
-                    text1 = f"{article1.get('title', '')} {article1.get('content', '')[:200]}"
-                    text2 = f"{article2.get('title', '')} {article2.get('content', '')[:200]}"
+                    # Get content-focused text representation
+                    content1 = article1.get('content', '')
+                    content2 = article2.get('content', '')
+                    
+                    # Use primarily content for coherence calculation
+                    text1 = content1[:500] if len(content1) > 0 else article1.get('title', '')
+                    text2 = content2[:500] if len(content2) > 0 else article2.get('title', '')
                     
                     # Calculate similarity
                     similarity = self._embedding_similarity(text1, text2)
@@ -324,9 +398,24 @@ class EnhancedArticleClusterer(ArticleClusterer):
             # Calculate average coherence
             avg_coherence = coherence_score / max(1, pairs_count)
             
-            # If coherence is low, mark for refinement
+            # If coherence is low or cluster has common entity keywords, mark for refinement
             if avg_coherence < 0.75:
                 uncertain_clusters.append((i, avg_coherence))
+            else:
+                # Check if this cluster might have AI term matches in headlines
+                has_common_entities = False
+                for article in cluster:
+                    title = article.get('title', '')
+                    for entity in CONFIG.common_entities:
+                        if entity in title:
+                            has_common_entities = True
+                            break
+                    if has_common_entities:
+                        break
+                
+                # If cluster has common entities, mark for refinement even with high coherence
+                if has_common_entities and len(cluster) > 2:
+                    uncertain_clusters.append((i, avg_coherence))
                 
         return uncertain_clusters
     
@@ -338,13 +427,17 @@ class EnhancedArticleClusterer(ArticleClusterer):
         # Create comparison tasks
         tasks = []
         for j in range(len(cluster)):
-            for k in range(j+1, len(cluster)):
+            for k in range(j+1, min(j+5, len(cluster))):  # Limit pairs to avoid O(n²) explosion
                 article1 = cluster[j]
                 article2 = cluster[k]
                 
-                # Get short text representation
-                text1 = f"{article1.get('title', '')} {article1.get('content', '')[:200]}"
-                text2 = f"{article2.get('title', '')} {article2.get('content', '')[:200]}"
+                # Get content-focused text representation
+                content1 = article1.get('content', '')
+                content2 = article2.get('content', '')
+                
+                # Use primarily content for coherence calculation
+                text1 = content1[:500] if len(content1) > 0 else article1.get('title', '')
+                text2 = content2[:500] if len(content2) > 0 else article2.get('title', '')
                 
                 # Create task to calculate similarity
                 task = asyncio.create_task(
@@ -359,7 +452,18 @@ class EnhancedArticleClusterer(ArticleClusterer):
         valid_sims = [s for s in similarities if not isinstance(s, Exception)]
         avg_coherence = sum(valid_sims) / max(1, len(valid_sims))
         
-        return cluster_idx, avg_coherence
+        # Check if this cluster might have AI term matches in headlines
+        has_common_entities = False
+        for article in cluster:
+            title = article.get('title', '')
+            for entity in CONFIG.common_entities:
+                if entity in title:
+                    has_common_entities = True
+                    break
+            if has_common_entities:
+                break
+        
+        return cluster_idx, avg_coherence, has_common_entities
     
     async def _identify_uncertain_clusters_async(self, clusters):
         """Async version of _identify_uncertain_clusters."""
@@ -368,8 +472,8 @@ class EnhancedArticleClusterer(ArticleClusterer):
         # Process clusters in parallel
         tasks = []
         for i, cluster in enumerate(clusters):
-            # Skip very small or large clusters
-            if len(cluster) < 3 or len(cluster) > 10:
+            # Skip very small clusters
+            if len(cluster) < 2:
                 continue
                 
             # Create task to evaluate cluster coherence
@@ -385,8 +489,13 @@ class EnhancedArticleClusterer(ArticleClusterer):
                 self.logger.warning(f"Error evaluating cluster: {result}")
                 continue
                 
-            cluster_idx, coherence = result
+            cluster_idx, coherence, has_common_entities = result
+            
+            # If coherence is low or cluster has common entity keywords, mark for refinement
             if coherence < 0.75:
+                uncertain_clusters.append((cluster_idx, coherence))
+            elif has_common_entities and len(clusters[cluster_idx]) > 2:
+                # If cluster has common entities, mark for refinement even with high coherence
                 uncertain_clusters.append((cluster_idx, coherence))
                 
         return uncertain_clusters
@@ -426,7 +535,7 @@ class EnhancedArticleClusterer(ArticleClusterer):
                             is_uncertain = True
                             break
                     
-                    if is_uncertain and len(cluster) >= 3:
+                    if is_uncertain and len(cluster) >= 2:  # Reduced from 3 to 2 to split more clusters
                         # Try to refine with LM
                         self.logger.info(f"Attempting to refine cluster {i} (size {len(cluster)})")
                         subclusters = self.refiner.split_cluster(cluster)
@@ -462,7 +571,7 @@ class EnhancedArticleClusterer(ArticleClusterer):
                         for article in cluster:
                             title = article.get('title', '')
                             content = article.get('content', '')
-                            texts.append(f"{title} {content}")
+                            texts.append(f"{content} {title}")  # Content first for more semantic relevance
                             
                         topics = self._extract_topics(texts)
                         
@@ -507,7 +616,7 @@ class EnhancedArticleClusterer(ArticleClusterer):
                 # Process uncertain clusters concurrently
                 refinement_tasks = []
                 for cluster_idx, coherence in uncertain_clusters:
-                    if len(preliminary_clusters[cluster_idx]) >= 3:
+                    if len(preliminary_clusters[cluster_idx]) >= 2:  # Reduced from 3 to 2
                         self.logger.info(f"Creating task to refine cluster {cluster_idx}")
                         task = asyncio.create_task(
                             self.refiner.split_cluster_async(preliminary_clusters[cluster_idx])
@@ -545,12 +654,12 @@ class EnhancedArticleClusterer(ArticleClusterer):
                         self.refiner.extract_topics_async(cluster)
                     )
                 else:
-                    # Use base class topic extraction
+                    # Use base class topic extraction with content focus
                     texts = []
                     for article in cluster:
                         title = article.get('title', '')
                         content = article.get('content', '')
-                        texts.append(f"{title} {content}")
+                        texts.append(f"{content} {title}")  # Content first for more semantic relevance
                     
                     task = asyncio.create_task(
                         self._extract_topics_async(texts)
