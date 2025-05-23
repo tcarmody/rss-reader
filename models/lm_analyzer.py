@@ -64,12 +64,12 @@ class LMClusterAnalyzer:
         # Direct API caller for ArticleSummarizer
         if hasattr(self.summarizer, '_call_claude_api'):
             return (self.summarizer._call_claude_api, 
-                    getattr(self.summarizer, 'DEFAULT_MODEL', 'claude-3-7-sonnet-latest'))
+                    getattr(self.summarizer, 'DEFAULT_MODEL', 'claude-sonnet-4-20250514'))
         
         # Access through original attribute for FastArticleSummarizer
         elif hasattr(self.summarizer, 'original') and hasattr(self.summarizer.original, '_call_claude_api'):
             return (self.summarizer.original._call_claude_api,
-                    getattr(self.summarizer.original, 'DEFAULT_MODEL', 'claude-3-7-sonnet-latest'))
+                    getattr(self.summarizer.original, 'DEFAULT_MODEL', 'claude-sonnet-4-20250514'))
                     
         # No suitable API caller found
         return None, None
