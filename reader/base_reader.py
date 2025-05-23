@@ -1,13 +1,17 @@
-"""Main RSS Reader class for fetching and processing feeds with enhanced clustering."""
+"""Main RSS Reader class for fetching and processing feeds with enhanced clustering and aggregator handling."""
 
 import feedparser
 import os
 import time
 import logging
 import traceback
+import re
+import requests
+from urllib.parse import urlparse, parse_qs, unquote
 
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Optional, Dict, List, Tuple
 
 from common.config import get_env_var
 from common.http import create_http_session
@@ -18,6 +22,14 @@ from common.batch_processing import BatchProcessor
 from summarization.article_summarizer import ArticleSummarizer
 from clustering.base import ArticleClusterer
 
+# Import BeautifulSoup if available
+try:
+    from bs4 import BeautifulSoup
+    BS4_AVAILABLE = True
+except ImportError:
+    BS4_AVAILABLE = False
+    logging.warning("BeautifulSoup not available for advanced aggregator extraction")
+
 # Import the enhanced clusterer - make sure this import works
 try:
     from clustering.enhanced import create_enhanced_clusterer
@@ -26,24 +38,183 @@ except ImportError:
     logging.warning("Enhanced clustering module not available. Using basic clustering.")
     ENHANCED_CLUSTERING_AVAILABLE = False
 
+
+class AggregatorSourceExtractor:
+    """
+    Integrated source extractor for handling news aggregator links.
+    """
+    
+    AGGREGATOR_RULES = {
+        'techmeme.com': {
+            'name': 'Techmeme',
+            'patterns': [r'techmeme\.com'],
+            'extraction_method': 'techmeme'
+        },
+        'news.google.com': {
+            'name': 'Google News',
+            'patterns': [r'news\.google\.com'],
+            'extraction_method': 'google_news'
+        },
+        'reddit.com': {
+            'name': 'Reddit',
+            'patterns': [r'reddit\.com'],
+            'extraction_method': 'reddit'
+        },
+        'news.ycombinator.com': {
+            'name': 'Hacker News',
+            'patterns': [r'news\.ycombinator\.com'],
+            'extraction_method': 'hackernews'
+        }
+    }
+    
+    def __init__(self, session=None):
+        self.session = session
+    
+    def detect_aggregator(self, url: str) -> Tuple[bool, Optional[str], Optional[str]]:
+        """
+        Check if URL is from a known aggregator.
+        
+        Returns:
+            Tuple of (is_aggregator, aggregator_type, aggregator_name)
+        """
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc.lower()
+        
+        for agg_type, rules in self.AGGREGATOR_RULES.items():
+            for pattern in rules['patterns']:
+                if re.search(pattern, domain):
+                    return True, agg_type, rules['name']
+        
+        return False, None, None
+    
+    def extract_source(self, url: str) -> Dict[str, any]:
+        """
+        Extract original source information from an aggregator URL.
+        """
+        is_agg, agg_type, agg_name = self.detect_aggregator(url)
+        
+        if not is_agg:
+            return {
+                'original_url': url,
+                'source_name': self._extract_domain_name(url),
+                'aggregator_name': None,
+                'aggregator_url': None,
+                'extraction_method': 'direct',
+                'confidence': 1.0
+            }
+        
+        # Try basic extraction first
+        original_url = extract_original_source_url(url, self.session)
+        
+        # If basic extraction worked and URL changed, we're done
+        if original_url != url:
+            return {
+                'original_url': original_url,
+                'source_name': self._extract_domain_name(original_url),
+                'aggregator_name': agg_name,
+                'aggregator_url': url,
+                'extraction_method': agg_type,
+                'confidence': 0.9
+            }
+        
+        # Try specific extraction methods
+        if agg_type == 'techmeme':
+            result = self._extract_techmeme_advanced(url)
+        elif agg_type == 'google_news':
+            result = self._extract_google_news_advanced(url)
+        else:
+            result = None
+        
+        if result:
+            return result
+        
+        # Fallback
+        return {
+            'original_url': url,
+            'source_name': agg_name,
+            'aggregator_name': agg_name,
+            'aggregator_url': url,
+            'extraction_method': 'fallback',
+            'confidence': 0.0
+        }
+    
+    def _extract_techmeme_advanced(self, url: str) -> Optional[Dict[str, any]]:
+        """Advanced Techmeme extraction with HTML parsing."""
+        if not BS4_AVAILABLE or not self.session:
+            return None
+            
+        try:
+            response = self.session.get(url, timeout=10)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                # Look for the main story link
+                main_story = soup.find('strong', class_='L1')
+                if main_story and main_story.find('a'):
+                    link = main_story.find('a')
+                    original_url = link.get('href', '')
+                    source_name = link.text.strip()
+                    
+                    if original_url and 'techmeme.com' not in original_url:
+                        return {
+                            'original_url': original_url,
+                            'source_name': source_name or self._extract_domain_name(original_url),
+                            'aggregator_name': 'Techmeme',
+                            'aggregator_url': url,
+                            'extraction_method': 'techmeme_html',
+                            'confidence': 0.95
+                        }
+        except Exception as e:
+            logging.debug(f"Advanced Techmeme extraction failed: {str(e)}")
+        
+        return None
+    
+    def _extract_google_news_advanced(self, url: str) -> Optional[Dict[str, any]]:
+        """Advanced Google News extraction."""
+        # Try to get redirect URL
+        if self.session:
+            try:
+                response = self.session.get(url, timeout=10, allow_redirects=False)
+                if response.status_code in [301, 302, 303, 307, 308]:
+                    redirect_url = response.headers.get('Location', '')
+                    if redirect_url and 'google.com' not in redirect_url:
+                        return {
+                            'original_url': redirect_url,
+                            'source_name': self._extract_domain_name(redirect_url),
+                            'aggregator_name': 'Google News',
+                            'aggregator_url': url,
+                            'extraction_method': 'google_redirect',
+                            'confidence': 0.95
+                        }
+            except Exception as e:
+                logging.debug(f"Advanced Google News extraction failed: {str(e)}")
+        
+        return None
+    
+    def _extract_domain_name(self, url: str) -> str:
+        """Extract a readable domain name from URL."""
+        try:
+            parsed = urlparse(url)
+            domain = parsed.netloc.lower()
+            domain = re.sub(r'^www\.', '', domain)
+            domain_parts = domain.split('.')
+            if len(domain_parts) > 1:
+                return domain_parts[-2].title()
+            return domain
+        except:
+            return "Unknown Source"
+
+
 class RSSReader:
     """
-    Main class that handles RSS feed processing, article summarization, and clustering.
+    Main class that handles RSS feed processing, article summarization, clustering,
+    and aggregator source extraction.
 
-    This class orchestrates the entire process of:
-    1. Fetching and parsing RSS feeds
-    2. Generating AI-powered summaries
-    3. Clustering similar articles using advanced techniques
-    4. Generating HTML output
-
-    The class uses Claude API for high-quality summaries and a two-phase
-    clustering approach for better grouping of related articles. It implements
-    caching to avoid redundant API calls and includes fallback options for summarization.
-    
-    Example:
-        reader = RSSReader()
-        output_file = reader.process_feeds()
-        print(f"Generated output at: {output_file}")
+    This enhanced version includes:
+    - Automatic detection and extraction of original sources from aggregator links
+    - Fetching content from original sources for better summaries
+    - Clear attribution showing both original source and aggregator
+    - Statistics tracking for aggregator processing
     """
 
     def __init__(self, feeds=None, batch_size=25, batch_delay=15, per_feed_limit=25):
@@ -70,6 +241,17 @@ class RSSReader:
         self.session = create_http_session()
         self.batch_processor = BatchProcessor(max_workers=5)
         self.summarizer = ArticleSummarizer()
+        
+        # Initialize aggregator extractor
+        self.aggregator_extractor = AggregatorSourceExtractor(self.session)
+        
+        # Track aggregator statistics
+        self.aggregator_stats = {
+            'total_aggregator_links': 0,
+            'successful_extractions': 0,
+            'failed_extractions': 0,
+            'by_aggregator': {}
+        }
         
         # Use the enhanced clusterer if available, otherwise fall back to basic
         if ENHANCED_CLUSTERING_AVAILABLE:
@@ -189,10 +371,125 @@ class RSSReader:
         
         return filtered_articles
 
+    def _parse_entry(self, entry, feed_title):
+        """
+        Parse a feed entry into an article dictionary with aggregator detection.
+        
+        Args:
+            entry: feedparser entry object
+            feed_title: Title of the feed
+            
+        Returns:
+            dict: Parsed article data or None if parsing failed
+        """
+        try:
+            # Extract basic article information
+            article = {
+                'title': getattr(entry, 'title', 'No Title'),
+                'link': getattr(entry, 'link', '#'),
+                'published': getattr(entry, 'published', 'Unknown date'),
+                'feed_source': feed_title,
+                'content': ''  # Will be filled later
+            }
+            
+            # Detect and extract aggregator source information
+            source_info = self.aggregator_extractor.extract_source(article['link'])
+            
+            # Add source information to article
+            article['original_url'] = source_info['original_url']
+            article['source_name'] = source_info['source_name']
+            article['is_aggregator'] = source_info['aggregator_name'] is not None
+            article['aggregator_name'] = source_info['aggregator_name']
+            article['aggregator_url'] = source_info['aggregator_url']
+            article['source_extraction_confidence'] = source_info['confidence']
+            
+            # Update statistics if it's an aggregator
+            if article['is_aggregator']:
+                self.aggregator_stats['total_aggregator_links'] += 1
+                agg_name = article.get('aggregator_name', 'Unknown')
+                self.aggregator_stats['by_aggregator'][agg_name] = \
+                    self.aggregator_stats['by_aggregator'].get(agg_name, 0) + 1
+                
+                if source_info['confidence'] > 0:
+                    self.aggregator_stats['successful_extractions'] += 1
+                    logging.info(f"Extracted source from {agg_name}: {article['original_url']}")
+                else:
+                    self.aggregator_stats['failed_extractions'] += 1
+                    logging.warning(f"Failed to extract source from {agg_name}: {article['link']}")
+            
+            # Extract content - prefer original URL if available
+            content = self._extract_content_from_entry(entry, article)
+            article['content'] = content
+
+            return article
+
+        except Exception as e:
+            logging.error(f"Error parsing entry: {str(e)}")
+            return None
+            
+    def _extract_content_from_entry(self, entry, article_info):
+        """
+        Extract and clean content from a feed entry, fetching from original sources when needed.
+        
+        Args:
+            entry: feedparser entry object
+            article_info: Parsed article dictionary with source information
+            
+        Returns:
+            str: Cleaned content text
+        """
+        content = ''
+        # First try to get content from the feed entry
+        if hasattr(entry, 'content'):
+            raw_content = entry.content
+            if isinstance(raw_content, list) and raw_content:
+                content = raw_content[0].get('value', '')
+            elif isinstance(raw_content, str):
+                content = raw_content
+            elif isinstance(raw_content, (list, tuple)):
+                content = ' '.join(str(item) for item in raw_content)
+            else:
+                content = str(raw_content)
+
+        # Fallback to summary
+        if not content and hasattr(entry, 'summary'):
+            content = entry.summary
+
+        # Final fallback to title
+        if not content:
+            content = getattr(entry, 'title', '')
+            logging.warning("Using title as content fallback")
+
+        # Clean content
+        content = content.strip()
+        
+        # For aggregator links or short content, fetch from original source
+        fetch_url = article_info.get('original_url', article_info['link'])
+        is_aggregator = article_info.get('is_aggregator', False)
+        paywall_bypass_enabled = get_env_var('ENABLE_PAYWALL_BYPASS', 'false').lower() == 'true'
+        is_short_content = len(content) < 1000
+        
+        if is_aggregator or (paywall_bypass_enabled and (is_short_content or is_paywalled(fetch_url))):
+            if is_aggregator:
+                logging.info(f"Fetching full content from original source: {fetch_url}")
+            else:
+                logging.info(f"Attempting to fetch full content for: {fetch_url}")
+            
+            try:
+                full_content = fetch_article_content(fetch_url, self.session)
+                
+                if full_content and len(full_content) > len(content):
+                    logging.info(f"Successfully retrieved full content from: {fetch_url}")
+                    return full_content
+            except Exception as e:
+                logging.warning(f"Error fetching full content: {str(e)}")
+        
+        return content
+
     @track_performance
     def process_cluster_summaries(self, clusters):
         """
-        Process and generate summaries for article clusters.
+        Process and generate summaries for article clusters with aggregator awareness.
         
         Args:
             clusters: List of article clusters
@@ -209,15 +506,25 @@ class RSSReader:
 
                 logging.info(f"Processing cluster {i}/{len(clusters)} with {len(cluster)} articles")
                 
+                # Log aggregator information for this cluster
+                aggregator_articles = [a for a in cluster if a.get('is_aggregator')]
+                if aggregator_articles:
+                    logging.info(f"Cluster contains {len(aggregator_articles)} aggregator links:")
+                    for article in aggregator_articles:
+                        logging.info(f"  - {article.get('aggregator_name')}: {article['title']} -> {article.get('source_name')}")
+                
                 # First, try to fetch full content for articles that don't have it
                 for article in cluster:
                     if not article.get('content') or len(article.get('content', '')) < 200:
+                        # Use original URL if available
+                        fetch_url = article.get('original_url', article['link'])
+                        
                         try:
                             logging.info(f"Fetching full content for article: {article['title']}")
-                            full_content = fetch_article_content(article['link'], self.session)
+                            full_content = fetch_article_content(fetch_url, self.session)
                             if full_content and len(full_content) > 200:
                                 article['content'] = full_content
-                                logging.info(f"Successfully fetched full content for {article['title']}")
+                                logging.info(f"Successfully fetched full content from: {fetch_url}")
                             else:
                                 logging.warning(f"Could not fetch meaningful content for {article['title']}")
                         except Exception as e:
@@ -242,7 +549,7 @@ class RSSReader:
                     cluster_summary = self._generate_summary(
                         combined_text,
                         f"Combined summary of {len(cluster)} related articles",
-                        cluster[0]['link']
+                        cluster[0].get('original_url', cluster[0]['link'])
                     )
 
                     # Add the cluster summary to each article
@@ -257,7 +564,7 @@ class RSSReader:
                         article['summary'] = self._generate_summary(
                             article.get('content', ''),
                             article['title'],
-                            article['link']
+                            article.get('original_url', article['link'])
                         )
                     article['cluster_size'] = 1
                     
@@ -285,94 +592,32 @@ class RSSReader:
                 logging.error(f"Error processing cluster {i}: {str(cluster_error)}", exc_info=True)
                 continue
 
+        # Log aggregator statistics
+        self._log_aggregator_stats()
+
         return processed_clusters
 
-    def _parse_entry(self, entry, feed_title):
-        """
-        Parse a feed entry into an article dictionary.
+    def _log_aggregator_stats(self):
+        """Log statistics about aggregator link processing."""
+        stats = self.aggregator_stats
         
-        Args:
-            entry: feedparser entry object
-            feed_title: Title of the feed
-            
-        Returns:
-            dict: Parsed article data or None if parsing failed
-        """
-        try:
-            # Extract content
-            content = self._extract_content_from_entry(entry)
-
-            return {
-                'title': getattr(entry, 'title', 'No Title'),
-                'link': getattr(entry, 'link', '#'),
-                'published': getattr(entry, 'published', 'Unknown date'),
-                'content': content,
-                'feed_source': feed_title
-            }
-
-        except Exception as e:
-            logging.error(f"Error parsing entry: {str(e)}")
-            return None
-            
-    def _extract_content_from_entry(self, entry):
-        """
-        Extract and clean content from a feed entry.
+        if stats['total_aggregator_links'] == 0:
+            return
         
-        Args:
-            entry: feedparser entry object
-            
-        Returns:
-            str: Cleaned content text
-        """
-        content = ''
-        # First try to get content
-        if hasattr(entry, 'content'):
-            raw_content = entry.content
-            if isinstance(raw_content, list) and raw_content:
-                content = raw_content[0].get('value', '')
-            elif isinstance(raw_content, str):
-                content = raw_content
-            elif isinstance(raw_content, (list, tuple)):
-                content = ' '.join(str(item) for item in raw_content)
-            else:
-                content = str(raw_content)
-
-        # Fallback to summary
-        if not content and hasattr(entry, 'summary'):
-            content = entry.summary
-
-        # Final fallback to title
-        if not content:
-            content = getattr(entry, 'title', '')
-            logging.warning("Using title as content fallback")
-
-        # Clean content
-        content = content.strip()
+        logging.info("=" * 60)
+        logging.info("AGGREGATOR LINK STATISTICS:")
+        logging.info(f"Total aggregator links found: {stats['total_aggregator_links']}")
+        logging.info(f"Successful source extractions: {stats['successful_extractions']}")
+        logging.info(f"Failed extractions: {stats['failed_extractions']}")
         
-        # Always try to fetch full content for articles, with special handling for aggregators
-        if hasattr(entry, 'link') and entry.link:
-            article_url = entry.link
-            
-            # Check if content is short (likely just a summary) or if we should always try to fetch full content
-            paywall_bypass_enabled = get_env_var('ENABLE_PAYWALL_BYPASS', 'false').lower() == 'true'
-            is_short_content = len(content) < 1000
-            
-            # For Techmeme and Google News links, always try to extract the original source
-            # For other links, only try if paywall bypass is enabled and content is short
-            if is_aggregator_link(article_url) or (paywall_bypass_enabled and (is_short_content or is_paywalled(article_url))):
-                logging.info(f"Attempting to fetch full content for: {article_url}")
-                
-                try:
-                    # fetch_article_content will automatically handle aggregator links and paywalls
-                    full_content = fetch_article_content(article_url, self.session)
-                    
-                    if full_content and len(full_content) > len(content):
-                        logging.info(f"Successfully retrieved full content for: {article_url}")
-                        return full_content
-                except Exception as e:
-                    logging.warning(f"Error fetching full content: {str(e)}")
+        success_rate = (stats['successful_extractions'] / stats['total_aggregator_links']) * 100
+        logging.info(f"Success rate: {success_rate:.1f}%")
         
-        return content
+        if stats['by_aggregator']:
+            logging.info("\nBreakdown by aggregator:")
+            for agg, count in sorted(stats['by_aggregator'].items()):
+                logging.info(f"  - {agg}: {count} links")
+        logging.info("=" * 60)
 
     @track_performance
     async def process_feeds(self):
@@ -381,9 +626,10 @@ class RSSReader:
         
         This is the main method that orchestrates the full process:
         1. Fetch and parse feeds
-        2. Cluster articles using enhanced clustering
-        3. Generate summaries
-        4. Create HTML output
+        2. Extract original sources from aggregator links
+        3. Cluster articles using enhanced clustering
+        4. Generate summaries from original content
+        5. Create HTML output with proper source attribution
         
         Returns:
             str: Path to the generated HTML file or None if processing failed
@@ -512,7 +758,7 @@ class RSSReader:
         Args:
             article_text: Text of the article to summarize
             title: Title of the article
-            url: URL of the article
+            url: URL of the article (original source URL)
             
         Returns:
             dict: Summary with headline and content
@@ -574,7 +820,7 @@ class RSSReader:
     @track_performance
     def generate_html_output(self, clusters):
         """
-        Generate HTML output from the processed clusters without Flask dependency.
+        Generate HTML output from the processed clusters with aggregator awareness.
         
         Args:
             clusters: List of article clusters with summaries
@@ -597,8 +843,8 @@ class RSSReader:
             
             if not os.path.exists(template_file):
                 logging.error(f"Template file not found: {template_file}")
-                # Create a basic fallback template if the template is missing
-                return self._generate_fallback_html(clusters, output_file)
+                # Create a aggregator-aware fallback template if the template is missing
+                return self._generate_aggregator_aware_html(clusters, output_file)
             
             try:
                 # Use Jinja2 directly instead of Flask
@@ -610,13 +856,17 @@ class RSSReader:
                     autoescape=select_autoescape(['html', 'xml'])
                 )
                 
+                # Add custom filters for aggregator display
+                env.filters['aggregator_info'] = self._aggregator_info_filter
+                
                 # Load the template
                 template = env.get_template('feed-summary.html')
                 
-                # Render the template
+                # Render the template with aggregator stats
                 html_content = template.render(
                     clusters=clusters,
-                    timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    aggregator_stats=self.aggregator_stats
                 )
                 
                 # Write to file
@@ -629,15 +879,21 @@ class RSSReader:
             except Exception as render_error:
                 logging.error(f"Error rendering template: {str(render_error)}")
                 # Try fallback method if template rendering fails
-                return self._generate_fallback_html(clusters, output_file)
+                return self._generate_aggregator_aware_html(clusters, output_file)
                 
         except Exception as e:
             logging.error(f"Error generating HTML output: {str(e)}", exc_info=True)
             return None
             
-    def _generate_fallback_html(self, clusters, output_file):
+    def _aggregator_info_filter(self, article):
+        """Jinja2 filter to format aggregator information."""
+        if article.get('is_aggregator') and article.get('aggregator_name'):
+            return f' (via <a href="{article["aggregator_url"]}" target="_blank">{article["aggregator_name"]}</a>)'
+        return ''
+            
+    def _generate_aggregator_aware_html(self, clusters, output_file):
         """
-        Generate a basic HTML output without using templates as a fallback.
+        Generate HTML output with aggregator awareness as a fallback.
         
         Args:
             clusters: List of article clusters
@@ -647,45 +903,277 @@ class RSSReader:
             str: Path to generated HTML file or None if generation failed
         """
         try:
-            html = ['<!DOCTYPE html><html><head><title>RSS Summary</title>',
-                    '<meta charset="UTF-8">',
-                    '<style>body{font-family:sans-serif;max-width:1200px;margin:0 auto;padding:20px}',
-                    '.cluster{border:1px solid #ddd;margin-bottom:20px;padding:15px;border-radius:5px}',
-                    '.article{border-bottom:1px solid #eee;padding:10px 0}',
-                    '.article:last-child{border-bottom:none}',
-                    '.article-title a{color:#2563eb;text-decoration:none}',
-                    '.article-title a:hover{text-decoration:underline}',
-                    '.timestamp{color:#666;font-style:italic}</style></head><body>',
-                    f'<h1>RSS Summary</h1>',
-                    f'<p class="timestamp">Generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>']
+            html_parts = [
+                '<!DOCTYPE html>',
+                '<html><head>',
+                '<meta charset="UTF-8">',
+                '<title>RSS Summary with Source Attribution</title>',
+                '<style>',
+                self._get_enhanced_css(),
+                '</style>',
+                '</head><body>',
+                '<div class="container">',
+                '<h1>RSS Summary</h1>',
+                f'<p class="timestamp">Generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>',
+                self._get_aggregator_stats_html(),
+            ]
             
-            for cluster in clusters:
-                html.append('<div class="cluster">')
-                if cluster and len(cluster) > 0:
-                    # Get headline from the first article's summary if available
-                    headline = cluster[0].get('summary', {}).get('headline', cluster[0].get('title', 'Untitled'))
-                    html.append(f'<h2>{headline}</h2>')
+            for cluster_idx, cluster in enumerate(clusters):
+                if not cluster:
+                    continue
                     
-                    # Add summary if available
-                    summary = cluster[0].get('summary', {}).get('summary', '')
-                    if summary:
-                        html.append(f'<div class="summary">{summary}</div>')
-                    
-                    # Add all articles in the cluster
-                    for article in cluster:
-                        html.append('<div class="article">')
-                        html.append(f'<h3 class="article-title"><a href="{article.get("link", "#")}" target="_blank">{article.get("title", "No title")}</a></h3>')
-                        html.append(f'<p class="article-meta">Source: {article.get("feed_source", "Unknown")} | Published: {article.get("published", "Unknown date")}</p>')
-                        html.append('</div>')
-                html.append('</div>')
+                html_parts.append('<div class="cluster">')
+                
+                # Get cluster headline
+                headline = cluster[0].get('summary', {}).get('headline', cluster[0].get('title', 'Untitled'))
+                html_parts.append(f'<h2 class="cluster-headline">{headline}</h2>')
+                
+                # Add summary
+                summary = cluster[0].get('summary', {}).get('summary', '')
+                if summary:
+                    html_parts.append(f'<div class="cluster-summary">{summary}</div>')
+                
+                # Add articles with source attribution
+                html_parts.append('<div class="cluster-articles">')
+                for article in cluster:
+                    html_parts.append(self._generate_article_html(article))
+                html_parts.append('</div>')  # cluster-articles
+                
+                html_parts.append('</div>')  # cluster
             
-            html.append('</body></html>')
+            html_parts.extend([
+                '</div>',  # container
+                '</body></html>'
+            ])
             
             with open(output_file, 'w', encoding='utf-8') as f:
-                f.write('\n'.join(html))
+                f.write('\n'.join(html_parts))
             
-            logging.info(f"Successfully wrote fallback HTML output to {output_file}")
+            logging.info(f"Successfully wrote aggregator-aware HTML output to {output_file}")
             return output_file
         except Exception as e:
-            logging.error(f"Error generating fallback HTML: {str(e)}", exc_info=True)
+            logging.error(f"Error generating aggregator-aware HTML: {str(e)}", exc_info=True)
             return None
+    
+    def _generate_article_html(self, article):
+        """Generate HTML for a single article with source attribution."""
+        # Determine which URL to use for the article link
+        display_url = article.get('original_url', article['link'])
+        is_aggregated = article.get('is_aggregator', False)
+        
+        html = ['<div class="article">']
+        
+        # Article title with link
+        html.append(f'<h3 class="article-title">')
+        html.append(f'<a href="{display_url}" target="_blank">{article["title"]}</a>')
+        html.append('</h3>')
+        
+        # Article metadata
+        html.append('<div class="article-meta">')
+        
+        # Source information
+        source_parts = []
+        
+        # Original source
+        source_name = article.get('source_name', 'Unknown')
+        source_parts.append(f'<span class="source">Source: <strong>{source_name}</strong></span>')
+        
+        # If it was aggregated, show via information
+        if is_aggregated and article.get('aggregator_name'):
+            agg_url = article.get('aggregator_url', article['link'])
+            agg_name = article['aggregator_name']
+            source_parts.append(f'<span class="via">via <a href="{agg_url}" target="_blank">{agg_name}</a></span>')
+        
+        # Feed source
+        source_parts.append(f'<span class="feed">Feed: {article.get("feed_source", "Unknown")}</span>')
+        
+        # Published date
+        source_parts.append(f'<span class="date">Published: {article.get("published", "Unknown date")}</span>')
+        
+        html.append(' | '.join(source_parts))
+        html.append('</div>')  # article-meta
+        
+        html.append('</div>')  # article
+        
+        return '\n'.join(html)
+    
+    def _get_enhanced_css(self):
+        """Get enhanced CSS for aggregator-aware display."""
+        return """
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .timestamp {
+            color: #7f8c8d;
+            font-style: italic;
+            margin-bottom: 20px;
+        }
+        
+        .aggregator-stats {
+            background-color: #ecf0f1;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+        }
+        
+        .aggregator-stats h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .cluster {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .cluster-headline {
+            color: #2c3e50;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        .cluster-summary {
+            color: #555;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-left: 3px solid #3498db;
+            border-radius: 4px;
+            line-height: 1.8;
+        }
+        
+        .cluster-articles {
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        
+        .article {
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .article:last-child {
+            border-bottom: none;
+        }
+        
+        .article-title {
+            margin: 0 0 8px 0;
+            font-size: 1.1em;
+        }
+        
+        .article-title a {
+            color: #2980b9;
+            text-decoration: none;
+        }
+        
+        .article-title a:hover {
+            text-decoration: underline;
+            color: #21618c;
+        }
+        
+        .article-meta {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            line-height: 1.5;
+        }
+        
+        .article-meta .source strong {
+            color: #27ae60;
+        }
+        
+        .article-meta .via {
+            color: #e74c3c;
+            font-style: italic;
+        }
+        
+        .article-meta .via a {
+            color: #c0392b;
+            text-decoration: none;
+        }
+        
+        .article-meta .via a:hover {
+            text-decoration: underline;
+        }
+        
+        .article-meta .feed {
+            color: #8e44ad;
+        }
+        
+        .article-meta .date {
+            color: #95a5a6;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .cluster {
+                padding: 15px;
+            }
+            
+            .article-meta {
+                font-size: 0.8em;
+                line-height: 1.8;
+            }
+            
+            .article-meta span {
+                display: block;
+                margin-bottom: 2px;
+            }
+        }
+        """
+    
+    def _get_aggregator_stats_html(self):
+        """Generate HTML for aggregator statistics."""
+        if self.aggregator_stats['total_aggregator_links'] == 0:
+            return ''
+        
+        stats = self.aggregator_stats
+        success_rate = 0
+        if stats['total_aggregator_links'] > 0:
+            success_rate = (stats['successful_extractions'] / stats['total_aggregator_links']) * 100
+        
+        html = [
+            '<div class="aggregator-stats">',
+            '<h3>📊 Source Extraction Statistics</h3>',
+            '<ul style="margin: 0; padding-left: 20px;">',
+            f'<li>Total aggregator links processed: <strong>{stats["total_aggregator_links"]}</strong></li>',
+            f'<li>Successful source extractions: <strong>{stats["successful_extractions"]}</strong> ({success_rate:.1f}%)</li>',
+        ]
+        
+        if stats['by_aggregator']:
+            html.append('<li>By aggregator:')
+            html.append('<ul>')
+            for agg, count in sorted(stats['by_aggregator'].items()):
+                html.append(f'<li>{agg}: {count} links</li>')
+            html.append('</ul>')
+            html.append('</li>')
+        
+        html.extend(['</ul>', '</div>'])
+        
+        return '\n'.join(html)
