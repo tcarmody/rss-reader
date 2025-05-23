@@ -123,7 +123,7 @@ def select_model_by_complexity(complexity_score: float) -> str:
     # Simplified model selection for our streamlined models
     if complexity_score >= 0.6:
         # High complexity content goes to the most capable model
-        selected_model = "claude-3.7-sonnet"
+        selected_model = "claude-sonnet-4"
     else:
         # Low to medium complexity content goes to the faster model
         selected_model = "claude-3.5-haiku"

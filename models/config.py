@@ -9,15 +9,15 @@ logger = logging.getLogger(__name__)
 
 # Complete model identifiers for API calls
 MODEL_IDENTIFIERS = {
-    "claude-3.7-sonnet": "claude-3-7-sonnet-latest",  # Latest Sonnet version
+    "claude-sonnet-4": "claude-sonnet-4-20250514",  # Latest Sonnet version
     "claude-3.5-haiku": "claude-3-5-haiku-latest"     # Latest Haiku version
 }
 
 # Model properties and characteristics
 MODEL_PROPERTIES = {
-    "claude-3.7-sonnet": {
-        "name": "Claude 3.7 Sonnet",
-        "description": "Most intelligent model, released February 2025",
+    "claude-sonnet-4": {
+        "name": "Claude Sonnet 4",
+        "description": "Most intelligent model, released May 2025",
         "strengths": ["Complex analysis", "Advanced reasoning", "Technical content"],
         "speed": "medium",
         "cost": "high",
@@ -38,14 +38,14 @@ MODEL_PROPERTIES = {
 }
 
 # Default model for fallback
-DEFAULT_MODEL = "claude-3.7-sonnet"
+DEFAULT_MODEL = "claude-sonnet-4"
 
 # Mapping from shorthand names to full model names
 SHORTHAND_MAPPING = {
-    "sonnet-3.7": "claude-3.7-sonnet",
+    "sonnet-4": "claude-sonnet-4",
     "haiku-3.5": "claude-3.5-haiku",
     "haiku": "claude-3.5-haiku",    # All Haiku references point to 3.5
-    "sonnet": "claude-3.7-sonnet"   # Default Sonnet is 3.7
+    "sonnet": "claude-sonnet-4"   # Default Sonnet is 4
 }
 
 def select_model_by_complexity(complexity_score: float) -> str:
@@ -61,7 +61,7 @@ def select_model_by_complexity(complexity_score: float) -> str:
     # Simplified model selection
     if complexity_score >= 0.6:
         # High complexity content goes to the most capable model
-        selected_model = "claude-3.7-sonnet"
+        selected_model = "claude-sonnet-4"
     else:
         # Low to medium complexity content goes to the faster model
         selected_model = "claude-3.5-haiku"

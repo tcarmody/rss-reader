@@ -138,7 +138,7 @@ The system consists of several key components:
 - Added hdbscan, numpy, safetensors, and transformers to requirements.txt
 - Updated version specifications for key dependencies
 - Added Google Auth dependency to resolve Anthropic API integration issues
-- Added support for the latest Claude model (Claude 3.7 Sonnet)
+- Added support for the latest Claude model (Claude Sonnet 4)
 
 ## Troubleshooting
 
