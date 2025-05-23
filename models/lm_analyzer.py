@@ -49,7 +49,7 @@ class LMClusterAnalyzer:
         
         # Set API call limit
         self.api_call_count = 0
-        self.max_api_calls = int(os.environ.get('MAX_LM_API_CALLS', '50'))
+        self.max_api_calls = int(os.environ.get('MAX_LM_API_CALLS', '250'))
         
     def _get_api_caller(self):
         """
@@ -160,7 +160,12 @@ class LMClusterAnalyzer:
         
         if not api_caller or not self._handle_rate_limits():
             # Use fast lexical similarity as fallback
+            # IMPROVED: When in fallback mode, slightly boost similarity
+            # to reduce over-splitting of clusters
             similarity = self._fast_text_similarity(text1, text2)
+            
+            # Apply a small boost to reduce false splits, up to a reasonable limit
+            similarity = min(0.9, similarity * 1.2)
             
             # Cache the result
             self.comparison_cache[cache_key] = similarity
@@ -336,12 +341,31 @@ class LMClusterAnalyzer:
         """
         self.logger.info(f"Using pairwise clustering for {len(articles)} articles")
         
+        # IMPROVED: If this is being called as a fallback when refining existing clusters,
+        # just keep the articles together rather than splitting everything up
+        if len(articles) <= 10:  # This is likely a pre-clustered group
+            # Check if this is a refinement operation by looking at the call stack
+            import traceback
+            stack = traceback.extract_stack()
+            caller_names = [frame[2] for frame in stack[-5:]]
+            refinement_indicators = ['split_cluster', 'check_cluster_coherence', 'refine_clusters']
+            
+            is_refinement = any(indicator in caller for caller in caller_names)
+            
+            if is_refinement:
+                self.logger.info("Preserving existing cluster due to API limitation")
+                return [[i+1 for i in range(len(articles))]]  # Keep as one cluster
+        
         # Default text extractor
         if text_extractor is None:
             text_extractor = lambda a: f"{a.get('title', '')} {a.get('content', '')}"
             
         # Extract texts first
         texts = [text_extractor(a) for a in articles]
+        
+        # IMPROVED: Check if we're in API fallback mode
+        api_caller, _ = self._get_api_caller()
+        using_fallback = (not api_caller) or (self.api_call_count >= self.max_api_calls)
         
         # Initial clusters - each article in its own cluster
         clusters = {i: [i+1] for i in range(len(articles))}
@@ -386,6 +410,9 @@ class LMClusterAnalyzer:
         comparisons_done = 0
         max_total_comparisons = min(max_comparisons, len(articles) * 3)  # Reasonable upper bound
         
+        # IMPROVED: If in fallback mode, use a lower similarity threshold to keep clusters
+        fallback_threshold = similarity_threshold * 0.8 if using_fallback else similarity_threshold
+        
         # First process title matches
         for i, j, title_sim in title_matches:
             if comparisons_done >= max_total_comparisons:
@@ -399,7 +426,8 @@ class LMClusterAnalyzer:
             similarity = self.compare_article_pair(texts[i], texts[j])
             comparisons_done += 1
             
-            if similarity >= similarity_threshold:
+            # IMPROVED: Use the adjusted threshold when in fallback mode
+            if similarity >= fallback_threshold:
                 union(i, j)
                 self.logger.debug(f"Clustered articles {i+1} and {j+1} with similarity {similarity:.2f}")
         
