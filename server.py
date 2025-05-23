@@ -4,6 +4,10 @@
 Web server for RSS Reader using FastAPI.
 """
 
+# Set this environment variable to avoid HuggingFace tokenizers warnings
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 # Remove the problematic import line
 # from common.batch_processing import apply
 # apply()
@@ -11,7 +15,6 @@ Web server for RSS Reader using FastAPI.
 # Instead, import the BatchProcessor class directly
 from common.batch_processing import BatchProcessor
 
-import os
 import logging
 import sys
 from datetime import datetime, timezone

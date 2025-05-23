@@ -3,7 +3,10 @@
 Main application entry point for the refactored RSS reader.
 """
 
+# Set this environment variable to avoid HuggingFace tokenizers warnings
 import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 import asyncio
 import logging
 from typing import List, Dict, Optional
