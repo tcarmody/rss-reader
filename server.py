@@ -31,6 +31,9 @@ from common.http import create_http_session
 from common.archive import fetch_article_content, is_paywalled
 from common.logging import configure_logging
 
+# Import bookmark functionality
+from services.bookmark_manager import BookmarkManager
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -48,6 +51,9 @@ app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__
 
 # Configure templates
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), 'templates'))
+
+# Initialize bookmark manager
+bookmark_manager = BookmarkManager()
 
 # Store the latest processed data
 latest_data = {
@@ -508,6 +514,166 @@ async def status(request: Request):
         'has_enhanced_clustering': has_enhanced_clustering,
         'has_optimized_clustering': has_optimized_clustering
     })
+
+# Bookmark API endpoints
+@app.post("/api/bookmarks")
+async def create_bookmark(
+    request: Request,
+    title: str = Form(...),
+    url: str = Form(...),
+    summary: Optional[str] = Form(None),
+    content: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None)
+):
+    """Add a new bookmark."""
+    tag_list = tags.split(',') if tags else []
+    bookmark_id = bookmark_manager.add_bookmark(
+        title=title,
+        url=url,
+        summary=summary,
+        content=content,
+        tags=tag_list
+    )
+    return {"id": bookmark_id, "status": "success"}
+
+@app.get("/api/bookmarks")
+async def get_bookmarks(
+    request: Request,
+    read: Optional[bool] = None,
+    tags: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0
+):
+    """Get all bookmarks with optional filtering."""
+    tag_list = tags.split(',') if tags else None
+    bookmarks = bookmark_manager.get_bookmarks(
+        filter_read=read,
+        tags=tag_list,
+        limit=limit,
+        offset=offset
+    )
+    return {"bookmarks": bookmarks}
+
+@app.get("/api/bookmarks/{bookmark_id}")
+async def get_bookmark(
+    request: Request,
+    bookmark_id: int
+):
+    """Get a single bookmark by ID."""
+    bookmark = bookmark_manager.get_bookmark(bookmark_id)
+    if not bookmark:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+    return bookmark
+
+@app.put("/api/bookmarks/{bookmark_id}")
+async def update_bookmark(
+    request: Request,
+    bookmark_id: int,
+    title: Optional[str] = Form(None),
+    url: Optional[str] = Form(None),
+    summary: Optional[str] = Form(None),
+    content: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+    read_status: Optional[bool] = Form(None)
+):
+    """Update a bookmark."""
+    update_data = {}
+    if title is not None:
+        update_data['title'] = title
+    if url is not None:
+        update_data['url'] = url
+    if summary is not None:
+        update_data['summary'] = summary
+    if content is not None:
+        update_data['content'] = content
+    if tags is not None:
+        update_data['tags'] = tags.split(',') if tags else []
+    if read_status is not None:
+        update_data['read_status'] = read_status
+        
+    success = bookmark_manager.update_bookmark(bookmark_id, **update_data)
+    if not success:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+    return {"status": "success"}
+
+@app.put("/api/bookmarks/{bookmark_id}/read")
+async def update_read_status(
+    request: Request,
+    bookmark_id: int,
+    status: bool = True
+):
+    """Mark a bookmark as read/unread."""
+    success = bookmark_manager.mark_as_read(bookmark_id, status)
+    if not success:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+    return {"status": "success"}
+
+@app.delete("/api/bookmarks/{bookmark_id}")
+async def delete_bookmark(
+    request: Request,
+    bookmark_id: int
+):
+    """Delete a bookmark."""
+    success = bookmark_manager.delete_bookmark(bookmark_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+    return {"status": "success"}
+
+@app.get("/api/bookmarks/export/{format_type}")
+async def export_bookmarks(
+    request: Request,
+    format_type: str,
+    read: Optional[bool] = None,
+    tags: Optional[str] = None
+):
+    """Export bookmarks to JSON or CSV format."""
+    if format_type.lower() not in ['json', 'csv']:
+        raise HTTPException(status_code=400, detail="Format must be 'json' or 'csv'")
+        
+    tag_list = tags.split(',') if tags else None
+    try:
+        data = bookmark_manager.export_bookmarks(
+            format_type=format_type.lower(),
+            filter_read=read,
+            tags=tag_list
+        )
+        
+        # Set appropriate content type and filename
+        content_type = "application/json" if format_type.lower() == 'json' else "text/csv"
+        filename = f"bookmarks_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{format_type.lower()}"
+        
+        response = Response(content=data)
+        response.headers["Content-Type"] = content_type
+        response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/bookmarks/import")
+async def import_bookmarks(
+    request: Request,
+    json_data: str = Form(...)
+):
+    """Import bookmarks from JSON data."""
+    try:
+        count = bookmark_manager.import_from_json(json_data)
+        return {"status": "success", "imported": count}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# Bookmark UI routes
+@app.get("/bookmarks", response_class=HTMLResponse)
+async def view_bookmarks(request: Request):
+    """Render the bookmarks page."""
+    bookmarks = bookmark_manager.get_bookmarks()
+    return templates.TemplateResponse(
+        "bookmarks.html",
+        {
+            "request": request,
+            "bookmarks": bookmarks,
+            **get_common_template_vars(request)
+        }
+    )
 
 if __name__ == '__main__':
     import uvicorn

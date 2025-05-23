@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+
+{% block title %}My Bookmarks - RSS Reader{% endblock %}
+
+{% block content %}
+<div class="bookmarks-container">
+  <header class="page-header">
+    <h1>My Saved Articles</h1>
+    <div class="header-actions">
+      <a href="/" class="button outline">Back to Feed</a>
+      <div class="dropdown">
+        <button class="button primary dropdown-toggle">Export <span class="caret"></span></button>
+        <div class="dropdown-menu">
+          <a href="/api/bookmarks/export/json" class="dropdown-item">Export as JSON</a>
+          <a href="/api/bookmarks/export/csv" class="dropdown-item">Export as CSV</a>
+        </div>
+      </div>
+    </div>
+  </header>
+  
+  <div class="filters">
+    <div class="filter-buttons">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="unread">Unread</button>
+      <button class="filter-btn" data-filter="read">Read</button>
+    </div>
+    
+    <div class="tag-filter">
+      <input type="text" id="tag-search" placeholder="Filter by tags..." class="form-input">
+    </div>
+  </div>
+  
+  <div class="bookmarks-list">
+    {% if bookmarks %}
+      {% for bookmark in bookmarks %}
+      <div class="bookmark-item {% if bookmark.read_status %}read{% else %}unread{% endif %}" 
+           data-id="{{ bookmark.id }}" 
+           data-tags="{{ bookmark.tags|join(',') }}">
+        <h3 class="bookmark-title">
+          <a href="{{ bookmark.url }}" target="_blank" rel="noopener noreferrer">{{ bookmark.title }}</a>
+        </h3>
+        
+        <div class="bookmark-meta">
+          <span class="bookmark-date">Saved on {{ bookmark.date_added }}</span>
+          {% if bookmark.tags %}
+          <div class="bookmark-tags">
+            {% for tag in bookmark.tags %}
+            <span class="tag">{{ tag }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        
+        {% if bookmark.summary %}
+        <div class="bookmark-summary">
+          {{ bookmark.summary }}
+        </div>
+        {% endif %}
+        
+        <div class="bookmark-actions">
+          <button class="read-toggle button small outline" data-id="{{ bookmark.id }}" data-status="{{ bookmark.read_status }}">
+            {% if bookmark.read_status %}Mark as unread{% else %}Mark as read{% endif %}
+          </button>
+          <button class="delete-btn button small danger outline" data-id="{{ bookmark.id }}">Delete</button>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <p>You haven't saved any articles yet.</p>
+        <p>Browse the <a href="/">feed</a> and click "Save for later" on articles you want to read later.</p>
+      </div>
+    {% endif %}
+  </div>
+  
+  <!-- Import Modal -->
+  <div id="importModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Import Bookmarks</h2>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="importForm">
+          <div class="form-group">
+            <label for="importData">Paste JSON data:</label>
+            <textarea id="importData" name="json_data" rows="10" class="form-input" required></textarea>
+          </div>
+          <button type="submit" class="button primary">Import</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .bookmarks-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .header-actions {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .filters {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    align-items: center;
+  }
+  
+  .filter-buttons {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .filter-btn {
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    background: #f5f5f5;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .filter-btn.active {
+    background: #007bff;
+    color: white;
+    border-color: #0069d9;
+  }
+  
+  .tag-filter {
+    width: 250px;
+  }
+  
+  .bookmarks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .bookmark-item {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  
+  .bookmark-item.read {
+    opacity: 0.7;
+  }
+  
+  .bookmark-title {
+    margin-top: 0;
+    margin-bottom: 10px;
+  }
+  
+  .bookmark-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 10px;
+  }
+  
+  .bookmark-tags {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+  
+  .tag {
+    background: #e9ecef;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+  }
+  
+  .bookmark-summary {
+    margin-bottom: 15px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  
+  .bookmark-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+  }
+  
+  /* Dropdown styles */
+  .dropdown {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: white;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    border-radius: 4px;
+  }
+  
+  .dropdown-item {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+  }
+  
+  .dropdown-item:hover {
+    background-color: #f1f1f1;
+  }
+  
+  .dropdown:hover .dropdown-menu {
+    display: block;
+  }
+  
+  /* Modal styles */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.4);
+  }
+  
+  .modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 60%;
+    max-width: 600px;
+  }
+  
+  .close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Filter functionality
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const bookmarkItems = document.querySelectorAll('.bookmark-item');
+    const tagSearch = document.getElementById('tag-search');
+    
+    // Filter by read status
+    filterButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        // Update active button
+        filterButtons.forEach(btn => btn.classList.remove('active'));
+        this.classList.add('active');
+        
+        const filter = this.dataset.filter;
+        
+        bookmarkItems.forEach(item => {
+          if (filter === 'all') {
+            item.style.display = '';
+          } else if (filter === 'read') {
+            item.style.display = item.classList.contains('read') ? '' : 'none';
+          } else if (filter === 'unread') {
+            item.style.display = item.classList.contains('unread') ? '' : 'none';
+          }
+        });
+      });
+    });
+    
+    // Filter by tags
+    tagSearch.addEventListener('input', function() {
+      const searchTerm = this.value.toLowerCase();
+      
+      bookmarkItems.forEach(item => {
+        const tags = item.dataset.tags.toLowerCase();
+        
+        if (searchTerm === '' || tags.includes(searchTerm)) {
+          item.style.display = '';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+    
+    // Mark as read/unread
+    document.querySelectorAll('.read-toggle').forEach(button => {
+      button.addEventListener('click', async function() {
+        const id = this.dataset.id;
+        const currentStatus = this.dataset.status === 'true';
+        const newStatus = !currentStatus;
+        
+        try {
+          const response = await fetch(`/api/bookmarks/${id}/read?status=${newStatus}`, {
+            method: 'PUT'
+          });
+          
+          if (response.ok) {
+            // Update UI
+            const bookmarkItem = this.closest('.bookmark-item');
+            if (newStatus) {
+              bookmarkItem.classList.remove('unread');
+              bookmarkItem.classList.add('read');
+              this.textContent = 'Mark as unread';
+            } else {
+              bookmarkItem.classList.remove('read');
+              bookmarkItem.classList.add('unread');
+              this.textContent = 'Mark as read';
+            }
+            this.dataset.status = String(newStatus);
+          }
+        } catch (error) {
+          console.error('Error updating read status:', error);
+        }
+      });
+    });
+    
+    // Delete bookmark
+    document.querySelectorAll('.delete-btn').forEach(button => {
+      button.addEventListener('click', async function() {
+        if (!confirm('Are you sure you want to delete this bookmark?')) {
+          return;
+        }
+        
+        const id = this.dataset.id;
+        
+        try {
+          const response = await fetch(`/api/bookmarks/${id}`, {
+            method: 'DELETE'
+          });
+          
+          if (response.ok) {
+            // Remove from UI
+            const bookmarkItem = this.closest('.bookmark-item');
+            bookmarkItem.remove();
+          }
+        } catch (error) {
+          console.error('Error deleting bookmark:', error);
+        }
+      });
+    });
+    
+    // Import modal
+    const importModal = document.getElementById('importModal');
+    const importForm = document.getElementById('importForm');
+    
+    // Show modal when Import button is clicked
+    document.querySelector('.import-btn').addEventListener('click', function() {
+      importModal.style.display = 'block';
+    });
+    
+    // Close modal
+    document.querySelector('.close').addEventListener('click', function() {
+      importModal.style.display = 'none';
+    });
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+      if (event.target === importModal) {
+        importModal.style.display = 'none';
+      }
+    });
+    
+    // Handle import form submission
+    importForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData(importForm);
+      
+      try {
+        const response = await fetch('/api/bookmarks/import', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          alert(`Successfully imported ${result.imported} bookmarks. The page will now reload.`);
+          importModal.style.display = 'none';
+          window.location.reload();
+        } else {
+          alert(`Error: ${result.detail}`);
+        }
+      } catch (error) {
+        console.error('Error importing bookmarks:', error);
+        alert('An error occurred while importing bookmarks.');
+      }
+    });
+  });
+</script>
+{% endblock %}
