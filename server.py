@@ -60,7 +60,8 @@ latest_data = {
 # Default global settings (for feed processing)
 DEFAULT_GLOBAL_SETTINGS = {
     'batch_size': 25,
-    'batch_delay': 15
+    'batch_delay': 15,
+    'per_feed_limit': 25  # Maximum articles per feed
 }
 
 # Default clustering settings
@@ -261,14 +262,30 @@ async def reset_clustering_settings(request: Request):
 async def refresh_feeds(
     request: Request,
     feeds: Optional[str] = Form(None),
-    use_default: Optional[str] = Form(None)
-    # batch_size and batch_delay will be taken from global_settings
+    use_default: Optional[str] = Form(None),
+    batch_size: Optional[int] = Form(None),
+    batch_delay: Optional[int] = Form(None),
+    per_feed_limit: Optional[int] = Form(None)
 ):
     """Process RSS feeds and update the latest data."""
     common_vars = get_common_template_vars(request) # For error responses
     global_settings = common_vars['global_settings']
+    
+    # Update global settings from form values if provided
+    if batch_size is not None:
+        global_settings['batch_size'] = batch_size
+    if batch_delay is not None:
+        global_settings['batch_delay'] = batch_delay
+    if per_feed_limit is not None:
+        global_settings['per_feed_limit'] = per_feed_limit
+    
+    # Save updated settings to session
+    request.session['global_settings'] = global_settings
+    
+    # Get values to use for processing
     batch_size = global_settings['batch_size']
     batch_delay = global_settings['batch_delay']
+    per_feed_limit = global_settings['per_feed_limit']
 
     try:
         feeds_from_form = feeds.strip() if feeds else ''
@@ -312,11 +329,13 @@ async def refresh_feeds(
         from main import EnhancedRSSReader as MainEnhancedRSSReader # Avoid name clash
 
         feeds_to_pass = None if current_use_default else current_feeds_list
+        per_feed_limit = global_settings.get('per_feed_limit', 25)
         reader = MainEnhancedRSSReader(
             feeds=feeds_to_pass, # Pass None to use default file, or the list
             batch_size=batch_size,
             batch_delay=batch_delay,
-            max_workers=max_workers
+            max_workers=max_workers,
+            per_feed_limit=per_feed_limit
         )
         
         output_file = await reader.process_feeds()

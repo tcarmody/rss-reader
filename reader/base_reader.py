@@ -46,7 +46,7 @@ class RSSReader:
         print(f"Generated output at: {output_file}")
     """
 
-    def __init__(self, feeds=None, batch_size=25, batch_delay=15):
+    def __init__(self, feeds=None, batch_size=25, batch_delay=15, per_feed_limit=25):
         """
         Initialize RSSReader with feeds and settings.
         
@@ -54,6 +54,7 @@ class RSSReader:
             feeds: List of RSS feed URLs (None for default feeds, [] for no feeds)
             batch_size: Number of feeds to process in a batch
             batch_delay: Delay between batches in seconds
+            per_feed_limit: Maximum number of articles to process per feed
         """
         # Explicitly handle None vs empty list
         if feeds is None:
@@ -65,6 +66,7 @@ class RSSReader:
             
         self.batch_size = batch_size
         self.batch_delay = batch_delay
+        self.per_feed_limit = per_feed_limit
         self.session = create_http_session()
         self.batch_processor = BatchProcessor(max_workers=5)
         self.summarizer = ArticleSummarizer()
@@ -491,7 +493,7 @@ class RSSReader:
                 feed_title = feed.feed.get('title', feed_url)
                 logging.info(f"📰 Found {len(feed.entries)} articles in feed: {feed_url}")
 
-                for entry in feed.entries[:self.batch_size]:
+                for entry in feed.entries[:self.per_feed_limit]:
                     article = self._parse_entry(entry, feed_title)
                     if article:
                         articles.append(article)
