@@ -30,6 +30,9 @@ langdetect>=1.0.9
 ratelimit>=2.2.0
 cachetools>=5.3.0  # Added for improved caching functionality
 
+# Database
+SQLAlchemy>=2.0.0  # For bookmark database functionality
+
 # ML Dependencies
 torch>=1.10.0
 safetensors>=0.3.0
