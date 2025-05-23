@@ -66,11 +66,11 @@ DEFAULT_GLOBAL_SETTINGS = {
 # Default clustering settings
 DEFAULT_CLUSTERING_SETTINGS = {
     'enable_multi_article': True,
-    'similarity_threshold': 0.7,
+    'similarity_threshold': 0.8,
     'max_articles_per_batch': 5,
     'use_enhanced_clustering': True,
     'time_range_enabled': True,
-    'time_range_value': 168, # Default to 7 days in hours
+    'time_range_value': 72, # Default to 3 days in hours
     'time_range_unit': 'hours',
     'fast_summarization_enabled': True, # Added based on feed-summary.html
     'auto_select_model': True          # Added based on feed-summary.html
