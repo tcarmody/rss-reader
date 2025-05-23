@@ -1,13 +1,56 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Bookmarks - RSS Reader</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+  <style>
+  /* Bookmark styles */
+  .bookmarks-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .header-actions {
+    display: flex;
+    gap: 10px;
+  }
+  </style>
+</head>
+<body>
+<div class="app-container">
+  <nav class="nav">
+    <div class="nav-container">
+      <a href="{{ url_for('index') }}" class="logo" aria-label="Data Points AI Home">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <title>Data Points AI Logo</title>
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 6v6l4 2"></path>
+        </svg>
+        <span class="logo-text">Data Points AI</span>
+      </a>
+      
+      <div class="nav-actions">
+        <a href="{{ url_for('welcome') }}" class="button outline">Home / Settings</a>
+        <a href="{{ url_for('index') }}" class="button outline">Back to Feed</a>
+      </div>
+    </div>
+  </nav>
 
-{% block title %}My Bookmarks - RSS Reader{% endblock %}
-
-{% block content %}
+  <main class="main wide">
 <div class="bookmarks-container">
   <header class="page-header">
     <h1>My Saved Articles</h1>
     <div class="header-actions">
-      <a href="/" class="button outline">Back to Feed</a>
       <div class="dropdown">
         <button class="button primary dropdown-toggle">Export <span class="caret"></span></button>
         <div class="dropdown-menu">
@@ -15,6 +58,7 @@
           <a href="/api/bookmarks/export/csv" class="dropdown-item">Export as CSV</a>
         </div>
       </div>
+      <button class="button outline import-btn">Import</button>
     </div>
   </header>
   
@@ -422,4 +466,11 @@
     });
   });
 </script>
-{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <p>Powered by Data Points AI with Anthropic Claude API</p>
+  </footer>
+</div>
+</body>
+</html>
