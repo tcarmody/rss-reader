@@ -289,7 +289,7 @@
                   <span style="margin-left: 0.5rem;">Part of {{ article.cluster_size }}-article cluster</span>
                 {% endif %}
                 <div class="article-actions">
-                  <button class="bookmark-btn" data-article-id="{{ loop.index }}_{{ loop.parent.loop.index }}" data-title="{{ article.title }}" data-url="{{ article.link }}" data-summary="{{ article.summary.summary if article.summary and article.summary.summary else '' }}">
+                  <button class="bookmark-btn" data-article-id="{{ article.link | urlencode }}" data-title="{{ article.title }}" data-url="{{ article.link }}" data-summary="{{ article.summary.summary if article.summary and article.summary.summary else '' }}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bookmark-icon">
                       <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                     </svg>
