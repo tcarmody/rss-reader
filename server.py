@@ -518,6 +518,167 @@ async def status(request: Request):
         'has_optimized_clustering': has_optimized_clustering
     })
 
+# Summarization API endpoints
+@app.post("/api/summarize")
+async def summarize_article(request: Request):
+    """API endpoint to summarize a single article URL."""
+    try:
+        data = await request.json()
+        url = data.get('url')
+        
+        if not url:
+            raise HTTPException(status_code=400, detail="URL is required")
+            
+        # Ensure URL has proper scheme
+        full_url = url if url.startswith(('http://', 'https://')) else 'https://' + url
+        
+        # Initialize summarization engine
+        from main import setup_summarization_engine
+        from summarization.fast_summarizer import create_fast_summarizer
+        
+        summarizer_engine = setup_summarization_engine()
+        fast_summarizer = create_fast_summarizer(original_summarizer=summarizer_engine)
+        
+        # Create HTTP session
+        http_session = create_http_session()
+        
+        # Enable paywall bypass if configured
+        os.environ['ENABLE_PAYWALL_BYPASS'] = 'true' if request.session.get('paywall_bypass_enabled', True) else 'false'
+        
+        # Fetch article content
+        content = fetch_article_content(full_url, http_session)
+        
+        if not content or len(content) < 100:
+            raise HTTPException(status_code=400, detail="Could not extract sufficient content from the URL")
+        
+        # Prepare article data
+        domain = urlparse(full_url).netloc
+        article = {
+            'text': content, 
+            'content': content,
+            'title': f"Article from {domain}", 
+            'url': full_url, 
+            'link': full_url,
+            'feed_source': domain, 
+            'published_iso_format': datetime.now(timezone.utc).isoformat(),
+            'published': datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        }
+        
+        # Generate summary
+        result = await fast_summarizer.summarize(article, auto_select_model=True)
+        
+        if not result or 'summary' not in result:
+            raise HTTPException(status_code=500, detail="Failed to generate summary")
+        
+        # Extract summary data
+        summary_data = result['summary']
+        title = summary_data.get('headline', article.get('title', "Article Summary"))
+        summary = summary_data.get('summary', "No summary available")
+        
+        return {
+            "title": title,
+            "summary": summary,
+            "url": full_url,
+            "model_used": result.get('model_used', 'N/A')
+        }
+    
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logging.error(f"Error summarizing article: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error summarizing article: {str(e)}")
+
+@app.post("/api/summarize-batch")
+async def summarize_articles_batch(request: Request):
+    """API endpoint to summarize multiple article URLs in a batch."""
+    try:
+        data = await request.json()
+        urls = data.get('urls', [])
+        
+        if not urls:
+            raise HTTPException(status_code=400, detail="No URLs provided")
+        
+        # Initialize summarization engine
+        from main import setup_summarization_engine
+        from summarization.fast_summarizer import create_fast_summarizer
+        
+        common_vars = get_common_template_vars(request)
+        clustering_settings = common_vars['clustering_settings']
+        max_workers = clustering_settings.get('max_articles_per_batch', 3)
+        
+        summarizer_engine = setup_summarization_engine()
+        fast_summarizer = create_fast_summarizer(
+            original_summarizer=summarizer_engine, 
+            max_batch_workers=max_workers
+        )
+        
+        # Create HTTP session
+        http_session = create_http_session()
+        
+        # Enable paywall bypass if configured
+        os.environ['ENABLE_PAYWALL_BYPASS'] = 'true' if request.session.get('paywall_bypass_enabled', True) else 'false'
+        
+        # Fetch content for all URLs
+        processed_articles = []
+        failed_urls = {}
+        
+        for url in urls:
+            full_url = url if url.startswith(('http://', 'https://')) else 'https://' + url
+            try:
+                content = fetch_article_content(full_url, http_session)
+                if content and len(content) >= 100:
+                    domain = urlparse(full_url).netloc
+                    processed_articles.append({
+                        'text': content, 
+                        'content': content,
+                        'title': f"Article from {domain}", 
+                        'url': full_url, 
+                        'link': full_url,
+                        'feed_source': domain, 
+                        'published_iso_format': datetime.now(timezone.utc).isoformat(),
+                        'published': datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                    })
+                else:
+                    failed_urls[full_url] = "Could not extract sufficient content or content too short."
+            except Exception as e:
+                logging.error(f"Error fetching content for {full_url}: {str(e)}")
+                failed_urls[full_url] = f"Error fetching content: {str(e)}"
+        
+        if not processed_articles:
+            raise HTTPException(status_code=400, detail="Could not process any of the provided URLs")
+        
+        # Generate summaries for all articles
+        batch_results = await fast_summarizer.batch_summarize(
+            articles=processed_articles, 
+            max_concurrent=max_workers, 
+            auto_select_model=True
+        )
+        
+        # Format results
+        summaries = []
+        for result in batch_results:
+            if 'original' in result and 'summary' in result:
+                original_article = result['original']
+                summary_data = result['summary']
+                
+                summaries.append({
+                    'title': summary_data.get('headline', original_article.get('title', "Summary")),
+                    'summary': summary_data.get('summary', "No summary available"),
+                    'url': original_article.get('link', original_article.get('url', '#')),
+                    'model_used': result.get('model_used', 'N/A')
+                })
+        
+        return {
+            "summaries": summaries,
+            "failed_urls": failed_urls
+        }
+    
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logging.error(f"Error summarizing articles batch: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error summarizing articles batch: {str(e)}")
+
 # Bookmark API endpoints
 @app.post("/api/bookmarks")
 async def create_bookmark(
