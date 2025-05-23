@@ -74,6 +74,16 @@
     </div>
   </div>
   
+  <div class="bulk-actions">
+    <button id="summarize-all-btn" class="button primary">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 9 9 17 23 1"></polyline>
+      </svg>
+      Summarize All Selected
+    </button>
+    <div class="selection-info" id="selection-count" style="display: none;">0 articles selected</div>
+  </div>
+  
   <div class="bookmarks-list">
     {% if bookmarks %}
       {% for bookmark in bookmarks %}
@@ -102,6 +112,20 @@
         {% endif %}
         
         <div class="bookmark-actions">
+          <label class="checkbox-container">
+            <input type="checkbox" class="bookmark-checkbox" data-id="{{ bookmark.id }}" data-url="{{ bookmark.url }}">
+            <span class="checkmark"></span>
+          </label>
+          <button class="summarize-btn button small primary outline" data-id="{{ bookmark.id }}" data-url="{{ bookmark.url }}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Summarize
+          </button>
           <button class="read-toggle button small outline" data-id="{{ bookmark.id }}" data-status="{{ bookmark.read_status }}">
             {% if bookmark.read_status %}Mark as unread{% else %}Mark as read{% endif %}
           </button>
@@ -144,6 +168,61 @@
     padding: 20px;
   }
   
+  /* Summary modal styles */
+  .summary-content {
+    padding: 15px;
+  }
+  
+  .loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+  }
+  
+  .spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top: 4px solid var(--primary-500);
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .summary-item {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--neutral-200);
+  }
+  
+  .summary-item:last-child {
+    border-bottom: none;
+  }
+  
+  .summary-text {
+    margin: 15px 0;
+    line-height: 1.6;
+  }
+  
+  .summary-meta {
+    font-size: 0.9rem;
+    margin-top: 10px;
+  }
+  
+  .error-message {
+    color: var(--danger-500);
+    padding: 15px;
+    background-color: var(--danger-100);
+    border-radius: 4px;
+  }
+  
   .page-header {
     display: flex;
     justify-content: space-between;
@@ -161,6 +240,77 @@
     justify-content: space-between;
     margin-bottom: 20px;
     align-items: center;
+  }
+  
+  .bulk-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: var(--neutral-100);
+    border-radius: 4px;
+  }
+  
+  .selection-info {
+    font-size: 0.9rem;
+    color: var(--neutral-700);
+  }
+  
+  .checkbox-container {
+    display: inline-block;
+    position: relative;
+    padding-left: 25px;
+    margin-right: 12px;
+    cursor: pointer;
+    font-size: 16px;
+    user-select: none;
+  }
+  
+  .checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
+  
+  .checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 18px;
+    width: 18px;
+    background-color: #eee;
+    border-radius: 3px;
+  }
+  
+  .checkbox-container:hover input ~ .checkmark {
+    background-color: #ccc;
+  }
+  
+  .checkbox-container input:checked ~ .checkmark {
+    background-color: var(--primary-500);
+  }
+  
+  .checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+  }
+  
+  .checkbox-container input:checked ~ .checkmark:after {
+    display: block;
+  }
+  
+  .checkbox-container .checkmark:after {
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
   }
   
   .filter-buttons {
@@ -319,6 +469,41 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // Summarization modal
+    const summaryModal = document.createElement('div');
+    summaryModal.id = 'summaryModal';
+    summaryModal.className = 'modal';
+    summaryModal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Article Summary</h2>
+          <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div id="summary-content" class="summary-content">
+            <div class="loading-spinner">
+              <div class="spinner"></div>
+              <p>Generating summary...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(summaryModal);
+    
+    const closeBtn = summaryModal.querySelector('.close');
+    closeBtn.onclick = function() {
+      summaryModal.style.display = 'none';
+    };
+    
+    window.onclick = function(event) {
+      if (event.target === summaryModal) {
+        summaryModal.style.display = 'none';
+      } else if (event.target === importModal) {
+        importModal.style.display = 'none';
+      }
+    };
+    
     // Filter functionality
     const filterButtons = document.querySelectorAll('.filter-btn');
     const bookmarkItems = document.querySelectorAll('.bookmark-item');
@@ -392,29 +577,212 @@
       });
     });
     
-    // Delete bookmark
-    document.querySelectorAll('.delete-btn').forEach(button => {
+    // Delete bookmark functionality
+    const deleteButtons = document.querySelectorAll('.delete-btn');
+    deleteButtons.forEach(button => {
       button.addEventListener('click', async function() {
-        if (!confirm('Are you sure you want to delete this bookmark?')) {
-          return;
-        }
-        
-        const id = this.dataset.id;
-        
-        try {
-          const response = await fetch(`/api/bookmarks/${id}`, {
-            method: 'DELETE'
-          });
-          
-          if (response.ok) {
-            // Remove from UI
-            const bookmarkItem = this.closest('.bookmark-item');
-            bookmarkItem.remove();
+        const bookmarkId = this.dataset.id;
+        if (confirm('Are you sure you want to delete this bookmark?')) {
+          try {
+            const response = await fetch(`/api/bookmarks/${bookmarkId}`, {
+              method: 'DELETE',
+            });
+            
+            if (response.ok) {
+              // Remove the bookmark item from the DOM
+              const bookmarkItem = this.closest('.bookmark-item');
+              bookmarkItem.remove();
+              
+              // Check if there are no more bookmarks
+              const remainingBookmarks = document.querySelectorAll('.bookmark-item');
+              if (remainingBookmarks.length === 0) {
+                const emptyState = document.createElement('div');
+                emptyState.className = 'empty-state';
+                emptyState.innerHTML = `
+                  <p>You haven't saved any articles yet.</p>
+                  <p>Browse the <a href="/">feed</a> and click "Save for later" on articles you want to read later.</p>
+                `;
+                document.querySelector('.bookmarks-list').appendChild(emptyState);
+              }
+            } else {
+              const errorData = await response.json();
+              alert(`Error: ${errorData.detail}`);
+            }
+          } catch (error) {
+            console.error('Error deleting bookmark:', error);
+            alert('An error occurred while deleting the bookmark.');
           }
-        } catch (error) {
-          console.error('Error deleting bookmark:', error);
         }
       });
+    });
+    
+    // Individual summarize functionality
+    const summarizeButtons = document.querySelectorAll('.summarize-btn');
+    summarizeButtons.forEach(button => {
+      button.addEventListener('click', async function() {
+        const bookmarkId = this.dataset.id;
+        const url = this.dataset.url;
+        
+        // Show the summary modal
+        summaryModal.style.display = 'block';
+        const summaryContent = document.getElementById('summary-content');
+        summaryContent.innerHTML = `
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Generating summary...</p>
+          </div>
+        `;
+        
+        try {
+          const response = await fetch('/api/summarize', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: url }),
+          });
+          
+          const result = await response.json();
+          
+          if (response.ok) {
+            summaryContent.innerHTML = `
+              <h3>${result.title || 'Article Summary'}</h3>
+              <div class="summary-text">${result.summary}</div>
+              <div class="summary-meta">
+                <a href="${url}" target="_blank" rel="noopener noreferrer">View Original Article</a>
+              </div>
+            `;
+            
+            // Update the bookmark summary in the database
+            await fetch(`/api/bookmarks/${bookmarkId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ summary: result.summary }),
+            });
+            
+            // Update the summary in the DOM
+            const bookmarkItem = this.closest('.bookmark-item');
+            const summaryElement = bookmarkItem.querySelector('.bookmark-summary');
+            if (summaryElement) {
+              summaryElement.textContent = result.summary;
+            } else {
+              const newSummaryElement = document.createElement('div');
+              newSummaryElement.className = 'bookmark-summary';
+              newSummaryElement.textContent = result.summary;
+              bookmarkItem.insertBefore(newSummaryElement, bookmarkItem.querySelector('.bookmark-actions'));
+            }
+          } else {
+            summaryContent.innerHTML = `<div class="error-message">Error: ${result.detail || 'Failed to generate summary'}</div>`;
+          }
+        } catch (error) {
+          console.error('Error summarizing article:', error);
+          summaryContent.innerHTML = `<div class="error-message">An error occurred while generating the summary.</div>`;
+        }
+      });
+    });
+    
+    // Checkbox selection functionality
+    const checkboxes = document.querySelectorAll('.bookmark-checkbox');
+    const selectionCount = document.getElementById('selection-count');
+    const summarizeAllBtn = document.getElementById('summarize-all-btn');
+    
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        const checkedBoxes = document.querySelectorAll('.bookmark-checkbox:checked');
+        const count = checkedBoxes.length;
+        
+        if (count > 0) {
+          selectionCount.textContent = `${count} article${count === 1 ? '' : 's'} selected`;
+          selectionCount.style.display = 'block';
+        } else {
+          selectionCount.style.display = 'none';
+        }
+      });
+    });
+    
+    // Bulk summarize functionality
+    summarizeAllBtn.addEventListener('click', async function() {
+      const checkedBoxes = document.querySelectorAll('.bookmark-checkbox:checked');
+      
+      if (checkedBoxes.length === 0) {
+        alert('Please select at least one article to summarize.');
+        return;
+      }
+      
+      // Show the summary modal
+      summaryModal.style.display = 'block';
+      const summaryContent = document.getElementById('summary-content');
+      summaryContent.innerHTML = `
+        <div class="loading-spinner">
+          <div class="spinner"></div>
+          <p>Generating summaries for ${checkedBoxes.length} article${checkedBoxes.length === 1 ? '' : 's'}...</p>
+        </div>
+      `;
+      
+      try {
+        const urls = Array.from(checkedBoxes).map(checkbox => checkbox.dataset.url);
+        const bookmarkIds = Array.from(checkedBoxes).map(checkbox => checkbox.dataset.id);
+        
+        const response = await fetch('/api/summarize-batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ urls: urls }),
+        });
+        
+        const results = await response.json();
+        
+        if (response.ok) {
+          // Display the summaries in the modal
+          let summariesHTML = '<div class="batch-summaries">';
+          
+          results.summaries.forEach((result, index) => {
+            summariesHTML += `
+              <div class="summary-item">
+                <h3>${result.title || `Article ${index + 1}`}</h3>
+                <div class="summary-text">${result.summary}</div>
+                <div class="summary-meta">
+                  <a href="${urls[index]}" target="_blank" rel="noopener noreferrer">View Original Article</a>
+                </div>
+              </div>
+            `;
+            
+            // Update the bookmark summary in the database
+            fetch(`/api/bookmarks/${bookmarkIds[index]}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ summary: result.summary }),
+            });
+            
+            // Update the summary in the DOM
+            const checkbox = document.querySelector(`.bookmark-checkbox[data-id="${bookmarkIds[index]}"]`);
+            const bookmarkItem = checkbox.closest('.bookmark-item');
+            const summaryElement = bookmarkItem.querySelector('.bookmark-summary');
+            
+            if (summaryElement) {
+              summaryElement.textContent = result.summary;
+            } else {
+              const newSummaryElement = document.createElement('div');
+              newSummaryElement.className = 'bookmark-summary';
+              newSummaryElement.textContent = result.summary;
+              bookmarkItem.insertBefore(newSummaryElement, bookmarkItem.querySelector('.bookmark-actions'));
+            }
+          });
+          
+          summariesHTML += '</div>';
+          summaryContent.innerHTML = summariesHTML;
+        } else {
+          summaryContent.innerHTML = `<div class="error-message">Error: ${results.detail || 'Failed to generate summaries'}</div>`;
+        }
+      } catch (error) {
+        console.error('Error summarizing articles:', error);
+        summaryContent.innerHTML = `<div class="error-message">An error occurred while generating the summaries.</div>`;
+      }
     });
     
     // Import modal
