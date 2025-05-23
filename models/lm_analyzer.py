@@ -74,6 +74,11 @@ class LMClusterAnalyzer:
         # No suitable API caller found
         return None, None
 
+    def reset_api_counter(self):
+        """Reset the API call counter."""
+        self.api_call_count = 0
+        self.logger.info("Reset API call counter")
+        
     def _handle_rate_limits(self):
         """
         Handle rate limiting by implementing a simple delay
@@ -232,6 +237,8 @@ class LMClusterAnalyzer:
         Returns:
             List of clusters, each containing indices of related articles
         """
+        # Reset API counter at the start of a new clustering operation
+        self.reset_api_counter()
         # Check if it's a tiny list - no need for complex clustering
         if len(articles) <= 2:
             if len(articles) == 2:
