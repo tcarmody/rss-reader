@@ -74,7 +74,12 @@
                   <div class="form-group">
                     <label class="form-label" for="global_batch_size">Batch Size</label>
                     <input class="form-input" type="number" id="global_batch_size" name="global_batch_size" value="{% if global_settings is defined and global_settings.batch_size is defined %}{{ global_settings.batch_size | default(25) }}{% else %}25{% endif %}" min="1" aria-describedby="batchSizeHint">
-                    <p class="form-hint" id="batchSizeHint" style="font-size: 0.75rem; color: var(--neutral-500);">Articles per batch.</p>
+                    <p class="form-hint" id="batchSizeHint" style="font-size: 0.75rem; color: var(--neutral-500);">Total articles to process.</p>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="global_per_feed_limit">Per Feed Limit</label>
+                    <input class="form-input" type="number" id="global_per_feed_limit" name="global_per_feed_limit" value="{% if global_settings is defined and global_settings.per_feed_limit is defined %}{{ global_settings.per_feed_limit | default(25) }}{% else %}25{% endif %}" min="1" aria-describedby="perFeedLimitHint">
+                    <p class="form-hint" id="perFeedLimitHint" style="font-size: 0.75rem; color: var(--neutral-500);">Maximum articles per feed.</p>
                   </div>
                   <div class="form-group">
                     <label class="form-label" for="global_batch_delay">Delay (sec)</label>
@@ -302,20 +307,46 @@
       timeRangeOptionsWelcome.setAttribute('aria-hidden', String(!timeRangeEnabledWelcome.checked));
     }
 
-    // Function to update hidden batch size/delay fields before form submission
-    function updateHiddenFeedParams(formId, batchSizeInputId, batchDelayInputId) {
+    // Function to update hidden feed parameters before form submission
+    function updateHiddenFeedParams(formId) {
         const form = document.getElementById(formId);
         if (form) {
-            const batchSizeHidden = form.querySelector('input[name="batch_size"]');
-            const batchDelayHidden = form.querySelector('input[name="batch_delay"]');
+            const batchSizeHidden = form.querySelector('input[name="batch_size"]') || document.createElement('input');
+            const batchDelayHidden = form.querySelector('input[name="batch_delay"]') || document.createElement('input');
+            const perFeedLimitHidden = form.querySelector('input[name="per_feed_limit"]') || document.createElement('input');
+            
             const globalBatchSize = document.getElementById('global_batch_size');
             const globalBatchDelay = document.getElementById('global_batch_delay');
+            const globalPerFeedLimit = document.getElementById('global_per_feed_limit');
 
-            if (batchSizeHidden && globalBatchSize) {
+            // Set up hidden fields if they don't exist
+            if (!form.querySelector('input[name="batch_size"]')) {
+                batchSizeHidden.type = 'hidden';
+                batchSizeHidden.name = 'batch_size';
+                form.appendChild(batchSizeHidden);
+            }
+            
+            if (!form.querySelector('input[name="batch_delay"]')) {
+                batchDelayHidden.type = 'hidden';
+                batchDelayHidden.name = 'batch_delay';
+                form.appendChild(batchDelayHidden);
+            }
+            
+            if (!form.querySelector('input[name="per_feed_limit"]')) {
+                perFeedLimitHidden.type = 'hidden';
+                perFeedLimitHidden.name = 'per_feed_limit';
+                form.appendChild(perFeedLimitHidden);
+            }
+
+            // Update values
+            if (globalBatchSize) {
                 batchSizeHidden.value = globalBatchSize.value;
             }
-            if (batchDelayHidden && globalBatchDelay) {
+            if (globalBatchDelay) {
                 batchDelayHidden.value = globalBatchDelay.value;
+            }
+            if (globalPerFeedLimit) {
+                perFeedLimitHidden.value = globalPerFeedLimit.value;
             }
         }
     }
@@ -324,14 +355,14 @@
     const defaultFeedsForm = document.getElementById('defaultFeedsForm');
     if (defaultFeedsForm) {
         defaultFeedsForm.addEventListener('submit', function() {
-            updateHiddenFeedParams('defaultFeedsForm', 'global_batch_size', 'global_batch_delay');
+            updateHiddenFeedParams('defaultFeedsForm');
         });
     }
 
     const customFeedsForm = document.getElementById('customFeedsForm');
     if (customFeedsForm) {
         customFeedsForm.addEventListener('submit', function() {
-            updateHiddenFeedParams('customFeedsForm', 'global_batch_size', 'global_batch_delay');
+            updateHiddenFeedParams('customFeedsForm');
         });
     }
 

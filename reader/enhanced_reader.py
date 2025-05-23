@@ -26,7 +26,8 @@ class EnhancedRSSReader:
         feeds=None,
         batch_size=25,
         batch_delay=15,
-        max_workers=3
+        max_workers=3,
+        per_feed_limit=25
     ):
         """
         Initialize the enhanced RSS reader.
@@ -36,6 +37,7 @@ class EnhancedRSSReader:
             batch_size: Number of items to process per batch
             batch_delay: Delay between batches
             max_workers: Maximum number of concurrent workers
+            per_feed_limit: Maximum number of articles to process per feed
         """
         self.logger = logging.getLogger(__name__)
         
@@ -43,7 +45,8 @@ class EnhancedRSSReader:
         self.reader = RSSReader(
             feeds=feeds,
             batch_size=batch_size,
-            batch_delay=batch_delay
+            batch_delay=batch_delay,
+            per_feed_limit=per_feed_limit
         )
         
         # Initialize summarizer
