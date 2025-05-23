@@ -350,7 +350,7 @@ class LMClusterAnalyzer:
             caller_names = [frame[2] for frame in stack[-5:]]
             refinement_indicators = ['split_cluster', 'check_cluster_coherence', 'refine_clusters']
             
-            is_refinement = any(indicator in caller for caller in caller_names)
+            is_refinement = any(any(indicator in caller for indicator in refinement_indicators) for caller in caller_names)
             
             if is_refinement:
                 self.logger.info("Preserving existing cluster due to API limitation")
