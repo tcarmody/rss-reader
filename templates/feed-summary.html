@@ -4,6 +4,52 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Data Points AI - RSS Summary</title>
+  <style>
+    /* Bookmark button styles */
+    .article-actions {
+      margin-top: 8px;
+    }
+    
+    .bookmark-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: transparent;
+      border: 1px solid var(--neutral-300);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+      color: var(--neutral-700);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .bookmark-btn:hover {
+      background: var(--primary-50);
+      border-color: var(--primary-300);
+      color: var(--primary-700);
+    }
+    
+    .bookmark-btn.saved {
+      background: var(--primary-100);
+      border-color: var(--primary-400);
+      color: var(--primary-700);
+    }
+    
+    .bookmark-btn.saved .bookmark-icon {
+      fill: var(--primary-500);
+      stroke: var(--primary-600);
+    }
+    
+    .bookmark-icon {
+      transition: all 0.2s ease;
+    }
+    
+    /* Add a link to bookmarks page in the nav */
+    .nav-bookmarks-link {
+      margin-right: 8px;
+    }
+  </style>
   <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
   </head>
 <body>
@@ -21,6 +67,12 @@
     
     <div class="nav-actions">
       <a href="{{ url_for('welcome') }}" class="button outline">Home / Settings</a>
+      <a href="{{ url_for('view_bookmarks') }}" class="button outline nav-bookmarks-link">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bookmark-icon">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+        </svg>
+        Bookmarks
+      </a>
       <a href="{{ url_for('summarize_single_get') }}" class="button outline">Summarize URL</a>
       
       <form action="/refresh" method="post" style="display: inline;" id="refreshFeedsFormNav">
@@ -236,6 +288,14 @@
                 Published: <time datetime="{{ article.published_iso_format }}">{{ article.published }}</time> {% if article.cluster_size and article.cluster_size > 1 %}
                   <span style="margin-left: 0.5rem;">Part of {{ article.cluster_size }}-article cluster</span>
                 {% endif %}
+                <div class="article-actions">
+                  <button class="bookmark-btn" data-article-id="{{ loop.index }}_{{ loop.parent.loop.index }}" data-title="{{ article.title }}" data-url="{{ article.link }}" data-summary="{{ article.summary.summary if article.summary and article.summary.summary else '' }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bookmark-icon">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    Save for later
+                  </button>
+                </div>
               </div>
             </li>
           {% endfor %}
@@ -378,6 +438,45 @@
     }
     
     checkSummaries(); // Run the check when the page loads
+    
+    // Bookmark functionality
+    document.querySelectorAll('.bookmark-btn').forEach(btn => {
+      btn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        
+        const button = this;
+        const title = button.dataset.title;
+        const url = button.dataset.url;
+        const summary = button.dataset.summary;
+        
+        try {
+          const formData = new FormData();
+          formData.append('title', title);
+          formData.append('url', url);
+          formData.append('summary', summary);
+          
+          const response = await fetch('/api/bookmarks', {
+            method: 'POST',
+            body: formData
+          });
+          
+          const result = await response.json();
+          if (result.status === 'success') {
+            // Update button appearance
+            button.classList.add('saved');
+            button.innerHTML = `
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bookmark-icon">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+              </svg>
+              Saved
+            `;
+          }
+        } catch (error) {
+          console.error('Error saving bookmark:', error);
+          alert('Error saving bookmark. Please try again.');
+        }
+      });
+    });
 
     // Add JS for form loading states
     // const formsToTrack = ['refreshFeedsFormNav', 'clusteringSettingsModalForm'];
