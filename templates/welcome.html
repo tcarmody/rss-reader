@@ -5,6 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Data Points AI - Smart RSS Reader</title>
   <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+  <style>
+    /* Feature highlights styles */
+    .feature-highlights {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    
+    .feature-item {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      background-color: var(--neutral-50);
+      border-radius: 6px;
+      border: 1px solid var(--neutral-200);
+      transition: all 0.2s ease;
+    }
+    
+    .feature-item:hover {
+      background-color: var(--primary-50);
+      border-color: var(--primary-200);
+    }
+    
+    @media (min-width: 768px) {
+      .feature-highlights {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+      
+      .feature-item {
+        flex: 1 1 calc(33.333% - 1rem);
+        min-width: 200px;
+      }
+    }
+  </style>
   </head>
 <body>
   <div class="app-container">
@@ -18,6 +54,15 @@
           </svg>
           <span class="logo-text">Data Points AI</span>
         </a>
+        
+        <div class="nav-actions">
+          <a href="{{ url_for('view_bookmarks') }}" class="button outline nav-bookmarks-link">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bookmark-icon">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+            </svg>
+            Bookmarks
+          </a>
+        </div>
       </div>
     </nav>
     
@@ -205,6 +250,36 @@
           <p>Generate an AI-powered summary of any webpage or article.</p>
           <a href="{{ url_for('summarize_single_get') }}" class="button large" style="margin-top: 1rem; display: inline-block; text-align: center;">
             Go to Summarize URL Form
+          </a>
+        </section>
+        
+        <section aria-labelledby="bookmarksLinkTitle" class="feed-section" style="margin-top: 2rem;">
+          <h3 id="bookmarksLinkTitle">Bookmarked Articles</h3>
+          <p>Access your saved articles with AI-generated summaries. Bookmark articles from feed summaries to read later.</p>
+          <div class="feature-highlights" style="margin-top: 1rem;">
+            <div class="feature-item">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+              </svg>
+              Save articles for later reading
+            </div>
+            <div class="feature-item">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 6v6l4 2"></path>
+              </svg>
+              AI-generated summaries of all bookmarked content
+            </div>
+            <div class="feature-item">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                <polyline points="9 11 12 14 22 4"></polyline>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+              </svg>
+              Organize and manage your reading list
+            </div>
+          </div>
+          <a href="{{ url_for('view_bookmarks') }}" class="button large" style="margin-top: 1rem; display: inline-block; text-align: center;">
+            View Bookmarked Articles
           </a>
         </section>
         
