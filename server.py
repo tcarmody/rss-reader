@@ -625,7 +625,12 @@ async def summarize_article(request: Request):
         }
         
         # Generate summary
-        result = await fast_summarizer.summarize(article, auto_select_model=True)
+        result = await fast_summarizer.summarize(
+            text=article['content'],
+            title=article['title'],
+            url=article['url'],
+            auto_select_model=True
+        )
         
         if not result or 'summary' not in result:
             raise HTTPException(status_code=500, detail="Failed to generate summary")
@@ -782,6 +787,19 @@ async def summarize_articles_batch(request: Request):
             raise HTTPException(status_code=400, detail="Could not process any of the provided URLs")
         
         # Generate summaries for all articles
+        # The batch_summarize method expects articles with 'text', 'title', and 'url' keys
+        # Make sure our processed articles have these keys properly set
+        for article in processed_articles:
+            # Ensure text key is set (FastSummarizer expects this)
+            if 'text' not in article and 'content' in article:
+                article['text'] = article['content']
+                
+            # Make sure all required fields are present
+            if 'title' not in article:
+                article['title'] = f"Article from {urlparse(article.get('url', '')).netloc}"
+            if 'url' not in article and 'link' in article:
+                article['url'] = article['link']
+        
         batch_results = await fast_summarizer.batch_summarize(
             articles=processed_articles, 
             max_concurrent=max_workers, 
