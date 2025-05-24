@@ -17,6 +17,7 @@ from common.batch_processing import BatchProcessor
 
 import logging
 import sys
+import asyncio
 from datetime import datetime, timezone
 from urllib.parse import urlparse, quote
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, Response
@@ -625,12 +626,21 @@ async def summarize_article(request: Request):
         }
         
         # Generate summary
-        result = await fast_summarizer.summarize(
-            text=article['content'],
-            title=article['title'],
-            url=article['url'],
-            auto_select_model=True
-        )
+        try:
+            # The summarize method is not async, so we don't use await
+            result = fast_summarizer.summarize(
+                text=article['content'],
+                title=article['title'],
+                url=article['url'],
+                auto_select_model=True
+            )
+        except Exception as summarize_error:
+            logging.error(f"Error in summarize call: {str(summarize_error)}")
+            raise HTTPException(status_code=500, detail=f"Error generating summary: {str(summarize_error)}")
+            
+        if not isinstance(result, dict):
+            logging.error(f"Unexpected result type from summarizer: {type(result)}")
+            raise HTTPException(status_code=500, detail="Unexpected result from summarizer")
         
         if not result or 'summary' not in result:
             raise HTTPException(status_code=500, detail="Failed to generate summary")
@@ -800,11 +810,29 @@ async def summarize_articles_batch(request: Request):
             if 'url' not in article and 'link' in article:
                 article['url'] = article['link']
         
-        batch_results = await fast_summarizer.batch_summarize(
-            articles=processed_articles, 
-            max_concurrent=max_workers, 
-            auto_select_model=True
-        )
+        try:
+            # Check if batch_summarize is async or not
+            if asyncio.iscoroutinefunction(fast_summarizer.batch_summarize):
+                batch_results = await fast_summarizer.batch_summarize(
+                    articles=processed_articles, 
+                    max_concurrent=max_workers, 
+                    auto_select_model=True
+                )
+            else:
+                # If it's not async, call it directly without await
+                batch_results = fast_summarizer.batch_summarize(
+                    articles=processed_articles, 
+                    max_concurrent=max_workers, 
+                    auto_select_model=True
+                )
+            
+            if not isinstance(batch_results, list):
+                logging.error(f"Unexpected batch result type: {type(batch_results)}")
+                raise HTTPException(status_code=500, detail="Unexpected result type from batch summarizer")
+                
+        except Exception as batch_error:
+            logging.error(f"Error in batch summarize call: {str(batch_error)}")
+            raise HTTPException(status_code=500, detail=f"Error generating batch summaries: {str(batch_error)}")
         
         # Format results
         summaries = []
