@@ -20,6 +20,7 @@ import sys
 from datetime import datetime, timezone
 from urllib.parse import urlparse, quote
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, Response
+from bs4 import BeautifulSoup
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -545,20 +546,79 @@ async def summarize_article(request: Request):
         # Enable paywall bypass if configured
         os.environ['ENABLE_PAYWALL_BYPASS'] = 'true' if request.session.get('paywall_bypass_enabled', True) else 'false'
         
-        # Fetch article content
-        content = fetch_article_content(full_url, http_session)
+        # Check if this is a Google News or other aggregator URL
+        from common.source_extractor import is_aggregator_link, extract_original_source_url
         
+        original_url = full_url
+        if is_aggregator_link(full_url):
+            try:
+                logging.info(f"Detected aggregator link in bookmark: {full_url}")
+                extracted_url = extract_original_source_url(full_url, http_session)
+                if extracted_url and extracted_url != full_url:
+                    logging.info(f"Using extracted source URL: {extracted_url}")
+                    original_url = extracted_url
+            except Exception as extract_error:
+                logging.warning(f"Error extracting source URL: {str(extract_error)}")
+                # Continue with original URL if extraction fails
+        
+        # Fetch article content with multiple fallback attempts
+        content = None
+        urls_to_try = [original_url]
+        if original_url != full_url:
+            urls_to_try.append(full_url)  # Try original aggregator URL as fallback
+        
+        for attempt_url in urls_to_try:
+            try:
+                logging.info(f"Attempting to fetch content from: {attempt_url}")
+                content = fetch_article_content(attempt_url, http_session)
+                if content and len(content) >= 100:
+                    logging.info(f"Successfully fetched content from: {attempt_url}")
+                    break
+                else:
+                    logging.warning(f"Insufficient content from: {attempt_url}")
+            except Exception as fetch_error:
+                logging.warning(f"Error fetching content from {attempt_url}: {str(fetch_error)}")
+        
+        # If we couldn't get content from any URL, try a direct request as last resort
         if not content or len(content) < 100:
+            try:
+                logging.info(f"Attempting direct request to: {original_url}")
+                response = http_session.get(original_url, timeout=10)
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    # Remove script and style elements
+                    for script in soup(["script", "style"]):
+                        script.extract()
+                    content = soup.get_text(separator=' ', strip=True)
+                    if len(content) >= 100:
+                        logging.info("Successfully fetched content with direct request")
+                    else:
+                        logging.warning("Direct request returned insufficient content")
+            except Exception as direct_error:
+                logging.warning(f"Direct request failed: {str(direct_error)}")
+        
+        # If we still don't have content, use the bookmark's stored content if available
+        if (not content or len(content) < 100) and data.get('stored_content'):
+            logging.info("Using stored content from bookmark")
+            content = data.get('stored_content')
+        
+        # If we still don't have content, use the bookmark's stored summary if available
+        if (not content or len(content) < 100) and data.get('stored_summary'):
+            logging.info("Using stored summary from bookmark")
+            content = data.get('stored_summary')
+            
+        # Final check if we have enough content
+        if not content or len(content) < 50:  # Lowered threshold for final check
             raise HTTPException(status_code=400, detail="Could not extract sufficient content from the URL")
         
         # Prepare article data
-        domain = urlparse(full_url).netloc
+        domain = urlparse(original_url).netloc
         article = {
             'text': content, 
             'content': content,
-            'title': f"Article from {domain}", 
-            'url': full_url, 
-            'link': full_url,
+            'title': data.get('title', f"Article from {domain}"), 
+            'url': original_url, 
+            'link': original_url,
             'feed_source': domain, 
             'published_iso_format': datetime.now(timezone.utc).isoformat(),
             'published': datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -578,7 +638,7 @@ async def summarize_article(request: Request):
         return {
             "title": title,
             "summary": summary,
-            "url": full_url,
+            "url": original_url,
             "model_used": result.get('model_used', 'N/A')
         }
     
@@ -594,6 +654,7 @@ async def summarize_articles_batch(request: Request):
     try:
         data = await request.json()
         urls = data.get('urls', [])
+        bookmark_ids = data.get('bookmark_ids', [])
         
         if not urls:
             raise HTTPException(status_code=400, detail="No URLs provided")
@@ -601,6 +662,7 @@ async def summarize_articles_batch(request: Request):
         # Initialize summarization engine
         from main import setup_summarization_engine
         from summarization.fast_summarizer import create_fast_summarizer
+        from common.source_extractor import is_aggregator_link, extract_original_source_url
         
         common_vars = get_common_template_vars(request)
         clustering_settings = common_vars['clustering_settings']
@@ -622,27 +684,99 @@ async def summarize_articles_batch(request: Request):
         processed_articles = []
         failed_urls = {}
         
-        for url in urls:
+        # Get stored bookmark data if available
+        stored_bookmark_data = {}
+        if bookmark_ids and len(bookmark_ids) == len(urls):
+            for i, bookmark_id in enumerate(bookmark_ids):
+                try:
+                    bookmark = bookmark_manager.get_bookmark(int(bookmark_id))
+                    if bookmark:
+                        stored_bookmark_data[urls[i]] = {
+                            'title': bookmark.get('title', ''),
+                            'content': bookmark.get('content', ''),
+                            'summary': bookmark.get('summary', '')
+                        }
+                except Exception as e:
+                    logging.warning(f"Error fetching bookmark {bookmark_id}: {str(e)}")
+        
+        for i, url in enumerate(urls):
             full_url = url if url.startswith(('http://', 'https://')) else 'https://' + url
-            try:
-                content = fetch_article_content(full_url, http_session)
-                if content and len(content) >= 100:
-                    domain = urlparse(full_url).netloc
-                    processed_articles.append({
-                        'text': content, 
-                        'content': content,
-                        'title': f"Article from {domain}", 
-                        'url': full_url, 
-                        'link': full_url,
-                        'feed_source': domain, 
-                        'published_iso_format': datetime.now(timezone.utc).isoformat(),
-                        'published': datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-                    })
-                else:
-                    failed_urls[full_url] = "Could not extract sufficient content or content too short."
-            except Exception as e:
-                logging.error(f"Error fetching content for {full_url}: {str(e)}")
-                failed_urls[full_url] = f"Error fetching content: {str(e)}"
+            
+            # Check if this is an aggregator URL
+            original_url = full_url
+            if is_aggregator_link(full_url):
+                try:
+                    logging.info(f"Detected aggregator link in batch: {full_url}")
+                    extracted_url = extract_original_source_url(full_url, http_session)
+                    if extracted_url and extracted_url != full_url:
+                        logging.info(f"Using extracted source URL: {extracted_url}")
+                        original_url = extracted_url
+                except Exception as extract_error:
+                    logging.warning(f"Error extracting source URL: {str(extract_error)}")
+            
+            # Try multiple content sources with fallbacks
+            content = None
+            urls_to_try = [original_url]
+            if original_url != full_url:
+                urls_to_try.append(full_url)  # Try original aggregator URL as fallback
+            
+            for attempt_url in urls_to_try:
+                try:
+                    logging.info(f"Attempting to fetch content from: {attempt_url}")
+                    content = fetch_article_content(attempt_url, http_session)
+                    if content and len(content) >= 100:
+                        logging.info(f"Successfully fetched content from: {attempt_url}")
+                        break
+                    else:
+                        logging.warning(f"Insufficient content from: {attempt_url}")
+                except Exception as fetch_error:
+                    logging.warning(f"Error fetching content from {attempt_url}: {str(fetch_error)}")
+            
+            # If we couldn't get content from any URL, try a direct request as last resort
+            if not content or len(content) < 100:
+                try:
+                    logging.info(f"Attempting direct request to: {original_url}")
+                    response = http_session.get(original_url, timeout=10)
+                    if response.status_code == 200:
+                        soup = BeautifulSoup(response.text, 'html.parser')
+                        # Remove script and style elements
+                        for script in soup(["script", "style"]):
+                            script.extract()
+                        content = soup.get_text(separator=' ', strip=True)
+                        if len(content) >= 100:
+                            logging.info("Successfully fetched content with direct request")
+                        else:
+                            logging.warning("Direct request returned insufficient content")
+                except Exception as direct_error:
+                    logging.warning(f"Direct request failed: {str(direct_error)}")
+            
+            # If we still don't have content, use the bookmark's stored content if available
+            if (not content or len(content) < 100) and url in stored_bookmark_data and stored_bookmark_data[url].get('content'):
+                logging.info(f"Using stored content from bookmark for {url}")
+                content = stored_bookmark_data[url]['content']
+            
+            # If we still don't have content, use the bookmark's stored summary if available
+            if (not content or len(content) < 100) and url in stored_bookmark_data and stored_bookmark_data[url].get('summary'):
+                logging.info(f"Using stored summary from bookmark for {url}")
+                content = stored_bookmark_data[url]['summary']
+            
+            # If we have enough content, add to processed articles
+            if content and len(content) >= 50:  # Lower threshold for final check
+                domain = urlparse(original_url).netloc
+                title = stored_bookmark_data.get(url, {}).get('title', f"Article from {domain}")
+                
+                processed_articles.append({
+                    'text': content, 
+                    'content': content,
+                    'title': title, 
+                    'url': original_url, 
+                    'link': original_url,
+                    'feed_source': domain, 
+                    'published_iso_format': datetime.now(timezone.utc).isoformat(),
+                    'published': datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                })
+            else:
+                failed_urls[full_url] = "Could not extract sufficient content from any source."
         
         if not processed_articles:
             raise HTTPException(status_code=400, detail="Could not process any of the provided URLs")

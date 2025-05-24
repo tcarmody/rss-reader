@@ -623,6 +623,15 @@
         const bookmarkId = this.dataset.id;
         const url = this.dataset.url;
         
+        // Find the bookmark item to get content and summary
+        const bookmarkItem = this.closest('.bookmark-item');
+        const summaryElement = bookmarkItem.querySelector('.bookmark-summary');
+        const titleElement = bookmarkItem.querySelector('.bookmark-title a');
+        
+        // Get stored content and summary if available
+        const storedSummary = summaryElement ? summaryElement.textContent.trim() : '';
+        const title = titleElement ? titleElement.textContent.trim() : '';
+        
         // Show the summary modal
         summaryModal.style.display = 'block';
         const summaryContent = document.getElementById('summary-content');
@@ -639,7 +648,12 @@
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ url: url }),
+            body: JSON.stringify({ 
+              url: url,
+              title: title,
+              stored_summary: storedSummary,
+              stored_content: '' // We don't store full content in the DOM
+            }),
           });
           
           const result = await response.json();
@@ -722,15 +736,27 @@
       `;
       
       try {
-        const urls = Array.from(checkedBoxes).map(checkbox => checkbox.dataset.url);
-        const bookmarkIds = Array.from(checkedBoxes).map(checkbox => checkbox.dataset.id);
+        // Collect URLs and bookmark IDs
+        const urls = [];
+        const bookmarkIds = [];
+        
+        // For each selected bookmark, collect its data
+        checkedBoxes.forEach(checkbox => {
+          const url = checkbox.dataset.url;
+          const id = checkbox.dataset.id;
+          urls.push(url);
+          bookmarkIds.push(id);
+        });
         
         const response = await fetch('/api/summarize-batch', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ urls: urls }),
+          body: JSON.stringify({ 
+            urls: urls,
+            bookmark_ids: bookmarkIds
+          }),
         });
         
         const results = await response.json();
