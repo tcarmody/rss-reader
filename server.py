@@ -646,9 +646,9 @@ async def summarize_article(request: Request):
             raise HTTPException(status_code=500, detail="Failed to generate summary")
         
         # Extract summary data
-        summary_data = result['summary']
-        title = summary_data.get('headline', article.get('title', "Article Summary"))
-        summary = summary_data.get('summary', "No summary available")
+        # The result structure from FastSummarizer is {'headline': '...', 'summary': '...', 'style': '...'}
+        title = result.get('headline', article.get('title', "Article Summary"))
+        summary = result.get('summary', "No summary available")
         
         return {
             "title": title,
@@ -837,16 +837,41 @@ async def summarize_articles_batch(request: Request):
         # Format results
         summaries = []
         for result in batch_results:
-            if 'original' in result and 'summary' in result:
-                original_article = result['original']
-                summary_data = result['summary']
-                
-                summaries.append({
-                    'title': summary_data.get('headline', original_article.get('title', "Summary")),
-                    'summary': summary_data.get('summary', "No summary available"),
-                    'url': original_article.get('link', original_article.get('url', '#')),
-                    'model_used': result.get('model_used', 'N/A')
-                })
+            # The batch_summarize method returns a list of dicts with the structure:
+            # {'original': article_dict, 'summary': summary_dict, 'model_used': model_name}
+            # where summary_dict is {'headline': '...', 'summary': '...', 'style': '...'}
+            if isinstance(result, dict):
+                if 'original' in result and 'summary' in result:
+                    original_article = result['original']
+                    summary_data = result['summary']
+                    
+                    # Make sure summary_data is a dictionary
+                    if isinstance(summary_data, dict):
+                        summaries.append({
+                            'title': summary_data.get('headline', original_article.get('title', "Summary")),
+                            'summary': summary_data.get('summary', "No summary available"),
+                            'url': original_article.get('link', original_article.get('url', '#')),
+                            'model_used': result.get('model_used', 'N/A')
+                        })
+                    else:
+                        # Handle the case where summary_data is not a dictionary
+                        logging.warning(f"Unexpected summary_data type: {type(summary_data)}")
+                        summaries.append({
+                            'title': original_article.get('title', "Summary"),
+                            'summary': str(summary_data) if summary_data else "No summary available",
+                            'url': original_article.get('link', original_article.get('url', '#')),
+                            'model_used': result.get('model_used', 'N/A')
+                        })
+            else:
+                logging.warning(f"Unexpected result type in batch_results: {type(result)}")
+                # Try to extract useful information if possible
+                if hasattr(result, 'get'):
+                    summaries.append({
+                        'title': "Summary",
+                        'summary': str(result),
+                        'url': '#',
+                        'model_used': 'N/A'
+                    })
         
         return {
             "summaries": summaries,
