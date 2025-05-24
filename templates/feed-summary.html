@@ -49,6 +49,117 @@
     .nav-bookmarks-link {
       margin-right: 8px;
     }
+    
+    /* Source attribution styles for aggregator support */
+    .source-info {
+      font-size: 0.9rem;
+      color: var(--neutral-600);
+      margin-bottom: 0.25rem;
+    }
+    
+    .original-source strong {
+      color: var(--success-600, #059669);
+      font-weight: 600;
+    }
+    
+    .via-aggregator {
+      color: var(--neutral-500);
+      font-style: italic;
+      margin-left: 0.25rem;
+    }
+    
+    .aggregator-link {
+      color: var(--danger-600, #dc2626);
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    
+    .aggregator-link:hover {
+      text-decoration: underline;
+      color: var(--danger-700, #b91c1c);
+    }
+    
+    .feed-source {
+      color: var(--primary-600, #7c3aed);
+      margin-left: 0.5rem;
+    }
+    
+    .article-date {
+      font-size: 0.85rem;
+      color: var(--neutral-500);
+      margin-top: 0.25rem;
+    }
+    
+    .extraction-warning {
+      margin-top: 0.25rem;
+      color: var(--warning-600, #d97706);
+      font-size: 0.8rem;
+    }
+    
+    .extraction-warning small {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    
+    /* Update article-source styling */
+    .article-title .article-source {
+      font-size: 0.85rem;
+      color: var(--neutral-500);
+      font-weight: normal;
+      margin-left: 0.5rem;
+    }
+    
+    /* Aggregator statistics box */
+    .aggregator-stats-box {
+      background-color: var(--neutral-50);
+      border: 1px solid var(--neutral-200);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .aggregator-stats-box h3 {
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+      color: var(--neutral-700);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .aggregator-stats-box ul {
+      margin: 0;
+      padding-left: 1.5rem;
+      font-size: 0.9rem;
+      color: var(--neutral-600);
+    }
+    
+    .aggregator-stats-box .stat-value {
+      font-weight: 600;
+      color: var(--primary-600);
+    }
+    
+    /* Mobile responsive adjustments */
+    @media (max-width: 768px) {
+      .source-info {
+        font-size: 0.8rem;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      
+      .via-aggregator {
+        margin-left: 0;
+        display: block;
+      }
+      
+      .feed-source {
+        margin-left: 0;
+        display: block;
+        margin-top: 0.25rem;
+      }
+    }
   </style>
   <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
   </head>
@@ -231,6 +342,32 @@
   </div>
   {% endif %}
   
+  {% if aggregator_stats and aggregator_stats.total_aggregator_links > 0 %}
+  <div class="aggregator-stats-box">
+    <h3>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+      </svg>
+      Source Extraction Statistics
+    </h3>
+    <ul>
+      <li>Total aggregator links processed: <span class="stat-value">{{ aggregator_stats.total_aggregator_links }}</span></li>
+      <li>Successful source extractions: <span class="stat-value">{{ aggregator_stats.successful_extractions }}</span> 
+          ({{ ((aggregator_stats.successful_extractions / aggregator_stats.total_aggregator_links) * 100) | round(1) }}%)
+      </li>
+      {% if aggregator_stats.by_aggregator %}
+        <li>By aggregator:
+          <ul>
+            {% for agg_name, count in aggregator_stats.by_aggregator.items() | sort %}
+              <li>{{ agg_name }}: <span class="stat-value">{{ count }}</span> links</li>
+            {% endfor %}
+          </ul>
+        </li>
+      {% endif %}
+    </ul>
+  </div>
+  {% endif %}
+  
   {% if clusters %}
     {% for cluster in clusters %}
     <article class="cluster" aria-labelledby="clusterHeadline-{{ loop.index }}">
@@ -279,17 +416,59 @@
           {% for article in cluster %}
             <li class="article">
               <h4 class="article-title">
-                <a href="{{ article.link }}" target="_blank" rel="noopener noreferrer">{{ article.title }}</a>
-                {% if article.feed_source %}
-                <span class="article-source">({{ article.feed_source }})</span>
+                <!-- Use original_url if available, otherwise fall back to link -->
+                <a href="{{ article.original_url | default(article.link) }}" target="_blank" rel="noopener noreferrer">{{ article.title }}</a>
+                
+                <!-- Show the actual source name -->
+                {% if article.source_name %}
+                <span class="article-source">({{ article.source_name }})</span>
                 {% endif %}
               </h4>
+              
               <div class="article-meta">
-                Published: <time datetime="{{ article.published_iso_format }}">{{ article.published }}</time> {% if article.cluster_size and article.cluster_size > 1 %}
-                  <span style="margin-left: 0.5rem;">Part of {{ article.cluster_size }}-article cluster</span>
+                <!-- Enhanced source attribution -->
+                <div class="source-info">
+                  {% if article.is_aggregator and article.aggregator_name %}
+                    <!-- Show "Source: [Original] via [Aggregator]" -->
+                    <span class="original-source">Source: <strong>{{ article.source_name }}</strong></span>
+                    <span class="via-aggregator">via 
+                      <a href="{{ article.aggregator_url | default(article.link) }}" target="_blank" rel="noopener noreferrer" class="aggregator-link">
+                        {{ article.aggregator_name }}
+                      </a>
+                    </span>
+                  {% else %}
+                    <!-- Direct source -->
+                    <span class="original-source">Source: <strong>{{ article.source_name | default(article.feed_source) }}</strong></span>
+                  {% endif %}
+                  
+                  <!-- Feed source (always show) -->
+                  <span class="feed-source">| Feed: {{ article.feed_source }}</span>
+                </div>
+                
+                <!-- Published date -->
+                <div class="article-date">
+                  Published: <time datetime="{{ article.published_iso_format }}">{{ article.published }}</time>
+                  
+                  {% if article.cluster_size and article.cluster_size > 1 %}
+                    <span style="margin-left: 0.5rem;">Part of {{ article.cluster_size }}-article cluster</span>
+                  {% endif %}
+                </div>
+                
+                <!-- Extraction confidence indicator (optional) -->
+                {% if article.is_aggregator and article.source_extraction_confidence is defined %}
+                  {% if article.source_extraction_confidence < 0.5 %}
+                    <div class="extraction-warning">
+                      <small>⚠️ Original source may not be accurate</small>
+                    </div>
+                  {% endif %}
                 {% endif %}
+                
                 <div class="article-actions">
-                  <button class="bookmark-btn" data-article-id="{{ article.link | urlencode }}" data-title="{{ article.title }}" data-url="{{ article.link }}" data-summary="{{ article.summary.summary if article.summary and article.summary.summary else '' }}">
+                  <button class="bookmark-btn" 
+                          data-article-id="{{ article.link | urlencode }}" 
+                          data-title="{{ article.title }}" 
+                          data-url="{{ article.original_url | default(article.link) }}" 
+                          data-summary="{{ article.summary.summary if article.summary and article.summary.summary else '' }}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bookmark-icon">
                       <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                     </svg>
@@ -439,14 +618,14 @@
     
     checkSummaries(); // Run the check when the page loads
     
-    // Bookmark functionality
+    // Bookmark functionality with original URL support
     document.querySelectorAll('.bookmark-btn').forEach(btn => {
       btn.addEventListener('click', async function(e) {
         e.preventDefault();
         
         const button = this;
         const title = button.dataset.title;
-        const url = button.dataset.url;
+        const url = button.dataset.url;  // This now uses original_url from template
         const summary = button.dataset.summary;
         
         try {
