@@ -1,0 +1,128 @@
+<!-- templates/components/clustering_settings_form.html -->
+<div class="setting-row">
+  <div>
+    <div class="setting-name" id="{{ id_prefix | default('') }}multiArticleLabel">Multi-Article Clustering</div>
+    <div class="setting-description">Enable Claude to analyze multiple articles at once</div>
+  </div>
+  <label class="toggle-switch">
+    <input type="checkbox" name="enable_multi_article" 
+           {% if clustering_settings.enable_multi_article %}checked{% endif %} 
+           aria-labelledby="{{ id_prefix | default('') }}multiArticleLabel">
+    <span class="toggle-slider"></span>
+  </label>
+</div>
+
+<div class="setting-row">
+  <div>
+    <div class="setting-name" id="{{ id_prefix | default('') }}enhancedClusteringLabel">Enhanced Clustering</div>
+    <div class="setting-description">Use advanced clustering algorithms</div>
+  </div>
+  <label class="toggle-switch">
+    <input type="checkbox" name="use_enhanced_clustering" 
+           {% if clustering_settings.use_enhanced_clustering %}checked{% endif %} 
+           aria-labelledby="{{ id_prefix | default('') }}enhancedClusteringLabel">
+    <span class="toggle-slider"></span>
+  </label>
+</div>
+
+<div class="setting-row">
+  <div>
+    <div class="setting-name" id="{{ id_prefix | default('') }}timeRangeFilterLabel">Time Range Filter</div>
+    <div class="setting-description">Only include articles from the selected time range</div>
+  </div>
+  <label class="toggle-switch">
+    <input type="checkbox" name="time_range_enabled" 
+           {% if clustering_settings.time_range_enabled %}checked{% endif %} 
+           aria-labelledby="{{ id_prefix | default('') }}timeRangeFilterLabel" 
+           aria-controls="{{ id_prefix | default('') }}timeRangeOptions"
+           data-toggle-target="{{ id_prefix | default('') }}timeRangeOptions">
+    <span class="toggle-slider"></span>
+  </label>
+</div>
+
+<div class="setting-row" 
+     {% if not clustering_settings.time_range_enabled %}style="display: none;"{% endif %} 
+     id="{{ id_prefix | default('') }}timeRangeOptions" 
+     role="region" 
+     aria-labelledby="{{ id_prefix | default('') }}timeRangeFilterLabel">
+  <div>
+    <div class="setting-name">Time Range</div>
+    <div class="setting-description">How far back to look for articles</div>
+  </div>
+  <div style="display: flex; gap: 0.5rem;">
+    <label for="{{ id_prefix | default('') }}time_range_value" class="sr-only">Time Range Value</label>
+    <input type="number" 
+           id="{{ id_prefix | default('') }}time_range_value" 
+           name="time_range_value" 
+           class="form-input-number" 
+           value="{{ clustering_settings.time_range_value | default(72) }}" 
+           min="1" 
+           style="max-width: 70px;">
+    <label for="{{ id_prefix | default('') }}time_range_unit" class="sr-only">Time Range Unit</label>
+    <select id="{{ id_prefix | default('') }}time_range_unit" 
+            name="time_range_unit" 
+            class="form-input" 
+            style="max-width: 100px;">
+      <option value="hours" {% if clustering_settings.time_range_unit == 'hours' %}selected{% endif %}>Hours</option>
+      <option value="days" {% if clustering_settings.time_range_unit == 'days' %}selected{% endif %}>Days</option>
+      <option value="weeks" {% if clustering_settings.time_range_unit == 'weeks' %}selected{% endif %}>Weeks</option>
+      <option value="months" {% if clustering_settings.time_range_unit == 'months' %}selected{% endif %}>Months</option>
+    </select>
+  </div>
+</div>
+
+{% if show_fast_summarization is not defined or show_fast_summarization %}
+<div class="setting-row">
+  <div>
+    <div class="setting-name" id="{{ id_prefix | default('') }}fastSummarizationLabel">Fast Summarization</div>
+    <div class="setting-description">Use optimized summarization for faster processing</div>
+  </div>
+  <label class="toggle-switch">
+    <input type="checkbox" name="fast_summarization_enabled" 
+           {% if clustering_settings.fast_summarization_enabled|default(true) %}checked{% endif %} 
+           aria-labelledby="{{ id_prefix | default('') }}fastSummarizationLabel">
+    <span class="toggle-slider"></span>
+  </label>
+</div>
+
+<div class="setting-row">
+  <div>
+    <div class="setting-name" id="{{ id_prefix | default('') }}autoSelectModelLabel">Auto-Select Model</div>
+    <div class="setting-description">Automatically choose the best model for each task</div>
+  </div>
+  <label class="toggle-switch">
+    <input type="checkbox" name="auto_select_model" 
+           {% if clustering_settings.auto_select_model|default(true) %}checked{% endif %} 
+           aria-labelledby="{{ id_prefix | default('') }}autoSelectModelLabel">
+    <span class="toggle-slider"></span>
+  </label>
+</div>
+{% endif %}
+
+<div class="setting-row">
+  <div>
+    <label for="{{ id_prefix | default('') }}similarity_threshold" class="setting-name">Similarity Threshold</label>
+    <div class="setting-description">Minimum similarity score (0.0-1.0)</div>
+  </div>
+  <input type="number" 
+         id="{{ id_prefix | default('') }}similarity_threshold" 
+         name="similarity_threshold" 
+         class="form-input-number" 
+         value="{{ clustering_settings.similarity_threshold | default(0.8) }}" 
+         min="0" max="1" step="0.05" 
+         style="max-width: 70px;">
+</div>
+
+<div class="setting-row">
+  <div>
+    <label for="{{ id_prefix | default('') }}max_articles_per_batch" class="setting-name">Max Articles Per Batch</label>
+    <div class="setting-description">Maximum articles to analyze at once</div>
+  </div>
+  <input type="number" 
+         id="{{ id_prefix | default('') }}max_articles_per_batch" 
+         name="max_articles_per_batch" 
+         class="form-input-number" 
+         value="{{ clustering_settings.max_articles_per_batch | default(5) }}" 
+         min="1" max="20" 
+         style="max-width: 70px;">
+</div>

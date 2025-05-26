@@ -1,0 +1,54 @@
+<!-- templates/components/settings_modal.html -->
+<div class="settings-container" id="settingsContainer">
+  <button type="button" class="settings-button" id="settingsButton" 
+          aria-label="Open Clustering Settings" 
+          aria-controls="settingsMenu" 
+          aria-expanded="false">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <title>Settings Icon</title>
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+    <span class="sr-only">Open Clustering Settings</span>
+  </button>
+  
+  <div class="settings-menu" id="settingsMenu" role="dialog" 
+       aria-labelledby="settingsMenuTitle" aria-modal="true" hidden>
+    <div class="settings-header">
+      <h3 class="settings-title" id="settingsMenuTitle">Clustering Settings</h3>
+      <button class="settings-close" id="closeSettings" aria-label="Close Settings Menu">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <title>Close Icon</title>
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        <span class="sr-only">Close Settings</span>
+      </button>
+    </div>
+    
+    <form action="/update_clustering_settings" method="post" id="clusteringSettingsModalForm">
+      {% set id_prefix = 'modal-' %}
+      {% set show_fast_summarization = true %}
+      {% include 'components/clustering_settings_form.html' %}
+      
+      <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+        <button type="submit" class="button" style="flex: 1;">Save Settings</button>
+        <button type="submit" class="button outline" formaction="/reset_clustering_settings" style="flex: 1;">Reset</button>
+      </div>
+      
+      <div class="model-info" style="margin-top:1rem; padding-top:1rem; border-top: 1px solid var(--color-neutral-300);">
+        <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem;">Model Configuration:</h4>
+        <div>
+          <strong>Fast Summarization:</strong> 
+          {{ 'Enabled' if clustering_settings.fast_summarization_enabled|default(true) else 'Disabled' }}
+        </div>
+        <div>
+          <strong>Auto-Select Models:</strong> 
+          {{ 'Enabled' if clustering_settings.auto_select_model|default(true) else 'Disabled' }}
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="{{ url_for('static', path='js/settings_modal.js') }}" defer></script>

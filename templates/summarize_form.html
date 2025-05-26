@@ -1,0 +1,40 @@
+<!-- templates/summarize-form.html - Refactored -->
+{% extends "form_base.html" %}
+
+{% set show_page_header = false %}
+
+{% block title %}Data Points AI - Summarize URLs{% endblock %}
+
+{% block form_title %}Summarize URLs{% endblock %}
+
+{% block form_description %}
+<p class="mb-4">Enter one or more URLs to generate AI-powered summaries of the content.</p>
+{% endblock %}
+
+{% block form_attrs %}action="{{ url_for('summarize_single_post') }}" method="post" id="summarizeUrlForm"{% endblock %}
+
+{% block form_fields %}
+<div class="form-group">
+  <label class="form-label" for="url">Website URLs (one per line)</label>
+  <textarea id="url" name="url" class="form-input" rows="5"
+          placeholder="https://example.com/article1&#10;https://example.com/article2" 
+          required 
+          aria-describedby="urlHint"></textarea>
+  <p class="form-hint" id="urlHint">Enter one URL per line to summarize multiple articles at once.</p>
+</div>
+
+<div class="form-group">
+  <label class="form-label" for="style">Summary Style</label>
+  <select id="style" name="style" class="form-input">
+    <option value="default" {% if clustering_settings.default_summary_style == 'default' or clustering_settings.default_summary_style is not defined %}selected{% endif %}>Standard Summary (3-5 sentences)</option>
+    <option value="bullet" {% if clustering_settings.default_summary_style == 'bullet' %}selected{% endif %}>Axios-Style Bullet Points</option>
+    <option value="newswire" {% if clustering_settings.default_summary_style == 'newswire' %}selected{% endif %}>Traditional Newswire Style</option>
+  </select>
+  <p class="form-hint">Choose how you want your summaries to be formatted.</p>
+</div>
+
+{% include 'components/style_previews.html' %}
+{% endblock form_fields %}
+
+{% block submit_text %}Generate Summaries{% endblock %}
+{% block submit_class %}success large{% endblock %}

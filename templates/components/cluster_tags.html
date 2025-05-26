@@ -1,0 +1,18 @@
+<!-- templates/components/cluster_tags.html -->
+{% if cluster[0].cluster_topics %}
+  <div class="cluster-topics" style="margin-top: 0.75rem;">
+    <strong class="sr-only">Topics:</strong>
+    {% for topic in cluster[0].cluster_topics %}
+      <span class="topic-tag">{{ topic }}</span>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if cluster[0].cluster_entities %}
+  <div class="cluster-topics" style="margin-top: 0.5rem;">
+    <strong class="sr-only">Entities:</strong>
+    {% for entity in cluster[0].cluster_entities %}
+      <span class="entity-tag">{{ entity }}</span>
+    {% endfor %}
+  </div>
+{% endif %}
