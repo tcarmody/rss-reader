@@ -1,0 +1,62 @@
+<!-- templates/components/article_item.html -->
+<li class="article">
+  <h4 class="article-title">
+    <a href="{{ article.original_url | default(article.link) }}" target="_blank" rel="noopener noreferrer">{{ article.title }}</a>
+    
+    {% if article.source_name %}
+    <span class="article-source">({{ article.source_name }})</span>
+    {% endif %}
+  </h4>
+  
+  <div class="article-meta">
+    <!-- Enhanced source attribution -->
+    <div class="source-info">
+      {% if article.is_aggregator and article.aggregator_name %}
+        <!-- Show "Source: [Original] via [Aggregator]" -->
+        <span class="original-source">Source: <strong>{{ article.source_name }}</strong></span>
+        <span class="via-aggregator">via 
+          <a href="{{ article.aggregator_url | default(article.link) }}" target="_blank" rel="noopener noreferrer" class="aggregator-link">
+            {{ article.aggregator_name }}
+          </a>
+        </span>
+      {% else %}
+        <!-- Direct source -->
+        <span class="original-source">Source: <strong>{{ article.source_name | default(article.feed_source) }}</strong></span>
+      {% endif %}
+      
+      <!-- Feed source (always show) -->
+      <span class="feed-source">| Feed: {{ article.feed_source }}</span>
+    </div>
+    
+    <!-- Published date -->
+    <div class="article-date">
+      Published: <time datetime="{{ article.published_iso_format }}">{{ article.published }}</time>
+      
+      {% if article.cluster_size and article.cluster_size > 1 %}
+        <span style="margin-left: 0.5rem;">Part of {{ article.cluster_size }}-article cluster</span>
+      {% endif %}
+    </div>
+    
+    <!-- Extraction confidence indicator (optional) -->
+    {% if article.is_aggregator and article.source_extraction_confidence is defined %}
+      {% if article.source_extraction_confidence < 0.5 %}
+        <div class="extraction-warning">
+          <small>⚠️ Original source may not be accurate</small>
+        </div>
+      {% endif %}
+    {% endif %}
+    
+    <div class="article-actions">
+      <button class="bookmark-btn" 
+              data-article-id="{{ article.link | urlencode }}" 
+              data-title="{{ article.title }}" 
+              data-url="{{ article.original_url | default(article.link) }}" 
+              data-summary="{{ article.summary.summary if article.summary and article.summary.summary else '' }}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bookmark-icon">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+        </svg>
+        Save for later
+      </button>
+    </div>
+  </div>
+</li>

@@ -1,0 +1,73 @@
+<!-- templates/multiple-summaries.html - Refactored -->
+{% extends "content_base.html" %}
+
+{% set show_page_header = true %}
+{% set show_timestamp = true %}
+
+{% block title %}Data Points AI - Multiple Summaries{% endblock %}
+
+{% block main_class %}wide{% endblock %}
+{% block main_attrs %}aria-labelledby="page-title"{% endblock %}
+
+{% block page_title %}Multiple URL Summaries{% endblock %}
+
+{% block nav_actions %}
+  <a href="{{ url_for('welcome') }}" class="button outline">Home</a>
+  <a href="{{ url_for('summarize_single_get') }}" class="button outline">New Summary</a>
+{% endblock nav_actions %}
+
+{% block page_info %}
+  {% if urls %}
+  <section class="summary-url-container" aria-labelledby="processedUrlsTitle">
+    <h2 id="processedUrlsTitle" class="summary-url-label">Processed URLs:</h2>
+    <div class="url-list"> 
+      {% for url_item in urls %}
+        <div class="url-item">{{ url_item }}</div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+{% endblock page_info %}
+
+{% block main_content %}
+  {% if clusters %}
+    {% for cluster in clusters %}
+      {% if cluster and cluster[0] and cluster[0].summary %}
+      <article class="cluster" aria-labelledby="clusterTitle-{{ loop.index }}">
+        <header class="cluster-header">
+          <h2 class="cluster-title" id="clusterTitle-{{ loop.index }}">{{ cluster[0].summary.headline }}</h2>
+          {% if cluster[0].feed_source %}
+            <span class="article-source">Source: {{ cluster[0].feed_source }}</span>
+          {% endif %}
+        </header>
+
+        <div class="article-summary">
+          {{ cluster[0].summary.summary|replace('\n\n', '<br><br>')|replace('\n', '<br>')|safe }}
+        </div>
+        
+        {% if cluster[0].model_used %}
+          <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--color-neutral-500);">
+            Summarized with: {{ cluster[0].model_used }}
+          </div>
+        {% endif %}
+
+        <footer class="summary-actions" style="margin-top: 1rem;">
+          <a href="{{ cluster[0].link }}" class="button outline" target="_blank" rel="noopener noreferrer">View Original Article</a>
+        </footer>
+      </article>
+      {% else %}
+      <div class="cluster info-banner" role="alert">
+        <p>A summary could not be generated for one of the provided URLs.</p>
+      </div>
+      {% endif %}
+    {% endfor %}
+  {% else %}
+    <div class="info-banner" role="status" style="margin-top: 2rem;">
+      <p>No summaries were generated. Please try again or check your URLs.</p>
+    </div>
+  {% endif %}
+  
+  <div class="summary-actions" style="text-align: center; margin-top: 2rem;">
+    <a href="{{ url_for('summarize_single_get') }}" class="button">Summarize More URLs</a>
+  </div>
+{% endblock main_content %}

@@ -1,0 +1,25 @@
+<!-- templates/form_base.html -->
+{% extends "content_base.html" %}
+
+{% block main_class %}standard{% endblock %}
+
+{% block main_content %}
+<div class="card">
+  <h1 class="card-title">{% block form_title %}{% endblock %}</h1>
+  {% block form_description %}{% endblock %}
+  
+  {% block form_content %}
+  <form {% block form_attrs %}{% endblock %} class="{% block form_class %}{% endblock %}">
+    {% block form_fields %}{% endblock %}
+    
+    <div class="form-actions">
+      {% block form_actions %}
+      <button type="submit" class="button {% block submit_class %}success large{% endblock %}">
+        {% block submit_text %}Submit{% endblock %}
+      </button>
+      {% endblock form_actions %}
+    </div>
+  </form>
+  {% endblock form_content %}
+</div>
+{% endblock main_content %}

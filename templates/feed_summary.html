@@ -1,0 +1,196 @@
+<!-- templates/feed-summary.html - Refactored -->
+{% extends "content_base.html" %}
+
+{% set show_page_header = true %}
+{% set show_timestamp = true %}
+
+{% block title %}Data Points AI - RSS Summary{% endblock %}
+
+{% block main_class %}wide{% endblock %}
+{% block main_attrs %}aria-labelledby="page-title"{% endblock %}
+
+{% block page_title %}AI News Digest{% endblock %}
+
+{% block nav_controls %}
+  <form action="/refresh" method="post" style="display: inline;" id="refreshFeedsFormNav">
+    <button type="submit" class="button">Refresh Feeds</button>
+  </form>
+  <a href="{{ url_for('clear_data') }}" class="button outline danger">Clear All Data</a>
+  {% include 'components/settings_modal.html' %}
+{% endblock nav_controls %}
+
+{% block extra_head %}
+<style>
+  /* Page-specific styles */
+  .bookmark-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: 1px solid var(--color-neutral-300);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    color: var(--color-neutral-700);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .bookmark-btn:hover {
+    background: var(--color-primary-50);
+    border-color: var(--color-primary-300);
+    color: var(--color-primary-700);
+  }
+  
+  .bookmark-btn.saved {
+    background: var(--color-primary-100);
+    border-color: var(--color-primary-400);
+    color: var(--color-primary-700);
+  }
+  
+  /* Source attribution and aggregator styles */
+  .source-info {
+    font-size: 0.9rem;
+    color: var(--color-neutral-600);
+    margin-bottom: 0.25rem;
+  }
+  
+  .original-source strong {
+    color: var(--color-success-600, #059669);
+    font-weight: 600;
+  }
+  
+  .via-aggregator {
+    color: var(--color-neutral-500);
+    font-style: italic;
+    margin-left: 0.25rem;
+  }
+  
+  .aggregator-link {
+    color: var(--color-danger-600, #dc2626);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  
+  .aggregator-link:hover {
+    text-decoration: underline;
+    color: var(--color-danger-700, #b91c1c);
+  }
+</style>
+{% endblock extra_head %}
+
+{% block page_info %}
+  {% if clustering_settings.time_range_enabled %}
+  <div class="time-range-info" role="status">
+    Showing articles from the past 
+    {{ clustering_settings.time_range_value }} 
+    {{ clustering_settings.time_range_unit }}.
+  </div>
+  {% endif %}
+  
+  {% if aggregator_stats and aggregator_stats.total_aggregator_links > 0 %}
+  <div class="aggregator-stats-box">
+    <h3>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+      </svg>
+      Source Extraction Statistics
+    </h3>
+    <ul>
+      <li>Total aggregator links processed: <span class="stat-value">{{ aggregator_stats.total_aggregator_links }}</span></li>
+      <li>Successful source extractions: <span class="stat-value">{{ aggregator_stats.successful_extractions }}</span> 
+          ({{ ((aggregator_stats.successful_extractions / aggregator_stats.total_aggregator_links) * 100) | round(1) }}%)
+      </li>
+      {% if aggregator_stats.by_aggregator %}
+        <li>By aggregator:
+          <ul>
+            {% for agg_name, count in aggregator_stats.by_aggregator.items() | sort %}
+              <li>{{ agg_name }}: <span class="stat-value">{{ count }}</span> links</li>
+            {% endfor %}
+          </ul>
+        </li>
+      {% endif %}
+    </ul>
+  </div>
+  {% endif %}
+{% endblock page_info %}
+
+{% block main_content %}
+  {% if clusters %}
+    {% for cluster in clusters %}
+    <article class="cluster" aria-labelledby="clusterHeadline-{{ loop.index }}">
+      <header class="cluster-header">
+        {% if cluster[0].summary and cluster[0].summary.headline %}
+          <h2 class="cluster-title" id="clusterHeadline-{{ loop.index }}">{{ cluster[0].summary.headline }}</h2>
+        {% else %}
+          <h2 class="cluster-title" id="clusterHeadline-{{ loop.index }}">{{ cluster[0].title | default('Cluster Summary') }}</h2>
+        {% endif %}
+        <span class="cluster-info">{{ cluster|length }} related article{% if (cluster|length) > 1 %}s{% endif %}</span>
+      </header>
+
+      {% if cluster[0].summary and cluster[0].summary.summary %}
+        <div class="article-summary">
+          {{ cluster[0].summary.summary|replace('\n\n', '<br><br>')|replace('\n', '<br>')|safe }}
+          
+          {% include 'components/cluster_tags.html' %}
+          
+          {% if cluster[0].model_used %}
+            <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--color-neutral-500);">
+              Summarized with: {{ cluster[0].model_used }}
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <div class="articles-container">
+        <h3 class="sr-only">Articles in this cluster:</h3>
+        <ul>
+          {% for article in cluster %}
+            {% include 'components/article_item.html' %}
+          {% endfor %}
+        </ul>
+      </div>
+    </article>
+    {% endfor %}
+  {% else %}
+    <div class="info-banner" role="status" style="margin-top:2rem;">
+      <p>No article summaries are currently available. Try refreshing the feeds or adjusting your settings.</p>
+      <a href="{{ url_for('welcome') }}" class="button outline" style="margin-top:1rem;">Go to Settings / Home</a>
+    </div>
+  {% endif %}
+{% endblock main_content %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize bookmark functionality
+  document.querySelectorAll('.bookmark-btn').forEach(btn => {
+    btn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      
+      const button = this;
+      const title = button.dataset.title;
+      const url = button.dataset.url;
+      const summary = button.dataset.summary;
+      
+      try {
+        await window.dataPointsAI.saveBookmark(url, title, summary);
+        
+        // Update button appearance
+        button.classList.add('saved');
+        button.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bookmark-icon">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+          </svg>
+          Saved
+        `;
+      } catch (error) {
+        // Error handling is done in the common library
+        console.error('Bookmark error:', error);
+      }
+    });
+  });
+});
+</script>
+{% endblock extra_scripts %}

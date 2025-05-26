@@ -1,0 +1,177 @@
+<!-- templates/single-summary.html - Refactored -->
+{% extends "content_base.html" %}
+
+{% set show_page_header = true %}
+{% set show_timestamp = true %}
+
+{% block title %}Data Points AI - URL Summary{% endblock %}
+
+{% block main_class %}standard{% endblock %}
+{% block main_attrs %}aria-labelledby="page-title"{% endblock %}
+
+{% block page_title %}URL Summary{% endblock %}
+
+{% block nav_actions %}
+  <a href="{{ url_for('welcome') }}" class="button outline">Home</a>
+  <a href="{{ url_for('summarize_single_get') }}" class="button outline">New Summary</a>
+{% endblock nav_actions %}
+
+{% block extra_head %}
+<style>
+  /* Bookmark button styles */
+  .action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  
+  #bookmarkButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+  }
+  
+  #bookmarkButton.saved {
+    background-color: var(--color-primary-100);
+    border-color: var(--color-primary-400);
+    color: var(--color-primary-700);
+  }
+  
+  #bookmarkButton.saved .bookmark-icon {
+    fill: var(--color-primary-500);
+    stroke: var(--color-primary-600);
+  }
+  
+  .bookmark-status {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+  
+  .success-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-success-700);
+    background-color: var(--color-success-50);
+    border: 1px solid var(--color-success-200);
+    padding: 0.75rem;
+    border-radius: 4px;
+  }
+  
+  .success-message a {
+    color: var(--color-primary-600);
+    text-decoration: underline;
+    margin-left: 0.25rem;
+  }
+  
+  .error-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-danger-700);
+    background-color: var(--color-danger-50);
+    border: 1px solid var(--color-danger-200);
+    padding: 0.75rem;
+    border-radius: 4px;
+  }
+</style>
+{% endblock extra_head %}
+
+{% block main_content %}
+  <div class="summary-url-container">
+    <div class="summary-url">
+      <span class="summary-url-label">Source URL:</span>
+      <a href="{{ url }}" target="_blank" rel="noopener noreferrer" class="summary-url-link">{{ url }}</a>
+    </div>
+  </div>
+  
+  {% if cluster and cluster[0] and cluster[0].summary %}
+  <article class="cluster">
+    <header class="cluster-header">
+      <h2 class="cluster-title">{{ cluster[0].summary.headline }}</h2>
+    </header>
+
+    <div class="article-summary">
+      {{ cluster[0].summary.summary|replace('\n\n', '<br><br>')|replace('\n', '<br>')|safe }}
+    </div>
+    
+    {% if cluster[0].model_used %}
+      <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--color-neutral-500);">
+        Summarized with: {{ cluster[0].model_used }}
+      </div>
+    {% endif %}
+
+    <footer class="summary-actions" style="margin-top: 1.5rem;">
+      <div class="action-buttons">
+        <button id="bookmarkButton" class="button outline" 
+                data-url="{{ url }}" 
+                data-title="{{ cluster[0].summary.headline }}" 
+                data-summary="{{ cluster[0].summary.summary }}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bookmark-icon">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+          </svg>
+          Bookmark This Article
+        </button>
+        <a href="{{ url_for('summarize_single_get') }}" class="button">Summarize Another URL</a>
+      </div>
+      <div id="bookmarkStatus" class="bookmark-status" style="margin-top: 0.75rem; display: none;"></div>
+    </footer>
+  </article>
+  {% else %}
+  <div class="info-banner" role="alert">
+    <p>The summary for this URL could not be generated or is unavailable.</p>
+  </div>
+  {% endif %}
+{% endblock main_content %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const bookmarkButton = document.getElementById('bookmarkButton');
+  const bookmarkStatus = document.getElementById('bookmarkStatus');
+  
+  if (bookmarkButton) {
+    bookmarkButton.addEventListener('click', async function() {
+      const url = this.getAttribute('data-url');
+      const title = this.getAttribute('data-title');
+      const summary = this.getAttribute('data-summary');
+      
+      try {
+        await window.dataPointsAI.saveBookmark(url, title, summary);
+        
+        // Update the button to show it's bookmarked
+        bookmarkButton.classList.remove('outline');
+        bookmarkButton.classList.add('saved');
+        bookmarkButton.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bookmark-icon">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+          </svg>
+          Bookmarked
+        `;
+        
+        // Show success message
+        bookmarkStatus.style.display = 'block';
+        bookmarkStatus.innerHTML = `
+          <div class="success-message">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            Article bookmarked successfully! <a href="{{ url_for('view_bookmarks') }}">View all bookmarks</a>
+          </div>
+        `;
+      } catch (error) {
+        // Error handling is done in the common library
+        console.error('Bookmark error:', error);
+        bookmarkStatus.style.display = 'block';
+        bookmarkStatus.innerHTML = '<div class="error-message">An error occurred while bookmarking the article.</div>';
+      }
+    });
+  }
+});
+</script>
+{% endblock extra_scripts %}
