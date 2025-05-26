@@ -85,7 +85,8 @@ DEFAULT_CLUSTERING_SETTINGS = {
     'time_range_value': 72, # Default to 3 days in hours
     'time_range_unit': 'hours',
     'fast_summarization_enabled': True, # Added based on feed-summary.html
-    'auto_select_model': True          # Added based on feed-summary.html
+    'auto_select_model': True,          # Added based on feed-summary.html
+    'default_summary_style': 'default'  # Added for style selection
 }
 
 # Helper functions for session management
@@ -120,9 +121,11 @@ def get_common_template_vars(request: Request):
         "request": request,
         "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
         "clustering_settings": get_clustering_settings(request),
-        "global_settings": get_global_settings(request), # Add global_settings here
+        "global_settings": get_global_settings(request),
         "timestamp": now.strftime("%Y-%m-%d %H:%M:%S UTC"),
         "timestamp_iso_format": now.isoformat(),
+        "show_paywall_toggle": True,  # Can be overridden per route
+        "has_default_feeds": os.path.exists(os.path.join(os.path.dirname(__file__), 'rss_feeds.txt')),
     }
 
 def sort_clusters(clusters):
@@ -184,7 +187,7 @@ async def index(request: Request):
         timestamp_dt = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc) if timestamp_str else common_vars["timestamp_dt"]
         
         return templates.TemplateResponse(
-            "feed-summary.html",
+            "feed_summary.html",  # Fixed filename
             {
                 **common_vars,
                 "clusters": sorted_clusters,
@@ -197,7 +200,6 @@ async def index(request: Request):
             "welcome.html",
             {
                 **common_vars,
-                "has_default_feeds": os.path.exists(os.path.join(os.path.dirname(__file__), 'rss_feeds.txt')),
                 "initial_summaries_loaded": False, # Explicitly set for welcome page
             }
         )
@@ -210,7 +212,6 @@ async def welcome(request: Request):
         "welcome.html",
         {
             **common_vars,
-            "has_default_feeds": os.path.exists(os.path.join(os.path.dirname(__file__), 'rss_feeds.txt')),
             "initial_summaries_loaded": bool(latest_data['clusters']), # Check if data exists
         }
     )
@@ -234,6 +235,7 @@ async def update_clustering_settings(
     time_range_enabled: Optional[str] = Form(None),
     fast_summarization_enabled: Optional[str] = Form(None), # Added
     auto_select_model: Optional[str] = Form(None),         # Added
+    default_summary_style: Optional[str] = Form(None),     # Added
     similarity_threshold: float = Form(DEFAULT_CLUSTERING_SETTINGS['similarity_threshold']),
     max_articles_per_batch: int = Form(DEFAULT_CLUSTERING_SETTINGS['max_articles_per_batch']),
     time_range_value: int = Form(DEFAULT_CLUSTERING_SETTINGS['time_range_value']),
@@ -247,6 +249,10 @@ async def update_clustering_settings(
     clustering_settings['time_range_enabled'] = time_range_enabled == 'on'
     clustering_settings['fast_summarization_enabled'] = fast_summarization_enabled == 'on'
     clustering_settings['auto_select_model'] = auto_select_model == 'on'
+    
+    # Handle default summary style
+    if default_summary_style and default_summary_style in ['default', 'bullet', 'newswire']:
+        clustering_settings['default_summary_style'] = default_summary_style
     
     clustering_settings['similarity_threshold'] = max(0.0, min(1.0, similarity_threshold))
     clustering_settings['max_articles_per_batch'] = max(1, min(20, max_articles_per_batch)) # Increased max
@@ -382,7 +388,7 @@ async def clear_data(request: Request): # Added request for consistency if commo
 async def summarize_single_get(request: Request):
     """Handle GET request for URL summarization."""
     common_vars = get_common_template_vars(request)
-    return templates.TemplateResponse("summarize-form.html", {**common_vars})
+    return templates.TemplateResponse("summarize_form.html", {**common_vars})  # Fixed filename
 
 @app.post("/summarize")
 async def summarize_single_post(request: Request, url: str = Form(...), style: str = Form("default")):
@@ -436,7 +442,7 @@ async def summarize_single_post(request: Request, url: str = Form(...), style: s
                 articles=processed_articles, 
                 max_concurrent=max_workers, 
                 auto_select_model=True,
-                style=style  # Add style parameter
+                style=style  # Ensure style parameter is passed
             )
             for result in batch_results:
                 if 'original' in result and 'summary' in result:
@@ -465,7 +471,7 @@ async def summarize_single_post(request: Request, url: str = Form(...), style: s
             }]
             summarized_clusters.append(error_summary_item)
 
-        template_name = "single-summary.html" if len(urls_input) == 1 and summarized_clusters else "multiple-summaries.html"
+        template_name = "single_summary.html" if len(urls_input) == 1 and summarized_clusters else "multiple_summaries.html"  # Fixed filenames
         # For single-summary, the template expects 'cluster' not 'clusters' and specific structure.
         context_vars_for_summary = {
             **common_vars,
@@ -473,7 +479,7 @@ async def summarize_single_post(request: Request, url: str = Form(...), style: s
             "timestamp": common_vars["timestamp"], # Use common_vars timestamp
             "timestamp_iso_format": common_vars["timestamp_iso_format"],
         }
-        if template_name == "single-summary.html":
+        if template_name == "single_summary.html":
             # The single-summary.html template expects 'url' (the single URL) and 'cluster' (a single cluster)
             context_vars_for_summary["url"] = urls_input[0] if urls_input else "#"
             context_vars_for_summary["cluster"] = summarized_clusters[0] if summarized_clusters else [{
@@ -1035,12 +1041,15 @@ async def import_bookmarks(
 async def view_bookmarks(request: Request):
     """Render the bookmarks page."""
     bookmarks = bookmark_manager.get_bookmarks()
+    common_vars = get_common_template_vars(request)
+    # Override paywall toggle for bookmarks page
+    common_vars["show_paywall_toggle"] = False
+    
     return templates.TemplateResponse(
         "bookmarks.html",
         {
-            "request": request,
+            **common_vars,
             "bookmarks": bookmarks,
-            **get_common_template_vars(request)
         }
     )
 
