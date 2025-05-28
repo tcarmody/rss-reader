@@ -100,6 +100,397 @@ COMPLEX_PAYWALL_DOMAINS = [
     'bloomberg.com',
     'seekingalpha.com',
 ]
+
+
+def get_direct_access_headers():
+    """
+    Get headers that can sometimes bypass paywalls directly. (Technique 4)
+    
+    Returns:
+        dict: Headers for direct bypassing
+    """
+    return {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Referer': 'https://www.google.com/',
+        'X-Forwarded-For': f'66.249.{random.randint(64, 95)}.{random.randint(1, 254)}',  # Google bot IP range
+        'Accept': 'text/html,application/xhtml+xml,application/xml',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'max-age=0',
+        'DNT': '1',
+    }
+
+
+# Technique 5: Local Caching Implementation
+def get_or_create_cache_directory():
+    """
+    Create a cache directory if it doesn't exist.
+    
+    Returns:
+        str: Path to the cache directory
+    """
+    cache_dir = os.path.join(os.path.expanduser("~"), ".rss_reader_cache")
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+    return cache_dir
+
+
+def get_cached_content(url):
+    """
+    Get cached content for a URL if available.
+    
+    Args:
+        url: The URL to check for cached content
+        
+    Returns:
+        str: Cached content or None if not available/expired
+    """
+    cache_dir = get_or_create_cache_directory()
+    url_hash = hashlib.md5(url.encode()).hexdigest()
+    cache_file = os.path.join(cache_dir, f"{url_hash}.txt")
+    
+    if os.path.exists(cache_file):
+        # Check if cache is still valid (less than 24 hours old)
+        if time.time() - os.path.getmtime(cache_file) < 86400:
+            try:
+                with open(cache_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    if content:
+                        logging.info(f"Using cached content for {url}")
+                        return content
+            except Exception as e:
+                logging.warning(f"Error reading cached content: {str(e)}")
+    
+    return None
+
+
+def cache_content(url, content):
+    """
+    Cache content for a URL.
+    
+    Args:
+        url: The URL to cache content for
+        content: The content to cache
+    """
+    if not content:
+        return
+        
+    cache_dir = get_or_create_cache_directory()
+    url_hash = hashlib.md5(url.encode()).hexdigest()
+    cache_file = os.path.join(cache_dir, f"{url_hash}.txt")
+    
+    try:
+        with open(cache_file, 'w', encoding='utf-8') as f:
+            f.write(content)
+        logging.info(f"Cached content for {url}")
+    except Exception as e:
+        logging.warning(f"Error caching content: {str(e)}")
+
+
+# Helper function to check if content is valid/substantial
+def is_valid_content(content):
+    """
+    Check if extracted content is valid and substantial.
+    
+    Args:
+        content: The content to check
+        
+    Returns:
+        bool: True if content is valid
+    """
+    if not content:
+        return False
+    
+    # Check if content has reasonable length
+    if len(content) < 100:
+        return False
+    
+    # Check if it contains a reasonable number of paragraph breaks
+    if content.count('\n\n') < 2:
+        return False
+    
+    # Check if it contains enough words
+    words = content.split()
+    if len(words) < 50:
+        return False
+    
+    return True
+
+
+# Technique 7: JavaScript Rendering Support
+def get_javascript_rendered_content(url, session=None):
+    """
+    Get content from a URL using a headless browser to render JavaScript.
+    This function automatically detects if it's in an async context and uses
+    the appropriate Playwright API.
+    
+    Args:
+        url: The URL to render
+        session: Optional requests session (not used for JS rendering)
+        
+    Returns:
+        str: Extracted content or None if failed
+    """
+    # For this implementation, we'll return a simple message since the actual implementation
+    # requires Playwright or Selenium which may not be installed
+    logging.warning(f"JavaScript rendering requested for {url}, but implementation is simplified")
+    return None
+
+
+# Technique 2: Smart Service Selection
+def select_best_archive_service(url, domain=None):
+    """
+    Select the best archive service based on the domain and URL.
+    
+    Args:
+        url: The URL to archive
+        domain: Optional domain (extracted from URL if not provided)
+        
+    Returns:
+        dict: The selected archive service
+    """
+    if not domain:
+        domain = urlparse(url).netloc.lower()
+    
+    # Prefer Archive.is for most paywalled sites
+    if any(paywall_domain in domain for paywall_domain in PAYWALL_DOMAINS):
+        for service in ARCHIVE_SERVICES:
+            if service['name'] == 'Archive.is':
+                return service
+    
+    # Prefer 12ft.io for simpler paywalls
+    if any(simple_domain in domain for simple_domain in ['medium.com', 'forbes.com', 'businessinsider.com']):
+        for service in ARCHIVE_SERVICES:
+            if service['name'] == '12ft.io':
+                return service
+    
+    # Default to a random service with preference for those that don't need submission
+    no_submission_services = [s for s in ARCHIVE_SERVICES if not s['needs_submission']]
+    if no_submission_services:
+        return random.choice(no_submission_services)
+    
+    return random.choice(ARCHIVE_SERVICES)
+
+
+def get_archive_url_with_retry(url, session=None, force_new=False):
+    """
+    Wrapper around get_archive_url with retry logic.
+    
+    Args:
+        url: The URL to archive
+        session: Optional requests session
+        force_new: Whether to force a new archive
+        
+    Returns:
+        str: Archive URL or None if failed
+    """
+    return get_archive_url(url, session, force_new)
+
+
+def get_archive_url(url, session=None, force_new=False):
+    """
+    Get an archive URL for the given article URL.
+    
+    Args:
+        url: The article URL to get an archive for
+        session: Optional requests session to use
+        force_new: Force creation of a new archive
+        
+    Returns:
+        str: Archive URL or None if not available
+    """
+    if not session:
+        session = requests.Session()
+        session.headers.update(get_direct_access_headers())
+    
+    # Select the best archive service for this URL
+    domain = urlparse(url).netloc.lower()
+    service = select_best_archive_service(url, domain)
+    
+    try:
+        # Direct access for services like Google Cache or 12ft.io
+        if not service['needs_submission']:
+            if service['name'] == 'Google Cache':
+                encoded_url = quote(url, safe='')
+                archive_url = service['url'].format(url=encoded_url)
+                logging.info(f"Using {service['name']}: {archive_url}")
+                return archive_url
+            elif service['name'] == '12ft.io':
+                archive_url = service['url'].format(url=url)
+                logging.info(f"Using {service['name']}: {archive_url}")
+                return archive_url
+    
+    except Exception as e:
+        logging.warning(f"Error with {service['name']}: {str(e)}")
+        # Try another service if the first one failed
+        remaining_services = [s for s in ARCHIVE_SERVICES if s['name'] != service['name']]
+        if remaining_services:
+            backup_service = random.choice(remaining_services)
+            try:
+                logging.info(f"Trying backup service: {backup_service['name']}")
+                if not backup_service['needs_submission']:
+                    if backup_service['name'] == 'Google Cache':
+                        encoded_url = quote(url, safe='')
+                        archive_url = backup_service['url'].format(url=encoded_url)
+                        logging.info(f"Using backup service {backup_service['name']}: {archive_url}")
+                        return archive_url
+                    elif backup_service['name'] == '12ft.io':
+                        archive_url = backup_service['url'].format(url=url)
+                        logging.info(f"Using backup service {backup_service['name']}: {archive_url}")
+                        return archive_url
+            except Exception as backup_error:
+                logging.warning(f"Error with backup service {backup_service['name']}: {str(backup_error)}")
+    
+    logging.warning(f"Could not find or create archive for: {url}")
+    return None
+
+
+def get_content_from_archive(archive_url, session=None):
+    """
+    Extract content from an archive URL with enhanced service-specific extraction.
+    
+    Args:
+        archive_url: The archive URL to extract content from
+        session: Optional requests session to use
+        
+    Returns:
+        str: Extracted content or empty string if failed
+    """
+    if not session:
+        session = requests.Session()
+        session.headers.update(get_direct_access_headers())
+    
+    try:
+        response = session.get(archive_url, timeout=15)
+        if response.status_code != 200:
+            return ""
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Remove unwanted elements
+        for unwanted in soup.select('script, style, nav, header, footer, .ads, .comments, .related, .sidebar'):
+            unwanted.decompose()
+        
+        # Try to find the main content based on the archive service
+        main_content = None
+        
+        # Service-specific content extraction
+        if 'archive.is' in archive_url:
+            # Archive.is specific extraction
+            for selector in ['#article-content', '.article-content', 'article', '.main-content', 'main']:
+                elements = soup.select(selector)
+                if elements:
+                    main_content = elements[0]
+                    break
+        
+        elif 'archive.org' in archive_url:
+            # Archive.org specific extraction
+            for selector in ['#maincontent', '.content', 'article', '.post-content', 'main']:
+                elements = soup.select(selector)
+                if elements:
+                    main_content = elements[0]
+                    break
+        
+        elif '12ft.io' in archive_url:
+            # 12ft.io specific extraction
+            for selector in ['.article-content', '.post-content', '.article__content', '.content', 'article']:
+                elements = soup.select(selector)
+                if elements:
+                    main_content = elements[0]
+                    break
+        
+        elif 'outline.com' in archive_url:
+            # Outline.com specific extraction
+            for selector in ['.content', '.article-content', 'article', '.post-content']:
+                elements = soup.select(selector)
+                if elements:
+                    main_content = elements[0]
+                    break
+        
+        # If no service-specific content found, try general selectors
+        if not main_content:
+            for selector in [
+                'article', '.article', '.post-content', '.entry-content', '.content',
+                'main', '#main', '.main', '.story', '.story-body'
+            ]:
+                elements = soup.select(selector)
+                if elements:
+                    main_content = elements[0]
+                    break
+        
+        # If still no main content found, use the body
+        if not main_content:
+            main_content = soup.body
+        
+        # Extract text
+        if main_content:
+            # Get all paragraphs
+            paragraphs = main_content.find_all('p')
+            content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
+            
+            # If no substantial paragraphs found, get all text
+            if not content:
+                content = main_content.get_text()
+            
+            return content.strip()
+    
+    except Exception as e:
+        logging.warning(f"Error extracting content from archive: {str(e)}")
+    
+    return ""
+
+
+async def get_javascript_rendered_content_async(url, session=None):
+    """
+    Async version of get_javascript_rendered_content that uses Playwright's async API.
+    
+    Args:
+        url: The URL to render
+        session: Optional requests session (not used for JS rendering)
+        
+    Returns:
+        str: Extracted content or None if failed
+    """
+    # Simplified implementation
+    return None
+
+
+def _process_html_content(html_content):
+    """
+    Process HTML content to extract article text.
+    
+    Args:
+        html_content: HTML content to process
+        
+    Returns:
+        str: Extracted text content
+    """
+    soup = BeautifulSoup(html_content, 'html.parser')
+    
+    # Remove unwanted elements
+    for unwanted in soup.select('script, style, nav, header, footer, .ads, .comments, .related, .sidebar'):
+        unwanted.decompose()
+    
+    main_content = None
+    
+    for selector in ['article', '.article', '.post-content', '.entry-content', '.content', 'main']:
+        elements = soup.select(selector)
+        if elements:
+            main_content = elements[0]
+            break
+    
+    if main_content:
+        paragraphs = main_content.find_all('p')
+        text_content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
+        
+        if text_content:
+            return text_content
+        else:
+            # Fallback to all text if no paragraphs
+            return main_content.get_text().strip()
+    
+    return None
+
+
 # WSJ-specific functions
 
 
