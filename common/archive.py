@@ -100,10 +100,7 @@ COMPLEX_PAYWALL_DOMAINS = [
     'bloomberg.com',
     'seekingalpha.com',
 ]
-# WSJ-specific
-    elif 'wsj.com' in domain:
-        # Use the enhanced WSJ session
-        return get_wsj_specific_session(url)
+# WSJ-specific functions
 
 def try_wsj_amp_version(url):
     """Try to access the AMP version of WSJ articles."""
