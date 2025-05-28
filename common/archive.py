@@ -101,6 +101,17 @@ COMPLEX_PAYWALL_DOMAINS = [
     'seekingalpha.com',
 ]
 
+# WSJ-specific user agents for enhanced bypass
+WSJ_USER_AGENTS = [
+    'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+    'Twitterbot/1.0',
+    'LinkedInBot/1.0 (compatible; Mozilla/5.0; Apache-HttpClient +http://www.linkedin.com)',
+    'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+    'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/W.X.Y.Z Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+    'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/600.2.5 (KHTML, like Gecko) Version/8.0.2 Safari/600.2.5 (Applebot/0.1; +http://www.apple.com/go/applebot)',
+]
+
 
 def get_direct_access_headers():
     """
@@ -532,6 +543,49 @@ def is_complex_paywall(url):
             return True
             
     return False
+
+
+def get_wsj_specific_session(url):
+    """Create a session specifically optimized for WSJ with advanced evasion."""
+    session = requests.Session()
+    
+    user_agent = random.choice(WSJ_USER_AGENTS)
+    
+    headers = {
+        'User-Agent': user_agent,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Cache-Control': 'max-age=0',
+    }
+    
+    referrer_strategies = [
+        f'https://www.google.com/search?q={quote(url)}',
+        'https://www.facebook.com/',
+        'https://twitter.com/',
+        'https://www.linkedin.com/',
+        'https://news.google.com/',
+        'https://t.co/',
+        '',
+    ]
+    
+    headers['Referer'] = random.choice(referrer_strategies)
+    
+    session.cookies.update({
+        'wsjregion': 'na,us',
+        'gdprApplies': 'false',
+        'ccpaApplies': 'false',
+        'usr_bkt': 'C0H2lPLMlD',
+    })
+    
+    session.headers.update(headers)
+    return session
 
 
 def try_wsj_amp_version(url):
