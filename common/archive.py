@@ -102,6 +102,47 @@ COMPLEX_PAYWALL_DOMAINS = [
 ]
 # WSJ-specific functions
 
+
+def is_paywalled(url):
+    """
+    Check if a URL is likely behind a paywall.
+    
+    Args:
+        url: The article URL to check
+        
+    Returns:
+        bool: True if the URL is likely paywalled
+    """
+    domain = urlparse(url).netloc.lower()
+    
+    # Check against known paywall domains
+    for paywall_domain in PAYWALL_DOMAINS:
+        if paywall_domain in domain:
+            return True
+            
+    return False
+
+
+def is_complex_paywall(url):
+    """
+    Check if a URL has a complex paywall requiring JavaScript rendering.
+    
+    Args:
+        url: The article URL to check
+        
+    Returns:
+        bool: True if the URL has a complex paywall
+    """
+    domain = urlparse(url).netloc.lower()
+    
+    # Check against known complex paywall domains
+    for complex_domain in COMPLEX_PAYWALL_DOMAINS:
+        if complex_domain in domain:
+            return True
+            
+    return False
+
+
 def try_wsj_amp_version(url):
     """Try to access the AMP version of WSJ articles."""
     if 'wsj.com/articles/' in url:
