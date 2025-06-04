@@ -11,8 +11,32 @@ from datetime import datetime
 import json
 import csv
 from typing import List, Optional, Dict, Any, Union
+import re
 
 logger = logging.getLogger(__name__)
+
+def escape_sql_like(value: str) -> str:
+    """
+    Escape special characters in SQL LIKE patterns to prevent injection.
+    
+    Args:
+        value: The value to escape
+        
+    Returns:
+        Escaped value safe for SQL LIKE operations
+    """
+    if not value:
+        return value
+    
+    # Escape SQL LIKE special characters: % _ \ 
+    escaped = value.replace('\\', '\\\\')  # Must be first
+    escaped = escaped.replace('%', '\\%')
+    escaped = escaped.replace('_', '\\_')
+    
+    # Remove any potential SQL injection patterns
+    escaped = re.sub(r'[^\w\s\-.]', '', escaped)
+    
+    return escaped
 
 class BookmarkManager:
     """
@@ -128,7 +152,9 @@ class BookmarkManager:
                 # Filter bookmarks that contain any of the specified tags
                 tag_filters = []
                 for tag in tags:
-                    tag_filters.append(Bookmark.tags.like(f'%{tag}%'))
+                    # Safely escape the tag to prevent SQL injection
+                    escaped_tag = escape_sql_like(str(tag))
+                    tag_filters.append(Bookmark.tags.like(f'%{escaped_tag}%'))
                 
                 from sqlalchemy import or_
                 query = query.filter(or_(*tag_filters))
@@ -238,7 +264,9 @@ class BookmarkManager:
                 # Filter bookmarks that contain any of the specified tags
                 tag_filters = []
                 for tag in tags:
-                    tag_filters.append(Bookmark.tags.like(f'%{tag}%'))
+                    # Safely escape the tag to prevent SQL injection
+                    escaped_tag = escape_sql_like(str(tag))
+                    tag_filters.append(Bookmark.tags.like(f'%{escaped_tag}%'))
                 
                 from sqlalchemy import or_
                 query = query.filter(or_(*tag_filters))
