@@ -65,6 +65,19 @@ class BaseSummarizer:
         Returns:
             dict: The summary with headline and text
         """
+        # Handle None or empty parameters
+        if not text:
+            self.logger.warning("Empty text provided for summarization")
+            text = ""
+        
+        if not title:
+            self.logger.warning("Empty title provided for summarization")
+            title = "Untitled Article"
+        
+        if not url:
+            self.logger.warning("Empty URL provided for summarization")
+            url = "#"
+        
         # Set up request-specific context for structured logging
         if hasattr(self.logger, 'add_context'):
             self.logger.add_context(
@@ -163,6 +176,19 @@ class BaseSummarizer:
         Returns:
             dict: The complete summary with headline and text when finished
         """
+        # Handle None or empty parameters
+        if not text:
+            self.logger.warning("Empty text provided for streaming summarization")
+            text = ""
+        
+        if not title:
+            self.logger.warning("Empty title provided for streaming summarization")
+            title = "Untitled Article"
+        
+        if not url:
+            self.logger.warning("Empty URL provided for streaming summarization")
+            url = "#"
+        
         # Set up request-specific context for structured logging
         if hasattr(self.logger, 'add_context'):
             self.logger.add_context(

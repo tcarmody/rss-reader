@@ -695,6 +695,56 @@ class RSSReader:
                 logging.info(f"  - {agg}: {count} links")
         logging.info("=" * 60)
 
+    def _generate_summary(self, article_text, title, url):
+        """
+        Generate a summary for an article using the ArticleSummarizer.
+        
+        Args:
+            article_text: Text of the article to summarize
+            title: Title of the article
+            url: URL of the article (original source URL)
+            
+        Returns:
+            dict: Summary with headline and content
+        """
+        try:
+            # Handle None or empty parameters
+            if not article_text:
+                article_text = ""
+            
+            if not title:
+                title = "Untitled Article"
+            
+            if not url:
+                url = "#"
+            
+            summary = self.summarizer.summarize_article(article_text, title, url)
+            
+            # Ensure the summary has the correct structure
+            if not isinstance(summary, dict):
+                summary = {
+                    'headline': title,
+                    'summary': str(summary)
+                }
+            elif 'headline' not in summary or 'summary' not in summary:
+                # Fix incomplete summary structure
+                summary_text = summary.get('summary', '')
+                if not summary_text and isinstance(summary, str):
+                    summary_text = summary
+                    
+                summary = {
+                    'headline': summary.get('headline', title),
+                    'summary': summary_text or 'No summary available.'
+                }
+                
+            return summary
+        except Exception as e:
+            logging.error(f"Error generating summary: {str(e)}")
+            return {
+                'headline': title or "Error",
+                'summary': "Summary generation failed. Please try again later."
+            }
+
     @track_performance
     async def process_feeds(self):
         """
@@ -826,46 +876,6 @@ class RSSReader:
         except Exception as e:
             logging.error(f"Error processing feed {feed_url}: {str(e)}")
             return []
-
-    def _generate_summary(self, article_text, title, url):
-        """
-        Generate a summary for an article using the ArticleSummarizer.
-        
-        Args:
-            article_text: Text of the article to summarize
-            title: Title of the article
-            url: URL of the article (original source URL)
-            
-        Returns:
-            dict: Summary with headline and content
-        """
-        try:
-            summary = self.summarizer.summarize_article(article_text, title, url)
-            
-            # Ensure the summary has the correct structure
-            if not isinstance(summary, dict):
-                summary = {
-                    'headline': title,
-                    'summary': str(summary)
-                }
-            elif 'headline' not in summary or 'summary' not in summary:
-                # Fix incomplete summary structure
-                summary_text = summary.get('summary', '')
-                if not summary_text and isinstance(summary, str):
-                    summary_text = summary
-                    
-                summary = {
-                    'headline': summary.get('headline', title),
-                    'summary': summary_text or 'No summary available.'
-                }
-                
-            return summary
-        except Exception as e:
-            logging.error(f"Error generating summary: {str(e)}")
-            return {
-                'headline': title,
-                'summary': "Summary generation failed. Please try again later."
-            }
 
     def _get_feed_batches(self):
         """

@@ -20,6 +20,10 @@ def clean_text(text: str) -> str:
     Returns:
         Cleaned and normalized text
     """
+    # Handle None or empty text
+    if not text:
+        return ""
+    
     # Record text length for logging
     original_length = len(text)
     
@@ -47,18 +51,46 @@ def extract_source_from_url(url: str) -> str:
     Extract publication name from URL.
     
     Args:
-        url: Article URL
+        url: Article URL (can be None or empty)
         
     Returns:
-        Publication name
+        Publication name or default value
     """
+    # Handle None or empty URL
+    if not url:
+        logger.warning("URL is None or empty, returning default source name")
+        return "Unknown Source"
+    
     try:
-        source_name = url.split('//')[1].split('/')[0] if '//' in url else url
+        # Extract domain from URL
+        if '//' in url:
+            # Handle full URLs like https://example.com/path
+            source_name = url.split('//')[1].split('/')[0]
+        else:
+            # Handle URLs without protocol
+            source_name = url.split('/')[0]
+        
+        # Remove www. prefix
         source_name = source_name.replace('www.', '')
-        return source_name
+        
+        # Return the cleaned domain name
+        return source_name if source_name else "Unknown Source"
+        
     except Exception as e:
-        logger.warning(f"Failed to extract source from URL: {str(e)}")
-        return url.replace('https://', '').replace('http://', '')
+        logger.warning(f"Failed to extract source from URL '{url}': {str(e)}")
+        
+        # Fallback: try to clean the URL safely
+        try:
+            if isinstance(url, str):
+                cleaned = url.replace('https://', '').replace('http://', '')
+                # Take just the domain part if there's a path
+                if '/' in cleaned:
+                    cleaned = cleaned.split('/')[0]
+                return cleaned if cleaned else "Unknown Source"
+            else:
+                return "Unknown Source"
+        except Exception:
+            return "Unknown Source"
 
 def chunk_text(text: str, max_chunk_size: int = 8000) -> List[str]:
     """
@@ -71,8 +103,8 @@ def chunk_text(text: str, max_chunk_size: int = 8000) -> List[str]:
     Returns:
         List of text chunks
     """
-    if len(text) <= max_chunk_size:
-        return [text]
+    if not text or len(text) <= max_chunk_size:
+        return [text or ""]
         
     chunks = []
     # Try to split on paragraph boundaries
@@ -121,6 +153,14 @@ def create_summary_prompt(text: str, url: str, source_name: str, style: str = "d
     Returns:
         Formatted prompt for Claude
     """
+    # Handle None or empty parameters
+    if not text:
+        text = ""
+    if not url:
+        url = "#"
+    if not source_name:
+        source_name = "Unknown Source"
+    
     # Common instructions for all styles
     common_instructions = (
         "Style guidelines:\n"
@@ -244,6 +284,16 @@ def parse_summary_response(summary_text: str, title: str, url: str, source_name:
     Returns:
         Dictionary with headline and summary
     """
+    # Handle None or empty parameters
+    if not summary_text:
+        summary_text = ""
+    if not title:
+        title = "Untitled Article"
+    if not url:
+        url = "#"
+    if not source_name:
+        source_name = "Unknown Source"
+    
     try:
         # Style-specific parsing
         if style == "bullet":
