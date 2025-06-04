@@ -130,6 +130,19 @@ class FastSummarizer:
         Returns:
             dict: The summary with headline and text
         """
+        # Handle None or empty parameters early
+        if not text:
+            self.logger.warning("Empty text provided for summarization")
+            text = ""
+        
+        if not title:
+            self.logger.warning("Empty title provided for summarization")
+            title = "Untitled Article"
+        
+        if not url:
+            self.logger.warning("Empty URL provided for summarization")
+            url = "#"
+        
         # Auto-select model if requested
         if auto_select_model and not model:
             clean_text_content = clean_text(text)
@@ -199,7 +212,7 @@ class FastSummarizer:
             for article in articles:
                 # Get text and clean it
                 text = article.get('text', article.get('content', ''))
-                text = clean_text(text)
+                text = clean_text(text or "")
                 
                 # Estimate complexity and select model
                 complexity = estimate_complexity(text)
@@ -329,10 +342,10 @@ class FastSummarizer:
                 self.logger.warning(f"Rate limiting error (proceeding anyway): {str(e)}")
             
             try:
-                # Get article data
-                text = article.get('text', article.get('content', ''))
-                title = article.get('title', 'Untitled')
-                url = article.get('url', article.get('link', '#'))
+                # Get article data with safe defaults
+                text = article.get('text', article.get('content', '')) or ""
+                title = article.get('title', '') or "Untitled Article"
+                url = article.get('url', article.get('link', '')) or "#"
                 
                 # Run in a thread to avoid blocking
                 loop = asyncio.get_event_loop()
@@ -389,6 +402,19 @@ class FastSummarizer:
         Returns:
             dict: The summary with headline and text
         """
+        # Handle None or empty parameters
+        if not text:
+            self.logger.warning("Empty text provided for summarization")
+            text = ""
+        
+        if not title:
+            self.logger.warning("Empty title provided for summarization")
+            title = "Untitled Article"
+        
+        if not url:
+            self.logger.warning("Empty URL provided for summarization")
+            url = "#"
+        
         # Set up request-specific context for structured logging
         if hasattr(self.logger, 'add_context'):
             self.logger.add_context(
@@ -488,6 +514,19 @@ class FastSummarizer:
         Returns:
             dict: The complete summary with headline and text when finished
         """
+        # Handle None or empty parameters
+        if not text:
+            self.logger.warning("Empty text provided for streaming summarization")
+            text = ""
+        
+        if not title:
+            self.logger.warning("Empty title provided for streaming summarization")
+            title = "Untitled Article"
+        
+        if not url:
+            self.logger.warning("Empty URL provided for streaming summarization")
+            url = "#"
+        
         # Set up request-specific context for structured logging
         if hasattr(self.logger, 'add_context'):
             self.logger.add_context(
@@ -591,6 +630,16 @@ class FastSummarizer:
             dict: The summary with headline and text
         """
         from summarization.text_processing import chunk_text
+        
+        # Handle None or empty parameters
+        if not text:
+            text = ""
+        
+        if not title:
+            title = "Untitled Article"
+        
+        if not url:
+            url = "#"
         
         # Clean the text first
         text = clean_text(text)
