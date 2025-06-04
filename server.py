@@ -33,7 +33,9 @@ from reader.enhanced_reader import EnhancedRSSReader
 from summarization.article_summarizer import ArticleSummarizer
 from summarization.fast_summarizer import create_fast_summarizer
 from common.http import create_http_session
-from common.archive import fetch_article_content, is_paywalled
+# Updated imports to use new content modules
+from content.archive.paywall import is_paywalled
+from content.archive.providers import default_provider_manager
 from common.logging import configure_logging
 
 # Import bookmark functionality
@@ -74,6 +76,59 @@ DEFAULT_GLOBAL_SETTINGS = {
     'batch_delay': 15,
     'per_feed_limit': 25  # Maximum articles per feed
 }
+
+# Helper function to maintain compatibility with old fetch_article_content
+def fetch_article_content(url, session=None):
+    """
+    Fetch article content using the new archive system.
+    
+    Args:
+        url: The article URL to fetch
+        session: Optional requests session
+        
+    Returns:
+        str: Article content or empty string if failed
+    """
+    try:
+        # Check if it's paywalled
+        if is_paywalled(url):
+            logging.info(f"Detected paywall for {url}, trying archive services")
+            
+            # Try archive services
+            result = default_provider_manager.get_archived_content(url)
+            if result.success and result.content:
+                return result.content
+        
+        # If not paywalled or archive failed, try direct access
+        if not session:
+            session = create_http_session()
+        
+        response = session.get(url, timeout=15)
+        if response.status_code == 200:
+            # Simple content extraction
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Remove unwanted elements
+            for unwanted in soup.select('script, style, nav, header, footer, .ads, .comments'):
+                unwanted.decompose()
+            
+            # Try to find main content
+            for selector in ['article', '.article', '.content', '.post-content', 'main']:
+                elements = soup.select(selector)
+                if elements:
+                    paragraphs = elements[0].find_all('p')
+                    content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
+                    if content:
+                        return content
+            
+            # Fallback to body text
+            if soup.body:
+                return soup.body.get_text()
+    
+    except Exception as e:
+        logging.warning(f"Error fetching article content: {e}")
+    
+    return ""
 
 # Default clustering settings
 DEFAULT_CLUSTERING_SETTINGS = {
@@ -554,14 +609,15 @@ async def summarize_article(request: Request):
         os.environ['ENABLE_PAYWALL_BYPASS'] = 'true' if request.session.get('paywall_bypass_enabled', True) else 'false'
         
         # Check if this is a Google News or other aggregator URL
-        from common.source_extractor import is_aggregator_link, extract_original_source_url
+        from content.extractors.aggregator import is_aggregator_link, extract_source_url
         
         original_url = full_url
         if is_aggregator_link(full_url):
             try:
                 logging.info(f"Detected aggregator link in bookmark: {full_url}")
-                extracted_url = extract_original_source_url(full_url, http_session)
-                if extracted_url and extracted_url != full_url:
+                result = extract_source_url(full_url, http_session)
+                if result.success and result.extracted_url and result.extracted_url != full_url:
+                    extracted_url = result.extracted_url
                     logging.info(f"Using extracted source URL: {extracted_url}")
                     original_url = extracted_url
             except Exception as extract_error:
@@ -683,7 +739,7 @@ async def summarize_articles_batch(request: Request):
         # Initialize summarization engine
         from main import setup_summarization_engine
         from summarization.fast_summarizer import create_fast_summarizer
-        from common.source_extractor import is_aggregator_link, extract_original_source_url
+        from content.extractors.aggregator import is_aggregator_link, extract_source_url
         
         common_vars = get_common_template_vars(request)
         clustering_settings = common_vars['clustering_settings']
@@ -728,8 +784,9 @@ async def summarize_articles_batch(request: Request):
             if is_aggregator_link(full_url):
                 try:
                     logging.info(f"Detected aggregator link in batch: {full_url}")
-                    extracted_url = extract_original_source_url(full_url, http_session)
-                    if extracted_url and extracted_url != full_url:
+                    result = extract_source_url(full_url, http_session)
+                    if result.success and result.extracted_url and result.extracted_url != full_url:
+                        extracted_url = result.extracted_url
                         logging.info(f"Using extracted source URL: {extracted_url}")
                         original_url = extracted_url
                 except Exception as extract_error:
