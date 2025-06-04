@@ -16,8 +16,10 @@ from typing import Optional, Dict, List, Tuple
 from common.config import get_env_var
 from common.http import create_http_session
 from common.performance import track_performance
-from common.archive import fetch_article_content, is_paywalled
-from common.source_extractor import is_aggregator_link, extract_original_source_url
+# Updated imports to use new content modules
+from content.archive.paywall import is_paywalled
+from content.archive.providers import default_provider_manager
+from content.extractors.aggregator import is_aggregator_link, extract_source_url
 from common.batch_processing import BatchProcessor
 from summarization.article_summarizer import ArticleSummarizer
 from clustering.base import ArticleClusterer
@@ -37,6 +39,80 @@ try:
 except ImportError:
     logging.warning("Enhanced clustering module not available. Using basic clustering.")
     ENHANCED_CLUSTERING_AVAILABLE = False
+
+# Helper function to maintain compatibility with old fetch_article_content
+def fetch_article_content(url, session=None):
+    """
+    Fetch article content using the new archive system.
+    
+    Args:
+        url: The article URL to fetch
+        session: Optional requests session
+        
+    Returns:
+        str: Article content or empty string if failed
+    """
+    try:
+        # Check if it's paywalled
+        if is_paywalled(url):
+            logging.info(f"Detected paywall for {url}, trying archive services")
+            
+            # Try archive services
+            result = default_provider_manager.get_archived_content(url)
+            if result.success and result.content:
+                return result.content
+        
+        # If not paywalled or archive failed, try direct access
+        if not session:
+            session = create_http_session()
+        
+        response = session.get(url, timeout=15)
+        if response.status_code == 200:
+            if BS4_AVAILABLE:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                # Remove unwanted elements
+                for unwanted in soup.select('script, style, nav, header, footer, .ads, .comments'):
+                    unwanted.decompose()
+                
+                # Try to find main content
+                for selector in ['article', '.article', '.content', '.post-content', 'main']:
+                    elements = soup.select(selector)
+                    if elements:
+                        paragraphs = elements[0].find_all('p')
+                        content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
+                        if content:
+                            return content
+                
+                # Fallback to body text
+                if soup.body:
+                    return soup.body.get_text()
+            else:
+                # Basic text extraction without BeautifulSoup
+                return response.text
+    
+    except Exception as e:
+        logging.warning(f"Error fetching article content: {e}")
+    
+    return ""
+
+# Helper function for source URL extraction
+def extract_original_source_url(url, session=None):
+    """
+    Extract original source URL from aggregator link.
+    
+    Args:
+        url: The aggregator URL
+        session: Optional requests session
+        
+    Returns:
+        str: Original source URL or None if extraction failed
+    """
+    result = extract_source_url(url, session)
+    if result.success and result.extracted_url:
+        return result.extracted_url
+    return None
 
 
 class AggregatorSourceExtractor:
