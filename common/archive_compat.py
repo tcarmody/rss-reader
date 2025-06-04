@@ -110,13 +110,20 @@ def fetch_article_content(url, session=None):
 
 # Re-export other commonly used functions for backward compatibility
 try:
-    from common.archive import (
-        get_direct_access_headers,
-        get_or_create_cache_directory,
-        get_cached_content,
-        cache_content,
-        is_valid_content
-    )
+    # Import from new content modules instead of old common.archive
+    from content.extractors.source import default_content_cache
+    
+    def get_cached_content(url):
+        return default_content_cache.get(url)
+    
+    def cache_content(url, content):
+        return default_content_cache.set(url, content)
+    
+    def get_or_create_cache_directory():
+        return default_content_cache.cache_dir
+    
+    # These functions are now provided locally
+    COMPAT_FUNCTIONS_AVAILABLE = True
 except ImportError:
     # Provide minimal implementations if original module is not available
     def get_direct_access_headers():

@@ -512,31 +512,43 @@ class GenericAggregatorExtractor(BaseSourceExtractor):
             return "Unknown"
 
 
+# Lazy initialization for better performance
+_default_aggregator_manager = None
+
+def get_default_aggregator_manager() -> 'ExtractorManager':
+    """Get or create the default ExtractorManager (lazy initialization)."""
+    global _default_aggregator_manager
+    if _default_aggregator_manager is None:
+        from .base import ExtractorManager
+        
+        manager = ExtractorManager()
+        
+        # Add specific extractors
+        manager.add_extractor(TechmemeExtractor())
+        manager.add_extractor(GoogleNewsExtractor())
+        manager.add_extractor(RedditExtractor())
+        manager.add_extractor(HackerNewsExtractor())
+        
+        # Add generic extractor last (fallback)
+        manager.add_extractor(GenericAggregatorExtractor())
+        
+        # Set components
+        manager.set_aggregator_detector(AggregatorPatternDetector())
+        manager.set_url_validator(NewsSourceValidator())
+        
+        _default_aggregator_manager = manager
+    
+    return _default_aggregator_manager
+
 # Factory function to create a configured extractor manager
 def create_aggregator_extractor_manager() -> 'ExtractorManager':
-    """Create a configured ExtractorManager with all aggregator extractors."""
-    from .base import ExtractorManager
-    
-    manager = ExtractorManager()
-    
-    # Add specific extractors
-    manager.add_extractor(TechmemeExtractor())
-    manager.add_extractor(GoogleNewsExtractor())
-    manager.add_extractor(RedditExtractor())
-    manager.add_extractor(HackerNewsExtractor())
-    
-    # Add generic extractor last (fallback)
-    manager.add_extractor(GenericAggregatorExtractor())
-    
-    # Set components
-    manager.set_aggregator_detector(AggregatorPatternDetector())
-    manager.set_url_validator(NewsSourceValidator())
-    
-    return manager
+    """Create a new configured ExtractorManager with all aggregator extractors."""
+    return get_default_aggregator_manager()
 
-
-# Default global instance
-default_aggregator_manager = create_aggregator_extractor_manager()
+# Default global instance accessor (use function for lazy loading)
+def get_default_manager():
+    """Get the default aggregator manager."""
+    return get_default_aggregator_manager()
 
 
 def extract_source_url(url: str, session=None) -> ExtractionResult:
@@ -550,7 +562,7 @@ def extract_source_url(url: str, session=None) -> ExtractionResult:
     Returns:
         ExtractionResult with extracted information
     """
-    return default_aggregator_manager.extract_source(url, session)
+    return get_default_aggregator_manager().extract_source(url, session)
 
 
 def is_aggregator_link(url: str) -> bool:

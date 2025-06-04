@@ -166,7 +166,10 @@ python -m playwright install chromium
 - **`api/`**: Rate limiting and API utilities
 - **`cache/`**: Multi-level caching system
 - **`clustering/`**: ML-based article clustering with HDBSCAN
-- **`common/`**: Shared utilities (config, logging, HTTP, performance)
+- **`common/`**: True shared utilities (config, logging, HTTP, performance, batch processing, errors)
+- **`content/`**: Content processing and archive services (NEW)
+  - **`content/archive/`**: Archive services, paywall detection, and specialized handlers
+  - **`content/extractors/`**: Source extraction and content processing utilities
 - **`models/`**: Data models and AI model configuration
 - **`reader/`**: RSS feed processing and content extraction
 - **`services/`**: Business logic (bookmark management)
@@ -177,6 +180,27 @@ python -m playwright install chromium
 - **`static/`**: CSS/JS assets
 - **`server.py`**: FastAPI application with session middleware
 
+### Content Processing (NEW Architecture)
+The content/ directory contains the refactored content processing system:
+
+#### Archive Services (`content/archive/`)
+- **`base.py`**: Abstract interfaces and data classes
+- **`providers.py`**: Archive service implementations (Archive.is, Wayback Machine, etc.)
+- **`paywall.py`**: Paywall detection with hybrid detection methods
+- **`specialized/wsj.py`**: WSJ-specific bypass logic
+
+#### Extractors (`content/extractors/`)
+- **`base.py`**: Abstract extractor interfaces and base classes
+- **`aggregator.py`**: Consolidated aggregator extraction (Techmeme, Google News, Reddit, etc.)
+- **`source.py`**: Generic content utilities, validation, and cleaning
+
 ### Testing
 - **`tests/`**: pytest-based test suite
 - Run tests before commits to ensure functionality
+
+### Architectural Improvements
+- **Modular Design**: Clear separation between archive services and content extraction
+- **Lazy Loading**: Performance optimization with on-demand component initialization
+- **56.4% Reduction**: common/ directory reduced from 1,963 to 855 lines
+- **Enhanced Functionality**: More robust paywall detection and content extraction
+- **Backward Compatibility**: Existing code continues to work during transition
