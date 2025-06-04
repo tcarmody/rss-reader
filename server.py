@@ -50,8 +50,21 @@ logging.basicConfig(
 # Initialize FastAPI app
 app = FastAPI(title="Data Points AI - RSS Reader")
 
-# Add session middleware
-app.add_middleware(SessionMiddleware, secret_key=os.environ.get('SECRET_KEY', os.urandom(24)))
+# Add session middleware with secure configuration
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    # Generate a consistent secret key if none provided (for development only)
+    import hashlib
+    SECRET_KEY = hashlib.sha256(b'rss-reader-dev-key').hexdigest()
+    logging.warning("Using development SECRET_KEY. Set SECRET_KEY environment variable for production!")
+
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=SECRET_KEY,
+    max_age=3600,  # 1 hour session timeout
+    https_only=False,  # Set to True in production with HTTPS
+    same_site='lax'  # CSRF protection
+)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), 'static')), name="static")
@@ -398,7 +411,7 @@ async def refresh_feeds(
         
         # Ensure main is not run if this script is imported elsewhere
         # For this to work, EnhancedRSSReader should be importable without running main.py's __main__ block
-        from main import EnhancedRSSReader as MainEnhancedRSSReader # Avoid name clash
+        from reader.enhanced_reader import EnhancedRSSReader as MainEnhancedRSSReader # Avoid name clash
 
         feeds_to_pass = None if current_use_default else current_feeds_list
         per_feed_limit = global_settings.get('per_feed_limit', 25)
