@@ -32,12 +32,20 @@ except ImportError:
     BS4_AVAILABLE = False
     logging.warning("BeautifulSoup not available for advanced aggregator extraction")
 
-# Import the enhanced clusterer - make sure this import works
+# Import the simple clusterer for lightweight clustering
+try:
+    from clustering.simple import SimpleClustering
+    SIMPLE_CLUSTERING_AVAILABLE = True
+except ImportError:
+    logging.warning("Simple clustering module not available. Using basic clustering.")
+    SIMPLE_CLUSTERING_AVAILABLE = False
+
+# Import the enhanced clusterer as fallback
 try:
     from clustering.enhanced import create_enhanced_clusterer
     ENHANCED_CLUSTERING_AVAILABLE = True
 except ImportError:
-    logging.warning("Enhanced clustering module not available. Using basic clustering.")
+    logging.warning("Enhanced clustering module not available.")
     ENHANCED_CLUSTERING_AVAILABLE = False
 
 # Helper function to maintain compatibility with old fetch_article_content
@@ -329,10 +337,20 @@ class RSSReader:
             'by_aggregator': {}
         }
         
-        # Use the enhanced clusterer if available, otherwise fall back to basic
-        if ENHANCED_CLUSTERING_AVAILABLE:
+        # Use clustering based on user preferences
+        use_simple = os.environ.get('USE_SIMPLE_CLUSTERING', 'true').lower() == 'true'
+        use_enhanced = os.environ.get('USE_ENHANCED_CLUSTERING', 'false').lower() == 'true'
+        
+        if use_simple and SIMPLE_CLUSTERING_AVAILABLE:
+            self.clusterer = SimpleClustering()
+            logging.info("Using simple clustering for lightweight article grouping")
+        elif use_enhanced and ENHANCED_CLUSTERING_AVAILABLE:
             self.clusterer = create_enhanced_clusterer(summarizer=self.summarizer)
             logging.info("Using enhanced clustering for better article grouping")
+        elif SIMPLE_CLUSTERING_AVAILABLE:
+            # Fallback to simple clustering if enhanced not available
+            self.clusterer = SimpleClustering()
+            logging.info("Falling back to simple clustering for article grouping")
         else:
             self.clusterer = ArticleClusterer()
             logging.info("Using basic clustering for article grouping")
@@ -806,7 +824,11 @@ class RSSReader:
             logging.info("Clustering similar articles...")
             
             # Use a different clustering method depending on which clusterer we have
-            if ENHANCED_CLUSTERING_AVAILABLE and hasattr(self.clusterer, 'cluster_with_summaries'):
+            if SIMPLE_CLUSTERING_AVAILABLE and hasattr(self.clusterer, 'cluster_with_topics'):
+                # Use the simple clustering with topics
+                clusters = self.clusterer.cluster_with_topics(all_articles)
+                logging.info(f"Created {len(clusters)} clusters with simple clustering")
+            elif ENHANCED_CLUSTERING_AVAILABLE and hasattr(self.clusterer, 'cluster_with_summaries'):
                 # Use the enhanced clustering with summaries if available
                 clusters = self.clusterer.cluster_with_summaries(all_articles)
                 logging.info(f"Created {len(clusters)} clusters with enhanced clustering")

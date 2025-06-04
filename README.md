@@ -1,11 +1,11 @@
-# Enhanced RSS Reader with Multi-Article Clustering
+# Enhanced RSS Reader with Smart Article Clustering
 
-An advanced RSS feed reader with AI-powered summarization, intelligent article clustering, and source extraction capabilities.
+An advanced RSS feed reader with AI-powered summarization, lightweight semantic clustering, and source extraction capabilities.
 
 ## Features
 
-- **Advanced Clustering**: Automatically groups related articles using optimized sentence embeddings and ML-based clustering with HDBSCAN
-- **Intelligent Topic Extraction**: Extracts meaningful topics from article clusters using specialized algorithms for different cluster sizes
+- **Smart Clustering**: Automatically groups related articles using lightweight semantic embeddings (80MB model) with keyword fallbacks
+- **Intelligent Topic Extraction**: Extracts meaningful topics from article clusters using hybrid similarity scoring
 - **AI Summaries**: Generates concise summaries of articles using the Claude API
 - **Source Extraction**: Automatically extracts and follows original source URLs from aggregator sites like Techmeme and Google News
 - **Paywall Bypass**: Capability to retrieve content from paywalled sites (configurable)
@@ -41,6 +41,8 @@ An advanced RSS feed reader with AI-powered summarization, intelligent article c
    # pip install -r essential_requirements.txt
    python -m spacy download en_core_web_sm
    ```
+
+   **Note**: The new lightweight clustering system requires only ~200MB of dependencies vs the previous 2GB+ heavy ML setup.
 
 4. Create a `.env` file with your Anthropic API key:
    ```
@@ -95,30 +97,36 @@ The system consists of several key components:
 
 ### Core Components
 
-- **Reader (`reader.py`)**: Manages feed fetching and processing
-- **Summarizer (`summarizer.py`)**: Handles article summarization with Claude API
-- **Fast Summarizer (`fast_summarizer.py`)**: Optimized wrapper with enhanced batching
-- **Clustering (`clustering.py`)**: Manages article clustering using sentence embeddings with HDBSCAN
-- **Topic Extraction (`topic_extraction.py`)**: Extracts meaningful topics from article clusters
-- **Server (`server.py`)**: Web interface and API
+- **Reader (`reader/base_reader.py`)**: Manages feed fetching and processing
+- **Summarizer (`summarization/`)**: Handles article summarization with Claude API
+- **Simple Clustering (`clustering/simple.py`)**: Lightweight semantic clustering with keyword fallbacks
+- **Enhanced Clustering (`clustering/enhanced.py`)**: Advanced ML clustering (optional, heavy dependencies)
+- **Server (`server.py`)**: FastAPI web interface and API
 
 ### Support Modules
 
-- **Batch Processing (`batch.py`, `batch_processing.py`)**: Efficient parallel processing with CompatibilityWrapper
-- **Caching (`cache.py`, `tiered_cache.py`)**: Multi-level caching system with SummaryCache
-- **Archive Utilities (`utils/archive.py`)**: Handling paywalled content
-- **Source Extractor (`utils/source_extractor.py`)**: Extracts original source URLs from aggregator sites
-- **Performance Tracking (`utils/performance.py`)**: Track and log performance metrics
+- **Batch Processing (`common/batch_processing.py`)**: Efficient parallel processing
+- **Caching (`cache/`)**: Multi-level caching system with tiered cache
+- **Content Processing (`content/`)**: Archive services, paywall detection, and content extraction
+- **Performance Tracking (`common/performance.py`)**: Track and log performance metrics
 
 ## Recent Changes and Improvements
 
-### Clustering and Topic Extraction
-- Improved clustering with optimized HDBSCAN algorithm and lower distance threshold (0.08)
+### NEW: Lightweight Clustering System (v2.0)
+- **Replaced heavy ML clustering** (2GB+ dependencies) with lightweight semantic clustering (~200MB)
+- **Hybrid approach**: 60% semantic similarity + 40% keyword overlap for better accuracy
+- **Smart fallbacks**: Works with keywords-only if embeddings unavailable
+- **10x faster startup**: No heavy model loading delays
+- **Mini embeddings**: Uses `all-MiniLM-L6-v2` model (80MB) instead of large transformers
+- **Better reliability**: Simple, predictable clustering behavior
+- **Connected components**: Improved clustering algorithm for better grouping
+
+### Clustering and Topic Extraction (Legacy)
+- Previous system used HDBSCAN algorithm with sentence transformers
 - Enhanced topic extraction with specialized methods for different cluster sizes
-- Added support for bigrams to capture multi-word topics
-- Implemented text cleaning to remove URLs and special characters
-- Added extended stopwords list to filter out non-informative terms
-- Weighted article titles more heavily than content for better topic relevance
+- Support for bigrams to capture multi-word topics
+- Text cleaning to remove URLs and special characters
+- Extended stopwords list to filter out non-informative terms
 
 ### Source Extraction
 - Added specialized handling for Techmeme and Google News aggregator links
@@ -135,8 +143,9 @@ The system consists of several key components:
 - Added proper error handling for initialization failures
 
 ### Dependencies
-- Added hdbscan, numpy, safetensors, and transformers to requirements.txt
-- Updated version specifications for key dependencies
+- **Simplified dependencies**: Removed heavy ML packages (torch, transformers, HDBSCAN, UMAP)
+- **Lightweight**: Only sentence-transformers and scikit-learn for clustering
+- **Optional heavy clustering**: Previous advanced clustering can be re-enabled by uncommenting dependencies
 - Added Google Auth dependency to resolve Anthropic API integration issues
 - Added support for the latest Claude model (Claude Sonnet 4)
 
@@ -204,6 +213,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Acknowledgments
 
 - [Anthropic](https://anthropic.com/) for the Claude API
-- [SentenceTransformers](https://www.sbert.net/) for text embeddings
-- [Flask](https://flask.palletsprojects.com/) for the web framework
+- [SentenceTransformers](https://www.sbert.net/) for lightweight text embeddings
+- [FastAPI](https://fastapi.tiangolo.com/) for the web framework
 - [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/) for HTML parsing
+- [scikit-learn](https://scikit-learn.org/) for clustering algorithms
