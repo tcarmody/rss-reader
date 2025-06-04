@@ -146,9 +146,10 @@ def fetch_article_content(url, session=None):
 # Default clustering settings
 DEFAULT_CLUSTERING_SETTINGS = {
     'enable_multi_article': True,
-    'similarity_threshold': 0.8,
+    'similarity_threshold': 0.3,  # Updated for simple clustering
     'max_articles_per_batch': 5,
-    'use_enhanced_clustering': True,
+    'use_simple_clustering': True,  # New setting for simple clustering
+    'use_enhanced_clustering': False,  # Optional heavy clustering
     'time_range_enabled': True,
     'time_range_value': 72, # Default to 3 days in hours
     'time_range_unit': 'hours',
@@ -299,7 +300,8 @@ async def toggle_paywall_bypass(request: Request):
 async def update_clustering_settings(
     request: Request,
     enable_multi_article: Optional[str] = Form(None),
-    use_enhanced_clustering: Optional[str] = Form(None),
+    use_simple_clustering: Optional[str] = Form(None),     # Updated for simple clustering
+    use_enhanced_clustering: Optional[str] = Form(None),   # Optional heavy clustering
     time_range_enabled: Optional[str] = Form(None),
     fast_summarization_enabled: Optional[str] = Form(None), # Added
     auto_select_model: Optional[str] = Form(None),         # Added
@@ -313,6 +315,7 @@ async def update_clustering_settings(
     clustering_settings = get_clustering_settings(request) # Ensures all keys are initialized
     
     clustering_settings['enable_multi_article'] = enable_multi_article == 'on'
+    clustering_settings['use_simple_clustering'] = use_simple_clustering == 'on'
     clustering_settings['use_enhanced_clustering'] = use_enhanced_clustering == 'on'
     clustering_settings['time_range_enabled'] = time_range_enabled == 'on'
     clustering_settings['fast_summarization_enabled'] = fast_summarization_enabled == 'on'
@@ -404,6 +407,7 @@ async def refresh_feeds(
         os.environ['ENABLE_MULTI_ARTICLE_CLUSTERING'] = 'true' if clustering_settings['enable_multi_article'] else 'false'
         os.environ['MIN_SIMILARITY_THRESHOLD'] = str(clustering_settings['similarity_threshold'])
         os.environ['MAX_ARTICLES_PER_BATCH'] = str(clustering_settings['max_articles_per_batch'])
+        os.environ['USE_SIMPLE_CLUSTERING'] = 'true' if clustering_settings.get('use_simple_clustering', True) else 'false'
         os.environ['USE_ENHANCED_CLUSTERING'] = 'true' if clustering_settings['use_enhanced_clustering'] else 'false'
         os.environ['ENABLE_PAYWALL_BYPASS'] = 'true' if request.session.get('paywall_bypass_enabled', False) else 'false'
         

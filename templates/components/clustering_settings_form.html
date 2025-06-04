@@ -14,13 +14,13 @@
 
 <div class="setting-row">
   <div>
-    <div class="setting-name" id="{{ id_prefix | default('') }}enhancedClusteringLabel">Enhanced Clustering</div>
-    <div class="setting-description">Use advanced clustering algorithms</div>
+    <div class="setting-name" id="{{ id_prefix | default('') }}simpleLightweightClusteringLabel">Simple Clustering</div>
+    <div class="setting-description">Use lightweight semantic clustering (default, recommended)</div>
   </div>
   <label class="toggle-switch">
-    <input type="checkbox" name="use_enhanced_clustering" 
-           {% if clustering_settings.use_enhanced_clustering %}checked{% endif %} 
-           aria-labelledby="{{ id_prefix | default('') }}enhancedClusteringLabel">
+    <input type="checkbox" name="use_simple_clustering" 
+           {% if clustering_settings.use_simple_clustering|default(true) %}checked{% endif %} 
+           aria-labelledby="{{ id_prefix | default('') }}simpleLightweightClusteringLabel">
     <span class="toggle-slider"></span>
   </label>
 </div>
@@ -101,28 +101,14 @@
 
 <div class="setting-row">
   <div>
-    <label for="{{ id_prefix | default('') }}similarity_threshold" class="setting-name">Similarity Threshold</label>
-    <div class="setting-description">Minimum similarity score (0.0-1.0)</div>
+    <label for="{{ id_prefix | default('') }}similarity_threshold" class="setting-name">Clustering Sensitivity</label>
+    <div class="setting-description">Lower = more clusters, Higher = fewer clusters (0.1-0.9)</div>
   </div>
   <input type="number" 
          id="{{ id_prefix | default('') }}similarity_threshold" 
          name="similarity_threshold" 
          class="form-input-number" 
-         value="{{ clustering_settings.similarity_threshold | default(0.8) }}" 
-         min="0" max="1" step="0.05" 
-         style="max-width: 70px;">
-</div>
-
-<div class="setting-row">
-  <div>
-    <label for="{{ id_prefix | default('') }}max_articles_per_batch" class="setting-name">Max Articles Per Batch</label>
-    <div class="setting-description">Maximum articles to analyze at once</div>
-  </div>
-  <input type="number" 
-         id="{{ id_prefix | default('') }}max_articles_per_batch" 
-         name="max_articles_per_batch" 
-         class="form-input-number" 
-         value="{{ clustering_settings.max_articles_per_batch | default(5) }}" 
-         min="1" max="20" 
+         value="{{ clustering_settings.similarity_threshold | default(0.3) }}" 
+         min="0.1" max="0.9" step="0.1" 
          style="max-width: 70px;">
 </div>
