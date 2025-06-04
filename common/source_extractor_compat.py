@@ -145,11 +145,16 @@ def extract_source_info(url: str, session=None) -> dict:
 
 # Re-export constants and other utilities for backward compatibility
 try:
-    from common.source_extractor import (
-        AGGREGATOR_DOMAINS,
-        KNOWN_NEWS_SOURCES,
-        EXCLUDED_DOMAINS
-    )
+    # Import from new content modules instead of old common.source_extractor
+    from content.extractors.aggregator import AggregatorPatternDetector
+    from content.extractors.source import ComprehensiveURLValidator
+    
+    detector = AggregatorPatternDetector()
+    validator = ComprehensiveURLValidator()
+    
+    AGGREGATOR_DOMAINS = detector.AGGREGATOR_DOMAINS
+    KNOWN_NEWS_SOURCES = list(validator.KNOWN_NEWS_SOURCES)
+    EXCLUDED_DOMAINS = list(validator.EXCLUDED_DOMAINS)
 except ImportError:
     # Provide fallback constants
     AGGREGATOR_DOMAINS = [
