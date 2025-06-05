@@ -402,17 +402,23 @@ code, .code {
 /* Loading Spinner */
 .loading-spinner {
   display: inline-block;
-  width: 1em;
-  height: 1em;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
+  width: 0.5em;
+  height: 0.5em;
+  background-color: currentColor;
   border-radius: 50%;
-  animation: spinner-border 0.75s linear infinite;
+  animation: pulse-simple 1.4s ease-in-out infinite;
   margin-left: var(--spacing-sm);
 }
 
-@keyframes spinner-border {
-  to { transform: rotate(360deg); }
+@keyframes pulse-simple {
+  0%, 100% { 
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 1;
+    transform: scale(1.2);
+  }
 }
 
 /* Forms */
