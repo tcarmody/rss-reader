@@ -397,11 +397,30 @@
     <h2 id="feedProcessingTitle" class="card-title">Feed Management</h2>
     
     <div class="tabs" role="tablist" aria-label="Feed Management Options">
-      <button class="tab active" role="tab" aria-selected="true" aria-controls="default-feeds-panel" id="default-feeds-tab" data-tab="default-feeds-panel">Default Feeds</button>
-      <button class="tab" role="tab" aria-selected="false" aria-controls="custom-feeds-panel" id="custom-feeds-tab" data-tab="custom-feeds-panel" tabindex="-1">Custom Feeds</button>
+      <button class="tab active" role="tab" aria-selected="true" aria-controls="custom-feeds-panel" id="custom-feeds-tab" data-tab="custom-feeds-panel">Custom Feeds</button>
+      <button class="tab" role="tab" aria-selected="false" aria-controls="default-feeds-panel" id="default-feeds-tab" data-tab="default-feeds-panel" tabindex="-1">Default Feeds</button>
     </div>
     
-    <div class="tab-content active" id="default-feeds-panel" role="tabpanel" aria-labelledby="default-feeds-tab">
+    <div class="tab-content active" id="custom-feeds-panel" role="tabpanel" aria-labelledby="custom-feeds-tab">
+      <h3>Add and Process Custom Feeds</h3>
+      <form action="/refresh" method="post" id="customFeedsForm">
+        <div class="form-group">
+          <label class="form-label" for="feeds">RSS Feed URLs (one per line)</label>
+          <textarea class="form-input" id="feeds" name="feeds" 
+                    placeholder="https://example.com/rss1.xml&#10;https://example.com/rss2.xml" 
+                    rows="4" aria-describedby="customFeedsHint"></textarea>
+          <p class="form-hint" id="customFeedsHint">Enter one URL per line.</p>
+        </div>
+        
+        <input type="hidden" name="use_default" value="false">
+        <input type="hidden" name="batch_size" id="custom_batch_size_hidden">
+        <input type="hidden" name="batch_delay" id="custom_batch_delay_hidden">
+        <input type="hidden" name="per_feed_limit" id="custom_per_feed_limit_hidden">
+        <button type="submit" class="button">Process Custom Feeds</button>
+      </form>
+    </div>
+    
+    <div class="tab-content" id="default-feeds-panel" role="tabpanel" aria-labelledby="default-feeds-tab" hidden>
       {% if has_default_feeds is defined and has_default_feeds %}
       <div class="feed-section">
         <h3>Process Default Feeds</h3>
@@ -421,25 +440,6 @@
         <p>No default feeds found. Please create a <code class="code">rss_feeds.txt</code> file or add custom feeds via the 'Custom Feeds' tab.</p>
       </div>
       {% endif %}
-    </div>
-    
-    <div class="tab-content" id="custom-feeds-panel" role="tabpanel" aria-labelledby="custom-feeds-tab" hidden>
-      <h3>Add and Process Custom Feeds</h3>
-      <form action="/refresh" method="post" id="customFeedsForm">
-        <div class="form-group">
-          <label class="form-label" for="feeds">RSS Feed URLs (one per line)</label>
-          <textarea class="form-input" id="feeds" name="feeds" 
-                    placeholder="https://example.com/rss1.xml&#10;https://example.com/rss2.xml" 
-                    rows="4" aria-describedby="customFeedsHint"></textarea>
-          <p class="form-hint" id="customFeedsHint">Enter one URL per line.</p>
-        </div>
-        
-        <input type="hidden" name="use_default" value="false">
-        <input type="hidden" name="batch_size" id="custom_batch_size_hidden">
-        <input type="hidden" name="batch_delay" id="custom_batch_delay_hidden">
-        <input type="hidden" name="per_feed_limit" id="custom_per_feed_limit_hidden">
-        <button type="submit" class="button">Process Custom Feeds</button>
-      </form>
     </div>
   </section>
 </div>
