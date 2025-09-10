@@ -441,27 +441,37 @@ class RSSReader:
         Filter articles to include only those from the specified time range.
         
         Args:
-            articles: List of articles to filter
+            articles: List of articles to filter (each should be a dict)
             hours: Number of hours in the past to include
             
         Returns:
             List of filtered articles
         """
-        if hours <= 0:  # No filtering if hours is 0 or negative
+        if not articles or not isinstance(articles, list) or hours <= 0:
             return articles
             
         cutoff_date = datetime.now() - timedelta(hours=hours)
         filtered_articles = []
         
         for article in articles:
+            # Skip if article is not a dictionary
+            if not isinstance(article, dict):
+                logging.debug(f"Skipping non-dict article: {article}")
+                continue
+                
             try:
-                article_date = self._parse_date(article.get('published', ''))
+                # Safely get published date with fallback to empty string
+                published_date = article.get('published', '') if hasattr(article, 'get') else ''
+                article_date = self._parse_date(published_date)
+                
                 # Remove timezone for comparison
                 if article_date.replace(tzinfo=None) >= cutoff_date:
                     filtered_articles.append(article)
             except Exception as e:
-                logging.debug(f"Could not parse date for article: {article.get('title')}. Including it anyway.")
-                filtered_articles.append(article)  # Include articles with unparseable dates
+                # Log the error and include the article anyway
+                title = article.get('title', 'Untitled')
+                logging.debug(f"Could not parse date for article '{title}': {str(e)}. Including it anyway.")
+                filtered_articles.append(article)
         
         return filtered_articles
 
