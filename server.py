@@ -119,7 +119,10 @@ def fetch_article_content(url, session=None):
         response = session.get(url, timeout=15)
         if response.status_code == 200:
             # Simple content extraction
-            soup = BeautifulSoup(response.text, 'html.parser')
+            # Detect content type and use appropriate parser
+            content_type = response.headers.get('content-type', '').lower()
+            parser = 'xml' if 'xml' in content_type or url.endswith('.xml') else 'html.parser'
+            soup = BeautifulSoup(response.text, parser)
             
             # Remove unwanted elements
             for unwanted in soup.select('script, style, nav, header, footer, .ads, .comments'):
@@ -665,7 +668,10 @@ async def summarize_article(request: Request):
                 logging.info(f"Attempting direct request to: {original_url}")
                 response = http_session.get(original_url, timeout=10)
                 if response.status_code == 200:
-                    soup = BeautifulSoup(response.text, 'html.parser')
+                    # Detect content type and use appropriate parser
+                    content_type = response.headers.get('content-type', '').lower()
+                    parser = 'xml' if 'xml' in content_type or original_url.endswith('.xml') else 'html.parser'
+                    soup = BeautifulSoup(response.text, parser)
                     # Remove script and style elements
                     for script in soup(["script", "style"]):
                         script.extract()
