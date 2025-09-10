@@ -614,14 +614,20 @@ class RSSReader:
                 logging.info(f"Processing cluster {i}/{len(clusters)} with {len(cluster)} articles")
                 
                 # Log aggregator information for this cluster
-                aggregator_articles = [a for a in cluster if a.get('is_aggregator')]
+                # Add type check to handle cases where cluster contains strings instead of dicts
+                aggregator_articles = [a for a in cluster if isinstance(a, dict) and a.get('is_aggregator')]
                 if aggregator_articles:
                     logging.info(f"Cluster contains {len(aggregator_articles)} aggregator links:")
                     for article in aggregator_articles:
                         logging.info(f"  - {article.get('aggregator_name')}: {article['title']} -> {article.get('source_name')}")
                 
                 # First, try to fetch full content for articles that don't have it
-                for article in cluster:
+                # Filter out any non-dict items in cluster
+                valid_articles = [a for a in cluster if isinstance(a, dict)]
+                if len(valid_articles) != len(cluster):
+                    logging.warning(f"Cluster {i} contains {len(cluster) - len(valid_articles)} non-dict items, filtering them out")
+                
+                for article in valid_articles:
                     if not article.get('content') or len(article.get('content', '')) < 200:
                         # Use original URL if available
                         fetch_url = article.get('original_url', article['link'])
@@ -637,35 +643,38 @@ class RSSReader:
                         except Exception as e:
                             logging.warning(f"Error fetching content for {article['title']}: {str(e)}")
 
-                if len(cluster) > 1:
+                if len(valid_articles) > 1:
                     # For clusters with multiple articles, generate a combined summary
                     # Use the article with the most content for summarization
-                    best_article = max(cluster, key=lambda a: len(a.get('content', '')))
+                    best_article = max(valid_articles, key=lambda a: len(a.get('content', '')))
                     
                     # If the best article still has limited content, combine all articles
                     if len(best_article.get('content', '')) < 500:
                         combined_text = "\n\n".join([
                             f"Title: {article['title']}\n{article.get('content', '')}"
-                            for article in cluster
+                            for article in valid_articles
                         ])
                     else:
                         # Use the best article for summarization
                         combined_text = f"Title: {best_article['title']}\n{best_article.get('content', '')}"
 
-                    logging.info(f"Generating summary for cluster {i} with {len(cluster)} articles")
+                    logging.info(f"Generating summary for cluster {i} with {len(valid_articles)} articles")
                     cluster_summary = self._generate_summary(
                         combined_text,
-                        f"Combined summary of {len(cluster)} related articles",
-                        cluster[0].get('original_url', cluster[0]['link'])
+                        f"Combined summary of {len(valid_articles)} related articles",
+                        valid_articles[0].get('original_url', valid_articles[0]['link'])
                     )
 
                     # Add the cluster summary to each article
-                    for article in cluster:
+                    for article in valid_articles:
                         article['summary'] = cluster_summary
-                        article['cluster_size'] = len(cluster)
+                        article['cluster_size'] = len(valid_articles)
                 else:
                     # Single article
-                    article = cluster[0]
+                    if not valid_articles:
+                        logging.warning(f"Cluster {i} has no valid articles, skipping")
+                        continue
+                    article = valid_articles[0]
                     if not article.get('summary'):
                         logging.info(f"Generating summary for single article: {article['title']}")
                         article['summary'] = self._generate_summary(
@@ -692,7 +701,7 @@ class RSSReader:
                             'summary': summary_text or 'No summary available.'
                         }
 
-                processed_clusters.append(cluster)
+                processed_clusters.append(valid_articles)
                 logging.info(f"Successfully processed cluster {i}")
 
             except Exception as cluster_error:
