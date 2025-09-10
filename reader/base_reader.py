@@ -848,7 +848,9 @@ class RSSReader:
             # Use a different clustering method depending on which clusterer we have
             if SIMPLE_CLUSTERING_AVAILABLE and hasattr(self.clusterer, 'cluster_with_topics'):
                 # Use the simple clustering with topics
-                clusters = self.clusterer.cluster_with_topics(all_articles)
+                cluster_results = self.clusterer.cluster_with_topics(all_articles)
+                # Extract articles from cluster objects - cluster_with_topics returns dicts with 'articles' key
+                clusters = [cluster_result['articles'] for cluster_result in cluster_results]
                 logging.info(f"Created {len(clusters)} clusters with simple clustering")
             elif ENHANCED_CLUSTERING_AVAILABLE and hasattr(self.clusterer, 'cluster_with_summaries'):
                 # Use the enhanced clustering with summaries if available
