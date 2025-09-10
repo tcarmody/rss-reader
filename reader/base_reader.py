@@ -78,7 +78,10 @@ def fetch_article_content(url, session=None):
         if response.status_code == 200:
             if BS4_AVAILABLE:
                 from bs4 import BeautifulSoup
-                soup = BeautifulSoup(response.text, 'html.parser')
+                # Detect content type and use appropriate parser
+                content_type = response.headers.get('content-type', '').lower()
+                parser = 'xml' if 'xml' in content_type or url.endswith('.xml') else 'html.parser'
+                soup = BeautifulSoup(response.text, parser)
                 
                 # Remove unwanted elements
                 for unwanted in soup.select('script, style, nav, header, footer, .ads, .comments'):
