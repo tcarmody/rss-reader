@@ -41,6 +41,9 @@ from common.logging import configure_logging
 # Import bookmark functionality
 from services.bookmark_manager import BookmarkManager
 
+# Import image prompt functionality
+from services.image_prompt_generator import get_image_prompt_generator
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -1132,6 +1135,78 @@ async def view_bookmarks(request: Request):
             "bookmarks": bookmarks,
         }
     )
+
+# Image Prompt Generation API
+@app.post("/api/generate-image-prompt")
+async def generate_image_prompt(
+    request: Request,
+    title: str = Form(...),
+    content: str = Form(...),
+    style: str = Form(default="photojournalistic")
+):
+    """
+    Generate an AI image prompt from article content.
+    
+    Args:
+        title: Article title
+        content: Article content or summary
+        style: Image style (photojournalistic, illustration, abstract, infographic)
+        
+    Returns:
+        JSON response with generated prompt and metadata
+    """
+    try:
+        # Input validation
+        if not title.strip():
+            raise HTTPException(status_code=400, detail="Title is required")
+        
+        if not content.strip():
+            raise HTTPException(status_code=400, detail="Content is required")
+        
+        # Get image prompt generator
+        generator = get_image_prompt_generator()
+        
+        # Generate prompt
+        result = await generator.generate_prompt(
+            title=title.strip(),
+            content=content.strip(),
+            style=style
+        )
+        
+        # Add success status
+        result["status"] = "success"
+        
+        logging.info(f"Generated image prompt for '{title[:50]}...' in {style} style")
+        
+        return JSONResponse(content=result)
+        
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
+    except Exception as e:
+        logging.error(f"Error in image prompt generation API: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to generate image prompt: {str(e)}"
+        )
+
+@app.get("/api/image-prompt-styles")
+async def get_image_prompt_styles():
+    """Get available image prompt styles with descriptions."""
+    try:
+        generator = get_image_prompt_generator()
+        styles = generator.get_available_styles()
+        
+        return JSONResponse(content={
+            "status": "success",
+            "styles": styles
+        })
+        
+    except Exception as e:
+        logging.error(f"Error getting image prompt styles: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get image prompt styles: {str(e)}"
+        )
 
 if __name__ == '__main__':
     import uvicorn

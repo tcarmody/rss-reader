@@ -338,6 +338,18 @@
             </svg>
             Summarize
           </button>
+          
+          <button class="image-prompt-btn button small outline" 
+                  onclick="window.ImagePrompt.openForBookmark({title: '{{ bookmark.title | e }}', content: '{{ bookmark.content | e }}', summary: '{{ bookmark.summary | e }}', url: '{{ bookmark.url | e }}'})"
+                  title="Generate image prompt for this bookmark">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21,15 16,10 5,21"></polyline>
+            </svg>
+            Image
+          </button>
+          
           <button class="read-toggle button small outline" data-id="{{ bookmark.id }}" data-status="{{ bookmark.read_status }}">
             {% if bookmark.read_status %}Mark as unread{% else %}Mark as read{% endif %}
           </button>
@@ -355,9 +367,11 @@
   
   <!-- Modals -->
   {% include 'components/bookmark_modals.html' %}
+  {% include 'components/image_prompt_modal.html' %}
 </div>
 {% endblock content %}
 
 {% block extra_scripts %}
 <script src="{{ url_for('static', path='js/bookmarks.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/image-prompt.js') }}" defer></script>
 {% endblock extra_scripts %}
