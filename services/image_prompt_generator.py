@@ -23,130 +23,143 @@ class ImagePromptGenerator:
         "photojournalistic": {
             "name": "Photojournalistic",
             "description": "Realistic news photography style",
-            "prompt_template": """Analyze this news story and create a striking photojournalistic image prompt:
+            "prompt_template": """EXTRACT SPECIFIC VISUAL ELEMENTS from this story:
 
 Title: "{title}"
 Content: {content}
 
-TASK: Identify the most visually compelling moment or scene from this story. Don't just describe the headline - dig into the content to find dramatic, human, or emotionally resonant visual elements.
+Step 1 - FIND CONCRETE DETAILS:
+Read through the content and identify:
+- WHO: Specific people mentioned (names, roles, ages, descriptions)
+- WHERE: Exact locations, buildings, rooms, outdoor settings
+- WHAT: Specific objects, vehicles, equipment, products mentioned
+- WHEN: Time of day, weather, season, lighting conditions described
+- HOW: Actions, movements, gestures, interactions happening
 
-Create a detailed photography prompt that includes:
+Step 2 - IDENTIFY THE MOST VISUAL MOMENT:
+From the content, find the single most dramatic, emotional, or visually striking moment. Look for:
+- A specific scene where people are doing something
+- A moment of tension, conflict, celebration, or change
+- Physical interactions between people or with objects
+- Environmental details that set the scene
 
-SCENE & COMPOSITION:
-- What is the most powerful visual moment in this story?
-- What human emotion or dramatic tension can be captured?
-- What specific setting/location would be most impactful?
-- What foreground, middle ground, background elements tell the story?
+Step 3 - CREATE PHOTOJOURNALISTIC PROMPT:
+Write a detailed image generation prompt that shows this specific moment as a news photograph. Include:
+- The exact people involved and what they're doing
+- Their precise location and surroundings
+- The specific time/lighting/weather from the story
+- Objects, tools, or environmental details mentioned
+- Camera angle that captures the human drama
+- Professional photography specifications (lighting, composition, lens)
 
-TECHNICAL DETAILS:
-- Camera angle and lens choice for maximum impact
-- Lighting conditions (natural, artificial, dramatic shadows)
-- Depth of field and focus points
-- Color palette and mood
-
-HUMAN ELEMENTS:
-- What expressions, gestures, or body language convey the story?
-- How are people positioned relative to each other?
-- What objects or symbols add meaning to the scene?
-
-Generate a concrete, detailed prompt that an AI image generator could use to create a compelling news photograph that goes beyond the obvious and captures the deeper story."""
+CRITICAL: Base everything on specific details found in the content, not generic interpretations of the headline."""
         },
         
         "illustration": {
             "name": "Editorial Illustration", 
             "description": "Artistic illustration style",
-            "prompt_template": """Create a conceptual editorial illustration that captures the deeper meaning of this story:
+            "prompt_template": """CREATE SYMBOLIC EDITORIAL ILLUSTRATION from story elements:
 
 Title: "{title}"
 Content: {content}
 
-ANALYSIS TASK: Look beyond the literal events. What are the underlying themes, conflicts, or transformations in this story? What metaphors or symbols could powerfully represent these concepts?
+Step 1 - EXTRACT STORY ELEMENTS:
+From the content, identify:
+- CENTRAL CONFLICT: What two forces are opposing each other?
+- KEY PLAYERS: Who are the main people/organizations involved?
+- STAKES: What is being gained, lost, or changed?
+- SETTING: Where does this take place (industry, location, environment)?
+- OBJECTS/TOOLS: What specific items, technologies, or symbols are mentioned?
 
-Design an editorial illustration with:
+Step 2 - FIND VISUAL METAPHORS:
+Based on the extracted elements, identify:
+- What physical objects could represent the main concepts?
+- What spatial relationships show the conflict or change?
+- What natural or architectural elements reflect the story's scale?
+- How can size, position, or interaction show power dynamics?
 
-CONCEPTUAL ELEMENTS:
-- What central metaphor or visual analogy best represents this story?
-- What symbols, objects, or imagery could represent the key players or forces?
-- What visual storytelling technique would make the abstract concrete?
-- How can you show change, conflict, or resolution visually?
+Step 3 - CREATE ILLUSTRATION PROMPT:
+Design an editorial illustration that uses the specific elements from the story:
+- Transform key players into visual symbols or representations
+- Use actual objects/settings mentioned in the content
+- Show the conflict through spatial arrangement and visual metaphors
+- Include specific colors, textures, or styles that match the story's tone
+- Specify artistic technique (digital painting, vector art, mixed media)
+- Create composition that guides viewer to understand the story's meaning
 
-ARTISTIC APPROACH:
-- What illustration style best serves the story (realistic, stylized, minimalist)?
-- What art medium/technique enhances the message (digital painting, line art, collage)?
-- Should it be literal, symbolic, or surreal?
-
-COMPOSITION & MOOD:
-- What color psychology supports the story's emotional tone?
-- How should elements be arranged to guide the viewer's eye?
-- What lighting or shading creates the right atmosphere?
-- What perspective or viewpoint is most impactful?
-
-Create a detailed prompt for an AI image generator that results in a thought-provoking editorial illustration worthy of a major publication cover."""
+CRITICAL: Use specific details and elements found in the actual content, not abstract concepts from the headline."""
         },
         
         "abstract": {
             "name": "Abstract Conceptual",
             "description": "Abstract artistic representation", 
-            "prompt_template": """Transform this story into an abstract visual language that captures its emotional and conceptual essence:
+            "prompt_template": """TRANSLATE STORY DYNAMICS into abstract visual elements:
 
 Title: "{title}"
 Content: {content}
 
-DEEP ANALYSIS: What are the invisible forces, emotions, tensions, or transformations at the heart of this story? How can abstract visual elements embody these intangible concepts?
+Step 1 - IDENTIFY STORY DYNAMICS:
+From the content, find:
+- MOVEMENT: What is growing, shrinking, accelerating, slowing, starting, ending?
+- PRESSURE: What forces are building, releasing, colliding, or balancing?
+- RELATIONSHIPS: How are different elements connected, separated, or interacting?
+- RHYTHM: What patterns, cycles, or progressions are described?
+- SCALE: What contrasts in size, importance, or impact are mentioned?
 
-Create an abstract artwork prompt with:
+Step 2 - EXTRACT EMOTIONAL QUALITIES:
+Based on the story content, identify:
+- What emotional energy is present (tension, excitement, calm, chaos)?
+- What is the dominant feeling of change (sudden vs gradual, violent vs peaceful)?
+- Where is the focal point of intensity or importance in the story?
+- What is the overall trajectory (rising, falling, cyclical, explosive)?
 
-CONCEPTUAL TRANSLATION:
-- What emotions, energies, or psychological states does this story evoke?
-- How can abstract forms represent the key relationships or conflicts?
-- What visual metaphors could translate complex ideas into shapes, colors, movement?
-- What is the story's rhythm, pace, or emotional arc, and how can this be visualized?
+Step 3 - CREATE ABSTRACT PROMPT:
+Design abstract art that translates these specific story elements:
+- Convert the identified movements into visual flows and directions
+- Transform relationships into spatial arrangements and connections
+- Use color and form to represent the specific emotional qualities found
+- Create composition that mirrors the story's rhythm and progression
+- Specify abstract art techniques that match the story's energy
+- Include scale and proportion that reflects the story's dynamics
 
-ABSTRACT ELEMENTS:
-- What shapes, forms, or patterns best embody the story's core concepts?
-- How should color, texture, and composition reflect the emotional journey?
-- What kind of movement or flow should the eye experience?
-- Should the abstraction suggest chaos/order, tension/harmony, growth/decay?
-
-ARTISTIC EXECUTION:
-- What abstract art style or movement best serves this story (expressionism, constructivism, fluid dynamics)?
-- How should space, scale, and proportion create psychological impact?
-- What interplay of light, shadow, positive/negative space enhances meaning?
-
-Generate a detailed prompt for creating abstract art that makes viewers feel the story's deeper truths without literal representation."""
+CRITICAL: Base all abstract elements on specific dynamics and relationships found in the story content, not general impressions."""
         },
         
         "infographic": {
             "name": "Infographic Style",
             "description": "Data visualization and infographic",
-            "prompt_template": """Analyze this story and create a compelling data visualization that reveals insights beyond the obvious:
+            "prompt_template": """EXTRACT QUANTIFIABLE INFORMATION to create data visualization:
 
 Title: "{title}"
 Content: {content}
 
-INFORMATION MINING: Look for quantitative elements, processes, relationships, comparisons, or trends within this story. What data points, statistics, timelines, or structural relationships can be visualized?
+Step 1 - FIND SPECIFIC DATA:
+Read through the content and identify:
+- NUMBERS: Exact figures, percentages, amounts, quantities mentioned
+- COMPARISONS: Before/after, bigger/smaller, more/less relationships
+- TIMELINES: Dates, durations, sequences, or progressions described
+- CATEGORIES: Different types, groups, or classifications mentioned
+- PROCESSES: Step-by-step procedures or workflows described
 
-Design an infographic that includes:
+Step 2 - IDENTIFY RELATIONSHIPS:
+From the extracted data, find:
+- What increases or decreases in relation to what else?
+- What are the cause-and-effect relationships?
+- How do different categories compare in size or importance?
+- What patterns or trends can be shown over time?
+- What hierarchies or structures exist?
 
-DATA IDENTIFICATION:
-- What are the key numbers, percentages, or measurements in this story?
-- What processes, workflows, or cause-and-effect relationships exist?
-- What comparisons, contrasts, or progressions can be shown visually?
-- What hidden patterns or connections could be illuminated through design?
+Step 3 - CREATE INFOGRAPHIC PROMPT:
+Design a data visualization using the specific information found:
+- Choose appropriate chart types for each piece of data found
+- Use the exact numbers and categories mentioned in the content
+- Show the specific comparisons and relationships identified
+- Create visual hierarchy based on importance mentioned in the story
+- Include relevant icons or symbols that relate to the story's industry/context
+- Use color coding that makes sense for the specific data categories
+- Design layout that tells the story through the progression of information
 
-VISUAL STORYTELLING:
-- How can the data be arranged to tell a compelling visual narrative?
-- What's the most surprising or insightful angle on this information?
-- How should the viewer's eye move through the information hierarchy?
-- What visual metaphors could make complex data more accessible?
-
-DESIGN EXECUTION:
-- What chart types, icons, and visual elements best serve each data point?
-- How should color coding, sizing, and spacing enhance comprehension?
-- What balance of text, numbers, and visuals creates optimal impact?
-- How can the overall design be both informative and visually striking?
-
-Create a detailed prompt for an AI image generator to produce a sophisticated infographic that makes complex information both beautiful and immediately understandable."""
+CRITICAL: Only visualize data and relationships explicitly mentioned in the story content, not implied or general industry information."""
         }
     }
     
@@ -172,50 +185,84 @@ Create a detailed prompt for an AI image generator to produce a sophisticated in
         content_hash = hashlib.md5(f"{title}{content}{style}".encode()).hexdigest()
         return f"image_prompt:{style}:{content_hash}"
     
-    def _extract_key_content(self, title: str, content: str, max_words: int = 300) -> str:
+    def _extract_key_content(self, title: str, content: str, max_words: int = 400) -> str:
         """
-        Extract key content for prompt generation with enhanced visual focus.
-        Prioritizes content with visual, emotional, or descriptive elements.
+        Extract key content for prompt generation prioritizing concrete visual details.
+        Focuses on specific people, places, actions, objects, and scenes.
         """
-        # Increase word limit for better visual analysis
+        # Increase word limit further for richer visual analysis
         full_text = f"{title}\n\n{content}"
         words = full_text.split()
         
         if len(words) <= max_words:
             return full_text
         
-        # If content is too long, try to preserve the most visually rich parts
+        # If content is too long, prioritize sentences with concrete visual elements
         sentences = content.split('. ')
         
-        # Priority keywords for visual content
+        # Enhanced keywords for concrete visual content
         visual_keywords = [
-            'see', 'show', 'appear', 'look', 'visual', 'image', 'photo', 'video',
-            'color', 'light', 'dark', 'bright', 'scene', 'view', 'display',
-            'dramatic', 'striking', 'beautiful', 'shocking', 'massive', 'tiny',
-            'crowd', 'empty', 'full', 'destroyed', 'built', 'created',
-            'people', 'person', 'man', 'woman', 'child', 'group',
-            'building', 'street', 'home', 'office', 'factory', 'store',
-            'outside', 'inside', 'above', 'below', 'behind', 'front'
+            # Actions & Movement
+            'walk', 'run', 'stand', 'sit', 'drive', 'fly', 'climb', 'fall', 'jump', 'dance',
+            'work', 'build', 'destroy', 'create', 'break', 'fix', 'hold', 'carry', 'point',
+            
+            # People & Descriptions
+            'people', 'person', 'man', 'woman', 'child', 'worker', 'employee', 'customer',
+            'crowd', 'group', 'team', 'family', 'audience', 'protesters', 'officials',
+            'wearing', 'dressed', 'uniform', 'suit', 'shirt', 'hat', 'glasses',
+            
+            # Places & Settings
+            'building', 'office', 'factory', 'store', 'restaurant', 'hospital', 'school',
+            'street', 'road', 'bridge', 'park', 'room', 'hall', 'stage', 'field',
+            'inside', 'outside', 'downtown', 'upstairs', 'basement', 'rooftop',
+            
+            # Objects & Tools
+            'machine', 'computer', 'phone', 'car', 'truck', 'equipment', 'device',
+            'sign', 'banner', 'screen', 'table', 'chair', 'box', 'bag', 'tool',
+            
+            # Visual Qualities
+            'see', 'look', 'show', 'appear', 'visible', 'bright', 'dark', 'light',
+            'color', 'red', 'blue', 'green', 'yellow', 'black', 'white', 'gray',
+            'large', 'small', 'huge', 'tiny', 'tall', 'short', 'wide', 'narrow',
+            
+            # Time & Weather
+            'morning', 'afternoon', 'evening', 'night', 'sunny', 'cloudy', 'rain',
+            'yesterday', 'today', 'during', 'while', 'when', 'as'
         ]
         
-        # Score sentences based on visual content
+        # Score sentences based on visual content richness
         scored_sentences = []
         for sentence in sentences:
             score = 0
             sentence_lower = sentence.lower()
             
-            # Count visual keywords
+            # Count visual keywords (higher weight for specific terms)
             for keyword in visual_keywords:
-                score += sentence_lower.count(keyword)
+                count = sentence_lower.count(keyword)
+                if keyword in ['people', 'building', 'machine', 'work', 'see', 'show']:
+                    score += count * 2  # Higher weight for key visual terms
+                else:
+                    score += count
             
-            # Bonus for numbers and specific details
+            # Heavy bonus for numbers and measurements
             if any(char.isdigit() for char in sentence):
-                score += 2
+                score += 3
             
-            # Bonus for descriptive adjectives
-            descriptive_words = ['new', 'old', 'big', 'small', 'red', 'blue', 'green', 'black', 'white']
-            for word in descriptive_words:
-                if word in sentence_lower:
+            # Bonus for proper nouns (likely specific people/places)
+            words_in_sentence = sentence.split()
+            for word in words_in_sentence:
+                if word and word[0].isupper() and len(word) > 2:
+                    score += 1
+            
+            # Bonus for quotes (often contain specific details)
+            if '"' in sentence or "'" in sentence:
+                score += 2
+                
+            # Bonus for concrete descriptive language
+            descriptive_terms = ['new', 'old', 'first', 'last', 'main', 'central', 'local', 
+                                'public', 'private', 'empty', 'full', 'open', 'closed']
+            for term in descriptive_terms:
+                if term in sentence_lower:
                     score += 1
                     
             scored_sentences.append((sentence, score))
@@ -227,12 +274,22 @@ Create a detailed prompt for an AI image generator to produce a sophisticated in
         result_parts = [title]
         current_words = len(title.split())
         
+        # Always include the first sentence (often contains key context)
+        if sentences:
+            first_sentence = sentences[0]
+            first_words = len(first_sentence.split())
+            if current_words + first_words <= max_words - 20:
+                if first_sentence not in [s[0] for s in scored_sentences[:1]]:
+                    result_parts.append(first_sentence)
+                    current_words += first_words
+        
+        # Add highest scoring sentences
         for sentence, score in scored_sentences:
             sentence_words = len(sentence.split())
-            if current_words + sentence_words <= max_words - 10:  # Leave buffer
+            if current_words + sentence_words <= max_words - 10 and sentence not in result_parts:
                 result_parts.append(sentence)
                 current_words += sentence_words
-            else:
+            elif current_words >= max_words * 0.9:  # Stop when near limit
                 break
         
         return '\n\n'.join(result_parts)
