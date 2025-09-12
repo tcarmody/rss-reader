@@ -60,5 +60,8 @@
   <!-- Base JavaScript -->
   <script src="{{ url_for('static', path='js/common.js') }}" defer></script>
   {% block extra_scripts %}{% endblock %}
+  
+  <!-- Additional body content (modals, etc.) -->
+  {% block extra_body %}{% endblock %}
 </body>
 </html>

@@ -59,7 +59,10 @@
       </button>
       
       <button class="image-prompt-btn" 
-              onclick="window.ImagePrompt.openModal(window.ImagePrompt.createArticleData('{{ article.title | e }}', '{{ (article.content or article.summary.summary or '') | e }}', '{{ (article.summary.summary or '') | e }}', '{{ article.original_url | default(article.link) | e }}'))"
+              data-title="{{ article.title | e }}"
+              data-content="{{ (article.content or article.summary.summary or '') | e }}"
+              data-summary="{{ (article.summary.summary or '') | e }}"
+              data-url="{{ article.original_url | default(article.link) | e }}"
               title="Generate image prompt for this article">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
