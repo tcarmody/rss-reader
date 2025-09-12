@@ -34,24 +34,24 @@
           <button class="style-btn" data-style="illustration" role="radio" aria-checked="false">
             <div class="style-icon">🎨</div>
             <div class="style-info">
-              <div class="style-name">Editorial Illustration</div>
-              <div class="style-desc">Artistic illustration style</div>
+              <div class="style-name">Illustration</div>
+              <div class="style-desc">Editorial artistic style</div>
             </div>
           </button>
           
           <button class="style-btn" data-style="abstract" role="radio" aria-checked="false">
             <div class="style-icon">🌈</div>
             <div class="style-info">
-              <div class="style-name">Abstract Conceptual</div>
-              <div class="style-desc">Abstract artistic representation</div>
+              <div class="style-name">Abstract</div>
+              <div class="style-desc">Conceptual artistic representation</div>
             </div>
           </button>
           
           <button class="style-btn" data-style="infographic" role="radio" aria-checked="false">
             <div class="style-icon">📊</div>
             <div class="style-info">
-              <div class="style-name">Infographic Style</div>
-              <div class="style-desc">Data visualization design</div>
+              <div class="style-name">Infographic</div>
+              <div class="style-desc">Data visualization style</div>
             </div>
           </button>
         </div>
@@ -169,13 +169,13 @@
 
 .style-buttons {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 0.75rem;
 }
 
 .style-btn {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
   padding: 1rem;
   border: 2px solid var(--color-neutral-200, #e2e8f0);
@@ -184,6 +184,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
+  min-height: 80px;
 }
 
 .style-btn:hover {
@@ -211,6 +212,8 @@
   color: var(--color-neutral-800, #1e293b);
   font-size: 0.9rem;
   line-height: 1.2;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .style-desc {
@@ -218,6 +221,8 @@
   font-size: 0.8rem;
   line-height: 1.3;
   margin-top: 0.25rem;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .prompt-output {
@@ -354,6 +359,7 @@
   
   .style-btn {
     padding: 0.75rem;
+    min-height: 70px;
   }
   
   .modal-footer {
@@ -363,6 +369,13 @@
   
   .modal-footer button {
     width: 100%;
+  }
+}
+
+/* Tablet responsiveness */
+@media (max-width: 768px) and (min-width: 641px) {
+  .style-buttons {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>
