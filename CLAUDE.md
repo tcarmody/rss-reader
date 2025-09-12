@@ -63,6 +63,7 @@ python -m pytest tests/ --cov
 - **Factory Pattern**: Model selection based on content complexity in `models/config.py`
 - **Strategy Pattern**: Multiple summarization strategies (ArticleSummarizer vs FastSummarizer)
 - **Repository Pattern**: BookmarkManager handles all database operations
+- **Service Layer**: ImagePromptGenerator for AI-powered image prompt generation
 
 ### Key Entry Points
 - **`server.py`**: FastAPI web application (port 5005)
@@ -79,6 +80,7 @@ RSS Feeds → EnhancedRSSReader → FastSummarizer → TieredCache → Web UI
 ### Component Dependencies
 - **Reader Layer**: `reader/base_reader.py` → `reader/enhanced_reader.py`
 - **Summarization**: `summarization/article_summarizer.py` → `summarization/fast_summarizer.py`
+- **Image Prompts**: `services/image_prompt_generator.py` → leverages ArticleSummarizer
 - **Caching**: `cache/base.py` → `cache/memory_cache.py` → `cache/tiered_cache.py`
 - **Models**: `models/config.py` handles Claude model selection (Sonnet-4 vs Haiku-3.5)
 
@@ -121,6 +123,45 @@ The system automatically selects between two Claude models based on content comp
 - **Claude 3.5 Haiku** (`claude-3-5-haiku-latest`): Simple content, fast processing, complexity < 0.6
 
 Model selection logic is in `models/config.py:select_model_by_complexity()`.
+
+## Image Prompt Generation Feature
+
+### Overview
+The RSS Reader includes AI-powered image prompt generation that creates detailed prompts for AI image generators like DALL-E, Midjourney, and Stable Diffusion. This feature is available on all pages and supports multiple artistic styles.
+
+### Architecture
+- **Service**: `services/image_prompt_generator.py` - Core prompt generation logic
+- **API Endpoints**:
+  - `POST /api/generate-image-prompt` - Generate prompts from article content
+  - `GET /api/image-prompt-styles` - Get available style options
+- **Frontend**: 
+  - `static/js/image-prompt.js` - Modal interactions and API calls
+  - `templates/components/image_prompt_modal.html` - Modal UI component
+  - CSS integrated in `static/css/styles.css`
+
+### Supported Styles
+- **Photojournalistic**: Realistic news photography style
+- **Editorial Illustration**: Artistic illustration for magazines
+- **Abstract Conceptual**: Abstract art representation
+- **Infographic Style**: Data visualization and clean design
+
+### Integration Points
+- **Home Page**: Image prompt buttons on each article in clusters
+- **Individual Summary**: Generate prompts for summarized articles
+- **Bookmarks Page**: Generate prompts for saved articles
+
+### Performance Features
+- **Caching**: 24-hour cache for generated prompts
+- **Rate Limiting**: Integrated with existing API rate limits
+- **Error Handling**: Graceful fallbacks with simple prompts
+- **Content Optimization**: Automatic text truncation and keyword extraction
+
+### Usage
+1. Click "Image Prompt" button on any article
+2. Select desired artistic style
+3. Click "Generate Prompt"
+4. Copy generated prompt to clipboard
+5. Use with AI image generation tools
 
 ## Critical Dependencies
 
@@ -172,7 +213,7 @@ python -m playwright install chromium
   - **`content/extractors/`**: Source extraction and content processing utilities
 - **`models/`**: Data models and AI model configuration
 - **`reader/`**: RSS feed processing and content extraction
-- **`services/`**: Business logic (bookmark management)
+- **`services/`**: Business logic (bookmark management, image prompt generation)
 - **`summarization/`**: Claude API integration and text processing
 
 ### Web Interface

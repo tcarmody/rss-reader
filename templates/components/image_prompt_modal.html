@@ -1,0 +1,368 @@
+<!-- Image Prompt Generation Modal Component -->
+<div id="imagePromptModal" class="modal" role="dialog" aria-labelledby="imagePromptTitle" aria-hidden="true">
+  <div class="modal-overlay" onclick="closeImagePromptModal()"></div>
+  <div class="modal-content image-prompt-modal">
+    <div class="modal-header">
+      <h3 id="imagePromptTitle">Generate Image Prompt</h3>
+      <button class="modal-close" onclick="closeImagePromptModal()" aria-label="Close modal">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <!-- Article Preview -->
+      <div class="article-preview">
+        <h4 id="promptArticleTitle">Article Title</h4>
+        <p id="promptArticlePreview" class="content-preview">Content preview...</p>
+      </div>
+      
+      <!-- Style Selection -->
+      <div class="prompt-styles">
+        <label class="section-label">Choose Image Style:</label>
+        <div class="style-buttons" role="radiogroup" aria-labelledby="imageStyleLabel">
+          <button class="style-btn active" data-style="photojournalistic" role="radio" aria-checked="true">
+            <div class="style-icon">📸</div>
+            <div class="style-info">
+              <div class="style-name">Photojournalistic</div>
+              <div class="style-desc">Realistic news photography</div>
+            </div>
+          </button>
+          
+          <button class="style-btn" data-style="illustration" role="radio" aria-checked="false">
+            <div class="style-icon">🎨</div>
+            <div class="style-info">
+              <div class="style-name">Editorial Illustration</div>
+              <div class="style-desc">Artistic illustration style</div>
+            </div>
+          </button>
+          
+          <button class="style-btn" data-style="abstract" role="radio" aria-checked="false">
+            <div class="style-icon">🌈</div>
+            <div class="style-info">
+              <div class="style-name">Abstract Conceptual</div>
+              <div class="style-desc">Abstract artistic representation</div>
+            </div>
+          </button>
+          
+          <button class="style-btn" data-style="infographic" role="radio" aria-checked="false">
+            <div class="style-icon">📊</div>
+            <div class="style-info">
+              <div class="style-name">Infographic Style</div>
+              <div class="style-desc">Data visualization design</div>
+            </div>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Generated Prompt Display -->
+      <div class="prompt-output">
+        <label class="section-label" for="generatedPromptText">Generated Image Prompt:</label>
+        <div class="prompt-container">
+          <textarea 
+            id="generatedPromptText" 
+            readonly 
+            placeholder="Click 'Generate Prompt' to create an AI image prompt..."
+            rows="6"
+            aria-describedby="promptHelp">
+          </textarea>
+          <div class="prompt-actions">
+            <button id="copyPromptBtn" class="button outline" onclick="copyPromptToClipboard()" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copy to Clipboard
+            </button>
+          </div>
+        </div>
+        <small id="promptHelp" class="help-text">
+          Use this prompt with AI image generators like DALL-E, Midjourney, or Stable Diffusion.
+        </small>
+      </div>
+      
+      <!-- Loading State -->
+      <div id="promptLoadingState" class="loading-state" style="display: none;">
+        <div class="spinner"></div>
+        <span>Generating image prompt...</span>
+      </div>
+      
+      <!-- Error State -->
+      <div id="promptErrorState" class="error-state" style="display: none;">
+        <div class="error-icon">⚠️</div>
+        <div class="error-message">
+          <strong>Generation Failed</strong>
+          <p id="promptErrorMessage">An error occurred while generating the prompt.</p>
+        </div>
+        <button class="button outline" onclick="retryPromptGeneration()">Try Again</button>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button id="generatePromptBtn" class="button primary" onclick="generateImagePrompt()">
+        Generate Prompt
+      </button>
+      <button class="button outline" onclick="closeImagePromptModal()">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification for copy feedback -->
+<div id="copyToast" class="toast" style="display: none;">
+  <div class="toast-content">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20,6 9,17 4,12"></polyline>
+    </svg>
+    Prompt copied to clipboard!
+  </div>
+</div>
+
+<style>
+/* Image Prompt Modal Styles */
+.image-prompt-modal {
+  max-width: 700px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.article-preview {
+  background: var(--color-neutral-50, #f8fafc);
+  border: 1px solid var(--color-neutral-200, #e2e8f0);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.article-preview h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--color-neutral-800, #1e293b);
+  font-size: 1.1rem;
+  line-height: 1.4;
+}
+
+.content-preview {
+  color: var(--color-neutral-600, #64748b);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.prompt-styles {
+  margin-bottom: 1.5rem;
+}
+
+.section-label {
+  display: block;
+  font-weight: 600;
+  color: var(--color-neutral-700, #374151);
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.style-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.style-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 2px solid var(--color-neutral-200, #e2e8f0);
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.style-btn:hover {
+  border-color: var(--color-primary-300, #93c5fd);
+  background: var(--color-primary-25, #f8faff);
+}
+
+.style-btn.active {
+  border-color: var(--color-primary-500, #3b82f6);
+  background: var(--color-primary-50, #eff6ff);
+  box-shadow: 0 0 0 1px var(--color-primary-500, #3b82f6);
+}
+
+.style-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.style-info {
+  flex: 1;
+}
+
+.style-name {
+  font-weight: 600;
+  color: var(--color-neutral-800, #1e293b);
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.style-desc {
+  color: var(--color-neutral-600, #64748b);
+  font-size: 0.8rem;
+  line-height: 1.3;
+  margin-top: 0.25rem;
+}
+
+.prompt-output {
+  margin-bottom: 1.5rem;
+}
+
+.prompt-container {
+  position: relative;
+}
+
+.prompt-container textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 1rem;
+  border: 2px solid var(--color-neutral-200, #e2e8f0);
+  border-radius: 8px;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  resize: vertical;
+  background: var(--color-neutral-25, #fafbfc);
+}
+
+.prompt-container textarea:focus {
+  border-color: var(--color-primary-400, #60a5fa);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-primary-100, #dbeafe);
+}
+
+.prompt-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.help-text {
+  color: var(--color-neutral-500, #6b7280);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin-top: 0.5rem;
+  display: block;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: var(--color-neutral-600, #64748b);
+  font-size: 0.9rem;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-neutral-200, #e2e8f0);
+  border-top: 2px solid var(--color-primary-500, #3b82f6);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-state {
+  text-align: center;
+  padding: 2rem;
+  color: var(--color-danger-600, #dc2626);
+}
+
+.error-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.error-message strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.error-message p {
+  color: var(--color-neutral-600, #64748b);
+  font-size: 0.9rem;
+  margin: 0 0 1rem 0;
+}
+
+/* Toast Notification */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10000;
+  background: var(--color-success-600, #059669);
+  color: white;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  animation: toastSlideIn 0.3s ease;
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  .image-prompt-modal {
+    margin: 0.5rem;
+    max-width: calc(100vw - 1rem);
+  }
+  
+  .style-buttons {
+    grid-template-columns: 1fr;
+  }
+  
+  .style-btn {
+    padding: 0.75rem;
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .modal-footer button {
+    width: 100%;
+  }
+}
+</style>

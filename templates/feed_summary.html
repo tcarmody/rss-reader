@@ -162,6 +162,9 @@
 {% endblock main_content %}
 
 {% block extra_scripts %}
+<!-- Include image prompt functionality -->
+<script src="{{ url_for('static', path='js/image-prompt.js') }}"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   // Initialize bookmark functionality
@@ -194,3 +197,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock extra_scripts %}
+
+{% block extra_body %}
+<!-- Include image prompt modal -->
+{% include 'components/image_prompt_modal.html' %}
+{% endblock extra_body %}
