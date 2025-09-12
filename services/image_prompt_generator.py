@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 
 from summarization.article_summarizer import ArticleSummarizer
-from cache.tiered_cache import get_cache
+from cache.tiered_cache import TieredCache
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,11 @@ Keep it under 200 words and emphasize clarity and information design."""
             summarizer: Optional ArticleSummarizer instance. If None, creates a new one.
         """
         self.summarizer = summarizer or ArticleSummarizer()
-        self.cache = get_cache()
+        self.cache = TieredCache(
+            memory_size=100,
+            disk_path="./cache/image_prompts",
+            ttl_days=1  # Cache for 1 day
+        )
         
         # Cache settings
         self.cache_ttl = timedelta(hours=24)  # Cache prompts for 24 hours
@@ -152,7 +156,7 @@ Keep it under 200 words and emphasize clarity and information design."""
             
             # Check cache first
             cache_key = self._get_cache_key(title, content, style)
-            cached_result = await self.cache.get(cache_key)
+            cached_result = self.cache.get(cache_key)
             if cached_result:
                 logger.info(f"Using cached image prompt for style '{style}'")
                 return cached_result
@@ -196,8 +200,9 @@ Keep it under 200 words and emphasize clarity and information design."""
                 "word_count": len(generated_prompt.split())
             }
             
-            # Cache the result
-            await self.cache.set(cache_key, result, ttl=self.cache_ttl)
+            # Cache the result (convert timedelta to seconds)
+            ttl_seconds = int(self.cache_ttl.total_seconds())
+            self.cache.set(cache_key, result, ttl=ttl_seconds)
             
             logger.info(f"Generated {style} image prompt ({result['word_count']} words)")
             return result
