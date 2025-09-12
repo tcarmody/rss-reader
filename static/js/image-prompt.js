@@ -19,6 +19,23 @@ document.addEventListener('DOMContentLoaded', function() {
  * Set up event listeners for image prompt functionality
  */
 function setupImagePromptListeners() {
+  // Image prompt button clicks
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.image-prompt-btn')) {
+      e.preventDefault();
+      const button = e.target.closest('.image-prompt-btn');
+      
+      const articleData = {
+        title: button.getAttribute('data-title') || '',
+        content: button.getAttribute('data-content') || '',
+        summary: button.getAttribute('data-summary') || '',
+        url: button.getAttribute('data-url') || ''
+      };
+      
+      openImagePromptModal(articleData);
+    }
+  });
+  
   // Style button selection
   document.addEventListener('click', function(e) {
     if (e.target.closest('.style-btn')) {

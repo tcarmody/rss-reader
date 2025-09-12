@@ -118,7 +118,10 @@
         </button>
         
         <button class="image-prompt-btn button outline" 
-                onclick="window.ImagePrompt.openModal(window.ImagePrompt.createArticleData('{{ cluster[0].summary.headline | e }}', '{{ (cluster[0].content or cluster[0].summary.summary or '') | e }}', '{{ cluster[0].summary.summary | e }}', '{{ url | e }}'))"
+                data-title="{{ cluster[0].summary.headline | e }}"
+                data-content="{{ (cluster[0].content or cluster[0].summary.summary or '') | e }}"
+                data-summary="{{ cluster[0].summary.summary | e }}"
+                data-url="{{ url | e }}"
                 title="Generate image prompt for this article">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
