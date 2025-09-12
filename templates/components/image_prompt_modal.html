@@ -127,6 +127,13 @@
   max-width: 700px;
   max-height: 90vh;
   overflow-y: auto;
+  width: 100%;
+  margin: 20px auto;
+  position: relative;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
 }
 
 .article-preview {
@@ -349,8 +356,11 @@
 /* Mobile responsiveness */
 @media (max-width: 640px) {
   .image-prompt-modal {
-    margin: 0.5rem;
+    margin: 0.5rem auto;
     max-width: calc(100vw - 1rem);
+    width: calc(100vw - 1rem);
+    left: 0;
+    right: 0;
   }
   
   .style-buttons {
@@ -374,6 +384,12 @@
 
 /* Tablet responsiveness */
 @media (max-width: 768px) and (min-width: 641px) {
+  .image-prompt-modal {
+    margin: 1rem auto;
+    max-width: calc(100vw - 2rem);
+    width: calc(100vw - 2rem);
+  }
+  
   .style-buttons {
     grid-template-columns: repeat(2, 1fr);
   }
