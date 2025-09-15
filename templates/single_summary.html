@@ -95,15 +95,12 @@
       <h2 class="cluster-title">{{ cluster[0].summary.headline }}</h2>
     </header>
 
-    <div class="article-summary">
-      {{ cluster[0].summary.summary|replace('\n\n', '<br><br>')|replace('\n', '<br>')|safe }}
-    </div>
-    
-    {% if cluster[0].model_used %}
-      <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--color-neutral-500);">
-        Summarized with: {{ cluster[0].model_used }}
-      </div>
-    {% endif %}
+    {% set cluster_id = 'single-summary' %}
+    {% set summary_text = cluster[0].summary.summary %}
+    {% set original_text = cluster[0].content or '' %}
+    {% set show_cluster_tags = false %}
+    {% set model_used = cluster[0].model_used %}
+    {% include 'components/content_toggle.html' %}
 
     <footer class="summary-actions" style="margin-top: 1.5rem;">
       <div class="action-buttons">
@@ -146,6 +143,8 @@
 {% block extra_scripts %}
 <!-- Include image prompt functionality -->
 <script src="{{ url_for('static', path='js/image-prompt.js') }}"></script>
+<!-- Include content toggle functionality -->
+<script src="{{ url_for('static', path='js/content-toggle.js') }}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

@@ -130,17 +130,12 @@
       </header>
 
       {% if cluster[0].summary and cluster[0].summary.summary %}
-        <div class="article-summary">
-          {{ cluster[0].summary.summary|replace('\n\n', '<br><br>')|replace('\n', '<br>')|safe }}
-          
-          {% include 'components/cluster_tags.html' %}
-          
-          {% if cluster[0].model_used %}
-            <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--color-neutral-500);">
-              Summarized with: {{ cluster[0].model_used }}
-            </div>
-          {% endif %}
-        </div>
+        {% set cluster_id = loop.index %}
+        {% set summary_text = cluster[0].summary.summary %}
+        {% set original_text = cluster[0].content or '' %}
+        {% set show_cluster_tags = true %}
+        {% set model_used = cluster[0].model_used %}
+        {% include 'components/content_toggle.html' %}
       {% endif %}
 
       <div class="articles-container">
@@ -164,6 +159,8 @@
 {% block extra_scripts %}
 <!-- Include image prompt functionality -->
 <script src="{{ url_for('static', path='js/image-prompt.js') }}"></script>
+<!-- Include content toggle functionality -->
+<script src="{{ url_for('static', path='js/content-toggle.js') }}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
