@@ -23,6 +23,33 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# Function to upgrade pip if needed
+upgrade_pip() {
+    log_info "Checking for pip updates..."
+    # Temporarily disable exit on error for this check, as it might fail with older pip versions
+    set +e
+    LATEST_PIP_VERSION=$(pip index versions pip 2>/dev/null | grep "LATEST" | awk '{print $2}')
+    PIP_CHECK_SUCCESS=$?
+    set -e
+
+    if [ $PIP_CHECK_SUCCESS -ne 0 ]; then
+        log_warning "Could not check for pip updates. Using existing version."
+        return
+    fi
+
+    CURRENT_PIP_VERSION=$(pip --version | awk '{print $2}')
+
+    if [ "$CURRENT_PIP_VERSION" != "$LATEST_PIP_VERSION" ]; then
+        log_info "A new version of pip is available. Upgrading from $CURRENT_PIP_VERSION to $LATEST_PIP_VERSION..."
+        pip install --upgrade pip || {
+            log_warning "Failed to upgrade pip. Continuing with the current version."
+        }
+        log_success "pip has been upgraded to version $LATEST_PIP_VERSION."
+    else
+        log_info "pip is up to date (version $CURRENT_PIP_VERSION)."
+    fi
+}
+
 # Parse command line arguments
 parse_args() {
     while [[ $# -gt 0 ]]; do
@@ -139,6 +166,9 @@ main() {
         log_error "Activation script not found at $VENV_DIR/bin/activate"
         exit 1
     fi
+
+    # Upgrade pip if needed
+    upgrade_pip
     
     # Check if we need to install requirements
     if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
