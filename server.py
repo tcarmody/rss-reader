@@ -96,41 +96,65 @@ DEFAULT_GLOBAL_SETTINGS = {
 # Helper function to maintain compatibility with old fetch_article_content
 def fetch_article_content(url, session=None):
     """
-    Fetch article content using the new archive system.
-    
+    Fetch article content using the new archive system, with PDF support.
+
     Args:
         url: The article URL to fetch
         session: Optional requests session
-        
+
     Returns:
         str: Article content or empty string if failed
     """
     try:
+        # Check if this is a PDF URL
+        from content.extractors.pdf import get_pdf_extractor
+        pdf_extractor = get_pdf_extractor()
+
+        if pdf_extractor.is_pdf_url(url):
+            logging.info(f"Detected PDF URL: {url}")
+            result = pdf_extractor.extract_from_url(url, session)
+            if result['success']:
+                logging.info(f"Successfully extracted text from PDF: {len(result['content'])} characters")
+                return result['content']
+            else:
+                logging.warning(f"Failed to extract PDF content: {result.get('error', 'Unknown error')}")
+                return ""
+
         # Check if it's paywalled
         if is_paywalled(url):
             logging.info(f"Detected paywall for {url}, trying archive services")
-            
+
             # Try archive services
             result = default_provider_manager.get_archived_content(url)
             if result.success and result.content:
                 return result.content
-        
+
         # If not paywalled or archive failed, try direct access
         if not session:
             session = create_http_session()
-        
+
         response = session.get(url, timeout=15)
         if response.status_code == 200:
-            # Simple content extraction
-            # Detect content type and use appropriate parser
+            # Check if response is actually a PDF (content-type detection)
             content_type = response.headers.get('content-type', '').lower()
+            if 'pdf' in content_type:
+                logging.info(f"Detected PDF content-type for {url}")
+                result = pdf_extractor.extract_from_bytes(response.content)
+                if result['success']:
+                    logging.info(f"Successfully extracted text from PDF response: {len(result['content'])} characters")
+                    return result['content']
+                else:
+                    logging.warning(f"Failed to extract PDF content: {result.get('error', 'Unknown error')}")
+                    return ""
+
+            # Simple content extraction for HTML/XML
             parser = 'xml' if 'xml' in content_type or url.endswith('.xml') else 'html.parser'
             soup = BeautifulSoup(response.text, parser)
-            
+
             # Remove unwanted elements
             for unwanted in soup.select('script, style, nav, header, footer, .ads, .comments'):
                 unwanted.decompose()
-            
+
             # Try to find main content
             for selector in ['article', '.article', '.content', '.post-content', 'main']:
                 elements = soup.select(selector)
@@ -139,14 +163,14 @@ def fetch_article_content(url, session=None):
                     content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
                     if content:
                         return content
-            
+
             # Fallback to body text
             if soup.body:
                 return soup.body.get_text()
-    
+
     except Exception as e:
         logging.warning(f"Error fetching article content: {e}")
-    
+
     return ""
 
 # Default clustering settings

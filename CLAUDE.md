@@ -124,6 +124,29 @@ The system automatically selects between two Claude models based on content comp
 
 Model selection logic is in `models/config.py:select_model_by_complexity()`.
 
+## Supported Content Types
+
+The RSS Reader can process multiple content formats:
+
+### **Web Content**
+- HTML articles and blog posts
+- RSS/XML feeds
+- News articles with paywall bypass
+- Aggregator links (Google News, Reddit, etc.)
+
+### **PDF Documents** (NEW)
+- Research papers and academic documents
+- PDF articles and reports
+- Automatic text extraction with PyPDF2
+- Metadata extraction (title, author, page count)
+- Configurable page limits for large documents
+
+### **Content Processing Features**
+- Automatic format detection (URL extension and content-type)
+- Text cleaning and normalization
+- Content length validation
+- Error handling with fallback strategies
+
 ## Image Prompt Generation Feature
 
 ### Overview
@@ -234,6 +257,7 @@ The content/ directory contains the refactored content processing system:
 - **`base.py`**: Abstract extractor interfaces and base classes
 - **`aggregator.py`**: Consolidated aggregator extraction (Techmeme, Google News, Reddit, etc.)
 - **`source.py`**: Generic content utilities, validation, and cleaning
+- **`pdf.py`**: PDF text extraction with PyPDF2 (supports research papers, documents)
 
 ### Testing
 - **`tests/`**: pytest-based test suite

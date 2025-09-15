@@ -50,6 +50,9 @@ scikit-learn>=1.0.0  # Already included above for basic clustering
 lxml>=4.9.0
 html5lib>=1.1
 
+# PDF processing
+PyPDF2>=3.0.0  # For PDF text extraction
+
 # Required by dependencies (reduced set)
 scipy>=1.3.1
 joblib>=1.4.2
