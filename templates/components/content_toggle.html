@@ -1,6 +1,6 @@
 <!-- Content Toggle Component -->
 <!-- Shows either summary or original content with toggle controls -->
-<div class="content-toggle-container" data-cluster-id="{{ cluster_id | default(loop.index) }}">
+<div class="content-toggle-container" data-cluster-id="{{ cluster_id | default('default') }}">
   <!-- Toggle Controls -->
   <div class="content-toggle-controls">
     <div class="toggle-buttons" role="radiogroup" aria-label="Content view options">
