@@ -19,41 +19,14 @@
         <p id="promptArticlePreview" class="content-preview">Content preview...</p>
       </div>
       
-      <!-- Style Selection -->
-      <div class="prompt-styles">
-        <label class="section-label">Choose Image Style:</label>
-        <div class="style-buttons" role="radiogroup" aria-labelledby="imageStyleLabel">
-          <button class="style-btn active" data-style="photojournalistic" role="radio" aria-checked="true">
-            <div class="style-icon">📸</div>
-            <div class="style-info">
-              <div class="style-name">Photojournalistic</div>
-              <div class="style-desc">Realistic news photography</div>
-            </div>
-          </button>
-          
-          <button class="style-btn" data-style="illustration" role="radio" aria-checked="false">
-            <div class="style-icon">🎨</div>
-            <div class="style-info">
-              <div class="style-name">Illustration</div>
-              <div class="style-desc">Editorial artistic style</div>
-            </div>
-          </button>
-          
-          <button class="style-btn" data-style="abstract" role="radio" aria-checked="false">
-            <div class="style-icon">🌈</div>
-            <div class="style-info">
-              <div class="style-name">Abstract</div>
-              <div class="style-desc">Conceptual artistic representation</div>
-            </div>
-          </button>
-          
-          <button class="style-btn" data-style="infographic" role="radio" aria-checked="false">
-            <div class="style-icon">📊</div>
-            <div class="style-info">
-              <div class="style-name">Infographic</div>
-              <div class="style-desc">Data visualization style</div>
-            </div>
-          </button>
+      <!-- Style Info -->
+      <div class="prompt-style-info">
+        <div class="style-display">
+          <div class="style-icon">🎨</div>
+          <div class="style-info">
+            <div class="style-name">Editorial Illustration</div>
+            <div class="style-desc">Focuses on a single strong visual detail from the original article content</div>
+          </div>
         </div>
       </div>
       
@@ -162,7 +135,7 @@
   overflow: hidden;
 }
 
-.prompt-styles {
+.prompt-style-info {
   margin-bottom: 1.5rem;
 }
 
@@ -174,35 +147,14 @@
   font-size: 0.9rem;
 }
 
-.style-buttons {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.75rem;
-}
-
-.style-btn {
+.style-display {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.75rem;
   padding: 1rem;
-  border: 2px solid var(--color-neutral-200, #e2e8f0);
+  border: 2px solid var(--color-primary-200, #bfdbfe);
   border-radius: 8px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: left;
-  min-height: 80px;
-}
-
-.style-btn:hover {
-  border-color: var(--color-primary-300, #93c5fd);
-  background: var(--color-primary-25, #f8faff);
-}
-
-.style-btn.active {
-  border-color: var(--color-primary-500, #3b82f6);
   background: var(--color-primary-50, #eff6ff);
-  box-shadow: 0 0 0 1px var(--color-primary-500, #3b82f6);
 }
 
 .style-icon {

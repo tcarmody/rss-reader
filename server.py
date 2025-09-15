@@ -1143,16 +1143,16 @@ async def generate_image_prompt(
     request: Request,
     title: str = Form(...),
     content: str = Form(...),
-    style: str = Form(default="photojournalistic")
+    style: str = Form(default="editorial")
 ):
     """
     Generate an AI image prompt from article content.
-    
+
     Args:
         title: Article title
-        content: Article content or summary
-        style: Image style (photojournalistic, illustration, abstract, infographic)
-        
+        content: Original article content (not summary)
+        style: Always generates editorial illustrations
+
     Returns:
         JSON response with generated prompt and metadata
     """
@@ -1177,7 +1177,7 @@ async def generate_image_prompt(
         # Add success status
         result["status"] = "success"
         
-        logging.info(f"Generated image prompt for '{title[:50]}...' in {style} style")
+        logging.info(f"Generated editorial illustration prompt for '{title[:50]}...'")
         
         return JSONResponse(content=result)
         
