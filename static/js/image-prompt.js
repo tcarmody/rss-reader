@@ -61,10 +61,10 @@ function setupKeyboardNavigation() {
     if (!document.getElementById('imagePromptModal').classList.contains('modal-open')) {
       return;
     }
-    
-    // Arrow key navigation for style buttons
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      navigateStyleButtons(e.key === 'ArrowRight');
+
+    // ESC key to close modal
+    if (e.key === 'Escape') {
+      closeImagePromptModal();
       e.preventDefault();
     }
   });
@@ -99,10 +99,10 @@ function openImagePromptModal(articleData) {
   modal.classList.add('modal-open');
   modal.setAttribute('aria-hidden', 'false');
   
-  // Focus management
-  const firstFocusable = modal.querySelector('.style-btn');
-  if (firstFocusable) {
-    firstFocusable.focus();
+  // Focus management - focus on generate button
+  const generateButton = modal.querySelector('#generatePromptBtn');
+  if (generateButton) {
+    generateButton.focus();
   }
   
   // Trap focus within modal
