@@ -36,13 +36,7 @@ function setupImagePromptListeners() {
     }
   });
   
-  // Style button selection
-  document.addEventListener('click', function(e) {
-    if (e.target.closest('.style-btn')) {
-      const clickedButton = e.target.closest('.style-btn');
-      selectStyleButton(clickedButton);
-    }
-  });
+  // Style button selection - removed since we only use editorial style
   
   // Modal overlay click to close
   document.addEventListener('click', function(e) {
@@ -76,21 +70,7 @@ function setupKeyboardNavigation() {
   });
 }
 
-/**
- * Navigate between style buttons using keyboard
- */
-function navigateStyleButtons(forward = true) {
-  const buttons = document.querySelectorAll('.style-btn');
-  const activeButton = document.querySelector('.style-btn.active');
-  const currentIndex = Array.from(buttons).indexOf(activeButton);
-  
-  let newIndex = forward ? currentIndex + 1 : currentIndex - 1;
-  if (newIndex >= buttons.length) newIndex = 0;
-  if (newIndex < 0) newIndex = buttons.length - 1;
-  
-  selectStyleButton(buttons[newIndex]);
-  buttons[newIndex].focus();
-}
+// Style navigation removed - only editorial illustration available
 
 /**
  * Open the image prompt modal with article data
@@ -167,27 +147,10 @@ function resetModalState() {
   document.getElementById('promptLoadingState').style.display = 'none';
   document.getElementById('promptErrorState').style.display = 'none';
   
-  // Reset style selection to first option
-  const firstStyle = document.querySelector('.style-btn');
-  if (firstStyle) {
-    selectStyleButton(firstStyle);
-  }
+  // No style selection needed - always use editorial
 }
 
-/**
- * Select a style button and update UI
- */
-function selectStyleButton(button) {
-  // Remove active class from all buttons
-  document.querySelectorAll('.style-btn').forEach(btn => {
-    btn.classList.remove('active');
-    btn.setAttribute('aria-checked', 'false');
-  });
-  
-  // Add active class to selected button
-  button.classList.add('active');
-  button.setAttribute('aria-checked', 'true');
-}
+// Style selection removed - always use editorial illustration
 
 /**
  * Generate image prompt using the API
@@ -199,8 +162,8 @@ async function generateImagePrompt() {
   
   isGenerating = true;
   
-  // Get selected style
-  const selectedStyle = document.querySelector('.style-btn.active')?.dataset.style || 'photojournalistic';
+  // Always use editorial style
+  const selectedStyle = 'editorial';
   
   // Show loading state
   showLoadingState();

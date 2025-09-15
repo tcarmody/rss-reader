@@ -17,151 +17,44 @@ logger = logging.getLogger(__name__)
 
 
 class ImagePromptGenerator:
-    """Generate image prompts from article content using Claude API."""
-    
-    STYLE_TEMPLATES = {
-        "photojournalistic": {
-            "name": "Photojournalistic",
-            "description": "Realistic news photography style",
-            "prompt_template": """EXTRACT SPECIFIC VISUAL ELEMENTS from this story:
+    """Generate editorial illustration prompts from article content using Claude API."""
+
+    EDITORIAL_PROMPT_TEMPLATE = """FIND A SINGLE STRONG VISUAL DETAIL from this article:
 
 Title: "{title}"
-Content: {content}
+Original Content: {content}
 
-Step 1 - FIND CONCRETE DETAILS:
-Read through the content and identify:
-- WHO: Specific people mentioned (names, roles, ages, descriptions)
-- WHERE: Exact locations, buildings, rooms, outdoor settings
-- WHAT: Specific objects, vehicles, equipment, products mentioned
-- WHEN: Time of day, weather, season, lighting conditions described
-- HOW: Actions, movements, gestures, interactions happening
+TASK: Create an editorial illustration based on ONE specific visual detail or narrative moment from the article content.
 
-Step 2 - IDENTIFY THE MOST VISUAL MOMENT:
-From the content, find the single most dramatic, emotional, or visually striking moment. Look for:
-- A specific scene where people are doing something
-- A moment of tension, conflict, celebration, or change
-- Physical interactions between people or with objects
-- Environmental details that set the scene
+Step 1 - SCAN FOR CONCRETE VISUAL DETAILS:
+Read through the original content and look for:
+- A specific person doing something (working, speaking, gesturing, interacting)
+- A particular object, tool, or piece of technology mentioned
+- A described physical setting (office, factory, street, building interior)
+- An action or interaction between people
+- A specific scene that illustrates the story's impact
+- Objects that represent the central issue (documents, machines, products)
 
-Step 3 - CREATE PHOTOJOURNALISTIC PROMPT:
-Write a detailed image generation prompt that shows this specific moment as a news photograph. Include:
-- The exact people involved and what they're doing
-- Their precise location and surroundings
-- The specific time/lighting/weather from the story
-- Objects, tools, or environmental details mentioned
-- Camera angle that captures the human drama
-- Professional photography specifications (lighting, composition, lens)
+Step 2 - SELECT THE STRONGEST VISUAL:
+Choose ONE detail that:
+- Is specifically described in the content (not just implied by the headline)
+- Has clear visual potential for illustration
+- Represents or symbolizes the story's main point
+- Could work as a standalone editorial illustration
 
-CRITICAL: Base everything on specific details found in the content, not generic interpretations of the headline."""
-        },
-        
-        "illustration": {
-            "name": "Editorial Illustration", 
-            "description": "Artistic illustration style",
-            "prompt_template": """CREATE SYMBOLIC EDITORIAL ILLUSTRATION from story elements:
+Step 3 - CREATE EDITORIAL ILLUSTRATION PROMPT:
+Write a detailed prompt for an editorial illustration showing this single visual detail:
+- Describe the specific scene, object, or interaction you selected
+- Include artistic style: "editorial illustration in a clean, modern style"
+- Specify composition details (close-up, wide view, perspective)
+- Add appropriate color palette and mood
+- Keep it focused on this ONE visual element
 
-Title: "{title}"
-Content: {content}
-
-Step 1 - EXTRACT STORY ELEMENTS:
-From the content, identify:
-- CENTRAL CONFLICT: What two forces are opposing each other?
-- KEY PLAYERS: Who are the main people/organizations involved?
-- STAKES: What is being gained, lost, or changed?
-- SETTING: Where does this take place (industry, location, environment)?
-- OBJECTS/TOOLS: What specific items, technologies, or symbols are mentioned?
-
-Step 2 - FIND VISUAL METAPHORS:
-Based on the extracted elements, identify:
-- What physical objects could represent the main concepts?
-- What spatial relationships show the conflict or change?
-- What natural or architectural elements reflect the story's scale?
-- How can size, position, or interaction show power dynamics?
-
-Step 3 - CREATE ILLUSTRATION PROMPT:
-Design an editorial illustration that uses the specific elements from the story:
-- Transform key players into visual symbols or representations
-- Use actual objects/settings mentioned in the content
-- Show the conflict through spatial arrangement and visual metaphors
-- Include specific colors, textures, or styles that match the story's tone
-- Specify artistic technique (digital painting, vector art, mixed media)
-- Create composition that guides viewer to understand the story's meaning
-
-CRITICAL: Use specific details and elements found in the actual content, not abstract concepts from the headline."""
-        },
-        
-        "abstract": {
-            "name": "Abstract Conceptual",
-            "description": "Abstract artistic representation", 
-            "prompt_template": """TRANSLATE STORY DYNAMICS into abstract visual elements:
-
-Title: "{title}"
-Content: {content}
-
-Step 1 - IDENTIFY STORY DYNAMICS:
-From the content, find:
-- MOVEMENT: What is growing, shrinking, accelerating, slowing, starting, ending?
-- PRESSURE: What forces are building, releasing, colliding, or balancing?
-- RELATIONSHIPS: How are different elements connected, separated, or interacting?
-- RHYTHM: What patterns, cycles, or progressions are described?
-- SCALE: What contrasts in size, importance, or impact are mentioned?
-
-Step 2 - EXTRACT EMOTIONAL QUALITIES:
-Based on the story content, identify:
-- What emotional energy is present (tension, excitement, calm, chaos)?
-- What is the dominant feeling of change (sudden vs gradual, violent vs peaceful)?
-- Where is the focal point of intensity or importance in the story?
-- What is the overall trajectory (rising, falling, cyclical, explosive)?
-
-Step 3 - CREATE ABSTRACT PROMPT:
-Design abstract art that translates these specific story elements:
-- Convert the identified movements into visual flows and directions
-- Transform relationships into spatial arrangements and connections
-- Use color and form to represent the specific emotional qualities found
-- Create composition that mirrors the story's rhythm and progression
-- Specify abstract art techniques that match the story's energy
-- Include scale and proportion that reflects the story's dynamics
-
-CRITICAL: Base all abstract elements on specific dynamics and relationships found in the story content, not general impressions."""
-        },
-        
-        "infographic": {
-            "name": "Infographic Style",
-            "description": "Data visualization and infographic",
-            "prompt_template": """EXTRACT QUANTIFIABLE INFORMATION to create data visualization:
-
-Title: "{title}"
-Content: {content}
-
-Step 1 - FIND SPECIFIC DATA:
-Read through the content and identify:
-- NUMBERS: Exact figures, percentages, amounts, quantities mentioned
-- COMPARISONS: Before/after, bigger/smaller, more/less relationships
-- TIMELINES: Dates, durations, sequences, or progressions described
-- CATEGORIES: Different types, groups, or classifications mentioned
-- PROCESSES: Step-by-step procedures or workflows described
-
-Step 2 - IDENTIFY RELATIONSHIPS:
-From the extracted data, find:
-- What increases or decreases in relation to what else?
-- What are the cause-and-effect relationships?
-- How do different categories compare in size or importance?
-- What patterns or trends can be shown over time?
-- What hierarchies or structures exist?
-
-Step 3 - CREATE INFOGRAPHIC PROMPT:
-Design a data visualization using the specific information found:
-- Choose appropriate chart types for each piece of data found
-- Use the exact numbers and categories mentioned in the content
-- Show the specific comparisons and relationships identified
-- Create visual hierarchy based on importance mentioned in the story
-- Include relevant icons or symbols that relate to the story's industry/context
-- Use color coding that makes sense for the specific data categories
-- Design layout that tells the story through the progression of information
-
-CRITICAL: Only visualize data and relationships explicitly mentioned in the story content, not implied or general industry information."""
-        }
-    }
+CRITICAL RULES:
+- Use ONLY details explicitly mentioned in the original content
+- Focus on ONE strong visual, not multiple elements
+- Ignore the headline - work from the article content only
+- Make it specific and concrete, not abstract or metaphorical"""
     
     def __init__(self, summarizer: Optional[ArticleSummarizer] = None):
         """
@@ -295,90 +188,81 @@ CRITICAL: Only visualize data and relationships explicitly mentioned in the stor
         return '\n\n'.join(result_parts)
     
     async def generate_prompt(
-        self, 
-        title: str, 
-        content: str, 
-        style: str = "photojournalistic"
+        self,
+        title: str,
+        content: str,
+        style: str = "editorial"  # Only editorial style now
     ) -> Dict[str, Any]:
         """
-        Generate an image prompt for the given article content.
-        
+        Generate an editorial illustration prompt from article content.
+
         Args:
             title: Article title
-            content: Article content or summary
-            style: Image style (photojournalistic, illustration, abstract, infographic)
-            
+            content: Original article content (not summary)
+            style: Ignored - always generates editorial illustrations
+
         Returns:
-            Dict containing the generated prompt, style info, and metadata
+            Dict containing the generated prompt and metadata
         """
         try:
-            # Validate style
-            if style not in self.STYLE_TEMPLATES:
-                logger.warning(f"Unknown style '{style}', using 'photojournalistic'")
-                style = "photojournalistic"
-            
             # Check cache first
-            cache_key = self._get_cache_key(title, content, style)
+            cache_key = self._get_cache_key(title, content, "editorial")
             cached_result = self.cache.get(cache_key)
             if cached_result:
-                logger.info(f"Using cached image prompt for style '{style}'")
+                logger.info("Using cached editorial illustration prompt")
                 return cached_result
-            
-            # Extract and limit content length
+
+            # Extract and limit content length for analysis
             key_content = self._extract_key_content(title, content)
-            
-            # Get style template
-            style_config = self.STYLE_TEMPLATES[style]
-            prompt_template = style_config["prompt_template"]
-            
+
             # Format the prompt template
-            formatted_prompt = prompt_template.format(
+            formatted_prompt = self.EDITORIAL_PROMPT_TEMPLATE.format(
                 title=title,
                 content=key_content
             )
-            
-            logger.info(f"Generating {style} image prompt for article: {title[:50]}...")
-            
-            # Generate prompt using Claude with more tokens for detailed analysis
+
+            logger.info(f"Generating editorial illustration prompt for: {title[:50]}...")
+
+            # Generate prompt using Claude
             response = await self.summarizer.client.messages.create(
                 model=self.summarizer.model_name,
-                max_tokens=500,  # Increased for more detailed prompts
-                temperature=0.8,  # More creative for visual generation
+                max_tokens=300,  # Focused, concise prompts
+                temperature=0.7,  # Balanced creativity
                 messages=[{
-                    "role": "user", 
+                    "role": "user",
                     "content": formatted_prompt
                 }]
             )
-            
+
             generated_prompt = response.content[0].text.strip()
-            
+
             # Prepare result
             result = {
                 "prompt": generated_prompt,
-                "style": style,
-                "style_name": style_config["name"],
-                "style_description": style_config["description"],
+                "style": "editorial",
+                "style_name": "Editorial Illustration",
+                "style_description": "Editorial illustration focusing on a single strong visual detail",
                 "title": title,
                 "generated_at": datetime.now().isoformat(),
                 "word_count": len(generated_prompt.split())
             }
-            
-            # Cache the result (convert timedelta to seconds)
+
+            # Cache the result
             ttl_seconds = int(self.cache_ttl.total_seconds())
             self.cache.set(cache_key, result, ttl=ttl_seconds)
-            
-            logger.info(f"Generated {style} image prompt ({result['word_count']} words)")
+
+            logger.info(f"Generated editorial illustration prompt ({result['word_count']} words)")
             return result
-            
+
         except Exception as e:
             logger.error(f"Error generating image prompt: {str(e)}")
-            
+
             # Return fallback prompt
-            fallback_prompt = self._generate_fallback_prompt(title, content, style)
+            fallback_prompt = self._generate_fallback_prompt(title, content)
             return {
                 "prompt": fallback_prompt,
-                "style": style,
-                "style_name": self.STYLE_TEMPLATES.get(style, {}).get("name", style.title()),
+                "style": "editorial",
+                "style_name": "Editorial Illustration",
                 "style_description": "Fallback prompt due to generation error",
                 "title": title,
                 "generated_at": datetime.now().isoformat(),
@@ -386,7 +270,7 @@ CRITICAL: Only visualize data and relationships explicitly mentioned in the stor
                 "error": str(e)
             }
     
-    def _generate_fallback_prompt(self, title: str, content: str, style: str) -> str:
+    def _generate_fallback_prompt(self, title: str, content: str) -> str:
         """Generate a simple fallback prompt when AI generation fails."""
         # Extract key words from title and content
         key_words = []
@@ -396,28 +280,18 @@ CRITICAL: Only visualize data and relationships explicitly mentioned in the stor
             stop_words = {'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'}
             meaningful_words = [w for w in words if len(w) > 3 and w not in stop_words]
             key_words.extend(meaningful_words[:5])  # Limit per text
-        
-        # Create basic prompt based on style
-        style_descriptors = {
-            "photojournalistic": "realistic photograph, journalistic style, professional lighting",
-            "illustration": "editorial illustration, artistic style, symbolic elements",
-            "abstract": "abstract art, conceptual design, emotional colors",
-            "infographic": "clean infographic, data visualization, modern design"
-        }
-        
-        descriptor = style_descriptors.get(style, "professional image")
+
         key_phrase = " ".join(key_words[:6])  # Use top keywords
-        
-        return f"{descriptor} showing {key_phrase}, high quality, detailed composition"
-    
+
+        return f"Editorial illustration in a clean, modern style showing {key_phrase}, focused composition, professional design"
+
     def get_available_styles(self) -> Dict[str, Dict[str, str]]:
-        """Get list of available image styles with descriptions."""
+        """Get available editorial illustration style."""
         return {
-            style_key: {
-                "name": style_config["name"],
-                "description": style_config["description"]
+            "editorial": {
+                "name": "Editorial Illustration",
+                "description": "Editorial illustration focusing on a single strong visual detail from the original content"
             }
-            for style_key, style_config in self.STYLE_TEMPLATES.items()
         }
 
 
