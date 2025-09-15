@@ -9,18 +9,27 @@
 
 {% block form_description %}
 <p class="mb-4">Enter one or more URLs to generate AI-powered summaries of the content.</p>
+<div class="supported-formats">
+  <h4>Supported Formats:</h4>
+  <ul>
+    <li>📄 Web articles and blog posts</li>
+    <li>📰 News articles</li>
+    <li>📋 PDF documents</li>
+    <li>📊 Research papers</li>
+  </ul>
+</div>
 {% endblock %}
 
 {% block form_attrs %}action="{{ url_for('summarize_single_post') }}" method="post" id="summarizeUrlForm"{% endblock %}
 
 {% block form_fields %}
 <div class="form-group">
-  <label class="form-label" for="url">Website URLs (one per line)</label>
+  <label class="form-label" for="url">URLs (one per line)</label>
   <textarea id="url" name="url" class="form-input" rows="5"
-          placeholder="https://example.com/article1&#10;https://example.com/article2" 
-          required 
+          placeholder="https://example.com/article1&#10;https://example.com/document.pdf&#10;https://research.org/paper.pdf"
+          required
           aria-describedby="urlHint"></textarea>
-  <p class="form-hint" id="urlHint">Enter one URL per line to summarize multiple articles at once.</p>
+  <p class="form-hint" id="urlHint">Enter one URL per line. Supports web articles, PDFs, and research papers.</p>
 </div>
 
 <div class="form-group">
