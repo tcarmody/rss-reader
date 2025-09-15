@@ -533,6 +533,7 @@ async def summarize_single_post(request: Request, url: str = Form(...), style: s
                         'published': original_article.get('published', datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")),
                         'published_iso_format': original_article.get('published_iso_format', datetime.now(timezone.utc).isoformat()),
                         'summary': summary_data, # Pass the whole summary object
+                        'content': original_article.get('content', ''), # Include original content for toggle
                         'model_used': result.get('model_used', 'N/A') # Add model_used if available
                     }]
                     summarized_clusters.append(article_cluster_item)
