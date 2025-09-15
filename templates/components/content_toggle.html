@@ -1,0 +1,265 @@
+<!-- Content Toggle Component -->
+<!-- Shows either summary or original content with toggle controls -->
+<div class="content-toggle-container" data-cluster-id="{{ cluster_id | default(loop.index) }}">
+  <!-- Toggle Controls -->
+  <div class="content-toggle-controls">
+    <div class="toggle-buttons" role="radiogroup" aria-label="Content view options">
+      <button type="button"
+              class="toggle-btn active"
+              data-view="summary"
+              role="radio"
+              aria-checked="true"
+              aria-label="Show summary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14,2 14,8 20,8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10,9 9,9 8,9"></polyline>
+        </svg>
+        Summary
+      </button>
+      <button type="button"
+              class="toggle-btn"
+              data-view="original"
+              role="radio"
+              aria-checked="false"
+              aria-label="Show original text">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+          <polyline points="14.5,2 14.5,8 20.5,8"></polyline>
+        </svg>
+        Original
+      </button>
+    </div>
+
+    <!-- Content type indicator -->
+    <div class="content-info">
+      <span class="content-length" data-summary-length="{{ (summary_text|length) if summary_text else 0 }}" data-original-length="{{ (original_text|length) if original_text else 0 }}">
+        <!-- Length will be updated by JavaScript -->
+      </span>
+    </div>
+  </div>
+
+  <!-- Content Display Areas -->
+  <div class="content-display">
+    <!-- Summary Content (default visible) -->
+    <div class="content-view content-summary active" data-view="summary">
+      {% if summary_text %}
+        <div class="article-summary">
+          {{ summary_text|replace('\n\n', '<br><br>')|replace('\n', '<br>')|safe }}
+
+          {% if show_cluster_tags %}
+            {% include 'components/cluster_tags.html' %}
+          {% endif %}
+
+          {% if model_used %}
+            <div class="model-info">
+              Summarized with: {{ model_used }}
+            </div>
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="no-content-message">
+          <p>No summary available for this content.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Original Content (hidden by default) -->
+    <div class="content-view content-original" data-view="original">
+      {% if original_text %}
+        <div class="article-content">
+          <!-- Preserve line breaks and basic formatting -->
+          <div class="original-text">
+            {{ original_text|replace('\n\n', '<br><br>')|replace('\n', '<br>')|safe }}
+          </div>
+        </div>
+      {% else %}
+        <div class="no-content-message">
+          <p>Original content not available. This may be due to paywall restrictions or content extraction limitations.</p>
+          <p class="content-hint">Try viewing the article at the original source using the link above.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+/* Content Toggle Styles */
+.content-toggle-container {
+  margin-top: 1rem;
+}
+
+.content-toggle-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-neutral-200);
+}
+
+.toggle-buttons {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--color-neutral-100);
+  border-radius: 6px;
+  padding: 2px;
+  border: 1px solid var(--color-neutral-200);
+}
+
+.toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--color-neutral-600);
+  white-space: nowrap;
+}
+
+.toggle-btn:hover {
+  background: var(--color-neutral-50);
+  color: var(--color-neutral-800);
+}
+
+.toggle-btn.active {
+  background: var(--color-primary-500, #3b82f6);
+  color: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.toggle-btn.active:hover {
+  background: var(--color-primary-600, #2563eb);
+  color: white;
+}
+
+.toggle-btn svg {
+  flex-shrink: 0;
+}
+
+.content-info {
+  font-size: 0.75rem;
+  color: var(--color-neutral-500);
+}
+
+.content-length {
+  font-style: italic;
+}
+
+.content-display {
+  position: relative;
+}
+
+.content-view {
+  display: none;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.content-view.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.article-content {
+  line-height: 1.6;
+  color: var(--color-neutral-700);
+}
+
+.original-text {
+  padding: 1rem;
+  background: var(--color-neutral-50);
+  border-radius: 6px;
+  border-left: 3px solid var(--color-primary-400);
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.no-content-message {
+  padding: 2rem 1rem;
+  text-align: center;
+  background: var(--color-neutral-50);
+  border-radius: 6px;
+  border: 1px dashed var(--color-neutral-300);
+}
+
+.no-content-message p {
+  margin: 0 0 0.5rem 0;
+  color: var(--color-neutral-600);
+}
+
+.content-hint {
+  font-size: 0.875rem;
+  color: var(--color-neutral-500);
+}
+
+.model-info {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-neutral-500);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .content-toggle-controls {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .toggle-buttons {
+    justify-content: center;
+  }
+
+  .toggle-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .original-text {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    max-height: 400px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .toggle-buttons {
+    border-width: 2px;
+  }
+
+  .toggle-btn.active {
+    border: 2px solid var(--color-primary-700, #1d4ed8);
+  }
+
+  .original-text {
+    border-left-width: 4px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .content-view {
+    animation: none;
+  }
+
+  .toggle-btn {
+    transition: none;
+  }
+}
+</style>

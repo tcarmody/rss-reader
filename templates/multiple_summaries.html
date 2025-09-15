@@ -41,15 +41,12 @@
           {% endif %}
         </header>
 
-        <div class="article-summary">
-          {{ cluster[0].summary.summary|replace('\n\n', '<br><br>')|replace('\n', '<br>')|safe }}
-        </div>
-        
-        {% if cluster[0].model_used %}
-          <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--color-neutral-500);">
-            Summarized with: {{ cluster[0].model_used }}
-          </div>
-        {% endif %}
+        {% set cluster_id = 'multi-' ~ loop.index %}
+        {% set summary_text = cluster[0].summary.summary %}
+        {% set original_text = cluster[0].content or '' %}
+        {% set show_cluster_tags = false %}
+        {% set model_used = cluster[0].model_used %}
+        {% include 'components/content_toggle.html' %}
 
         <footer class="summary-actions" style="margin-top: 1rem;">
           <a href="{{ cluster[0].link }}" class="button outline" target="_blank" rel="noopener noreferrer">View Original Article</a>
@@ -71,3 +68,8 @@
     <a href="{{ url_for('summarize_single_get') }}" class="button">Summarize More URLs</a>
   </div>
 {% endblock main_content %}
+
+{% block extra_scripts %}
+<!-- Include content toggle functionality -->
+<script src="{{ url_for('static', path='js/content-toggle.js') }}"></script>
+{% endblock extra_scripts %}
