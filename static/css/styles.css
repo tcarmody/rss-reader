@@ -930,6 +930,114 @@ textarea.form-input {
   color: var(--color-primary-600);
 }
 
+/* ===== UTILITY CLASSES ===== */
+/* Spacing utilities to replace inline styles */
+.mt-xs { margin-top: var(--spacing-xs); }
+.mt-sm { margin-top: var(--spacing-sm); }
+.mt-md { margin-top: var(--spacing-md); }
+.mt-lg { margin-top: var(--spacing-lg); }
+.mt-xl { margin-top: var(--spacing-xl); }
+.mt-2xl { margin-top: var(--spacing-2xl); }
+
+.mb-xs { margin-bottom: var(--spacing-xs); }
+.mb-sm { margin-bottom: var(--spacing-sm); }
+.mb-md { margin-bottom: var(--spacing-md); }
+.mb-lg { margin-bottom: var(--spacing-lg); }
+.mb-xl { margin-bottom: var(--spacing-xl); }
+.mb-2xl { margin-bottom: var(--spacing-2xl); }
+
+.mr-xs { margin-right: var(--spacing-xs); }
+.mr-sm { margin-right: var(--spacing-sm); }
+.mr-md { margin-right: var(--spacing-md); }
+
+.ml-xs { margin-left: var(--spacing-xs); }
+.ml-sm { margin-left: var(--spacing-sm); }
+.ml-md { margin-left: var(--spacing-md); }
+
+/* Text alignment utilities */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+/* Display utilities */
+.inline-block { display: inline-block; }
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+
+/* Layout utilities */
+.max-w-xs { max-width: 200px; }
+.max-w-sm { max-width: 300px; }
+.max-w-md { max-width: 400px; }
+
+/* ===== IMPROVED COMPONENT STYLES ===== */
+/* Info banners and status messages */
+.info-banner {
+  background-color: var(--color-neutral-50);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  margin: var(--spacing-xl) 0;
+}
+
+.info-banner.mt-2xl {
+  margin-top: var(--spacing-2xl);
+}
+
+/* Summary actions consistency */
+.summary-actions {
+  margin-top: var(--spacing-lg);
+}
+
+.summary-actions.text-center {
+  text-align: center;
+  margin-top: var(--spacing-2xl);
+}
+
+/* Card sections with consistent spacing */
+.card-section {
+  margin-top: var(--spacing-2xl);
+}
+
+.card-title.section-title {
+  margin-top: var(--spacing-2xl);
+}
+
+/* Feature highlights */
+.feature-highlights {
+  margin-top: var(--spacing-md);
+}
+
+.feature-highlight {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-sm);
+}
+
+.feature-highlight svg {
+  margin-right: 8px;
+  flex-shrink: 0;
+  margin-top: 2px; /* Align with text baseline */
+}
+
+/* Form improvements */
+.form-input.max-w-xs {
+  max-width: 200px;
+}
+
+/* Inline form consistency */
+.inline-form {
+  display: inline;
+}
+
+/* Button with top margin */
+.button.mt-md {
+  margin-top: var(--spacing-md);
+}
+
+.button.mt-lg {
+  margin-top: var(--spacing-lg);
+}
+
 /* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
   html {

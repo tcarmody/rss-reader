@@ -48,7 +48,7 @@
         {% set model_used = cluster[0].model_used %}
         {% include 'components/content_toggle.html' %}
 
-        <footer class="summary-actions" style="margin-top: 1rem;">
+        <footer class="summary-actions">
           <a href="{{ cluster[0].link }}" class="button outline" target="_blank" rel="noopener noreferrer">View Original Article</a>
         </footer>
       </article>
@@ -59,12 +59,12 @@
       {% endif %}
     {% endfor %}
   {% else %}
-    <div class="info-banner" role="status" style="margin-top: 2rem;">
+    <div class="info-banner mt-2xl" role="status">
       <p>No summaries were generated. Please try again or check your URLs.</p>
     </div>
   {% endif %}
   
-  <div class="summary-actions" style="text-align: center; margin-top: 2rem;">
+  <div class="summary-actions text-center">
     <a href="{{ url_for('summarize_single_get') }}" class="button">Summarize More URLs</a>
   </div>
 {% endblock main_content %}
