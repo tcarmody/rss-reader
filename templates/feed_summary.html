@@ -12,7 +12,7 @@
 {% block page_title %}AI News Digest{% endblock %}
 
 {% block nav_controls %}
-  <form action="/refresh" method="post" style="display: inline;" id="refreshFeedsFormNav">
+  <form action="/refresh" method="post" class="inline-form" id="refreshFeedsFormNav">
     <button type="submit" class="button">Refresh Feeds</button>
   </form>
   <a href="{{ url_for('clear_data') }}" class="button outline danger">Clear All Data</a>
@@ -149,9 +149,9 @@
     </article>
     {% endfor %}
   {% else %}
-    <div class="info-banner" role="status" style="margin-top:2rem;">
+    <div class="info-banner mt-2xl" role="status">
       <p>No article summaries are currently available. Try refreshing the feeds or adjusting your settings.</p>
-      <a href="{{ url_for('welcome') }}" class="button outline" style="margin-top:1rem;">Go to Settings / Home</a>
+      <a href="{{ url_for('welcome') }}" class="button outline mt-lg">Go to Settings / Home</a>
     </div>
   {% endif %}
 {% endblock main_content %}
