@@ -360,7 +360,7 @@
   </section>
   
   <!-- Bookmarks Section -->
-  <section aria-labelledby="bookmarksLinkTitle" class="card-section">
+  <section aria-labelledby="bookmarksLinkTitle" class="card-section mt-2xl">
     <h3 id="bookmarksLinkTitle">Bookmarked Articles</h3>
     <p>Access your saved articles with AI-generated summaries. Bookmark articles from feed summaries to read later.</p>
 
@@ -371,15 +371,15 @@
         </svg>
         Save articles for later reading
       </div>
-      <div class="feature-item">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+      <div class="feature-highlight">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
           <path d="M12 6v6l4 2"></path>
         </svg>
         AI-generated summaries of all bookmarked content
       </div>
-      <div class="feature-item">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+      <div class="feature-highlight">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="9 11 12 14 22 4"></polyline>
           <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
         </svg>
@@ -387,13 +387,13 @@
       </div>
     </div>
     
-    <a href="{{ url_for('view_bookmarks') }}" class="button large" style="margin-top: 1rem; display: inline-block; text-align: center;">
+    <a href="{{ url_for('view_bookmarks') }}" class="button large mt-lg inline-block text-center">
       View Bookmarked Articles
     </a>
   </section>
-  
+
   <!-- Feed Management -->
-  <section aria-labelledby="feedProcessingTitle" style="margin-top: 2rem;">
+  <section aria-labelledby="feedProcessingTitle" class="card-section">
     <h2 id="feedProcessingTitle" class="card-title">Feed Management</h2>
     
     <div class="tabs" role="tablist" aria-label="Feed Management Options">
