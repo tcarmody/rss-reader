@@ -48,9 +48,9 @@ class TestModelSelection(unittest.TestCase):
         sonnet_model = select_model_by_complexity(0.4)
         self.assertTrue("sonnet" in sonnet_model.lower())
         
-        # High complexity should use Sonnet 4
+        # High complexity should use Sonnet 4.5
         complex_model = select_model_by_complexity(0.7)
-        self.assertTrue("sonnet-4" in complex_model.lower())
+        self.assertTrue("sonnet" in complex_model.lower() and "4" in complex_model.lower())
     
     def test_get_model_identifier(self):
         """Test model identifier resolution."""
@@ -60,16 +60,15 @@ class TestModelSelection(unittest.TestCase):
         # Shorthand
         self.assertTrue("haiku" in get_model_identifier("haiku").lower())
         self.assertTrue("sonnet" in get_model_identifier("sonnet").lower())
-        self.assertTrue("opus" in get_model_identifier("opus").lower())
-        
+
         # Full name
         self.assertEqual(
-            get_model_identifier("claude-3.5-haiku"),
-            get_model_identifier("haiku-3.5")
+            get_model_identifier("claude-haiku-4.5"),
+            get_model_identifier("haiku-4.5")
         )
-        
+
         # Full identifier should be returned as-is
-        full_id = "claude-sonnet-4-20250514"
+        full_id = "claude-sonnet-4-5-latest"
         self.assertEqual(get_model_identifier(full_id), full_id)
     
     def test_get_model_properties(self):

@@ -113,20 +113,20 @@ def estimate_complexity(text: str) -> float:
 def select_model_by_complexity(complexity_score: float) -> str:
     """
     Select the appropriate model based on content complexity.
-    
+
     Args:
         complexity_score: Content complexity score (0.0-1.0)
-        
+
     Returns:
         Model identifier string
     """
     # Simplified model selection for our streamlined models
     if complexity_score >= 0.6:
         # High complexity content goes to the most capable model
-        selected_model = "claude-sonnet-4"
+        selected_model = "claude-sonnet-4.5"
     else:
         # Low to medium complexity content goes to the faster model
-        selected_model = "claude-3.5-haiku"
-    
+        selected_model = "claude-haiku-4.5"
+
     logger.info(f"Selected {selected_model} for content with complexity score {complexity_score:.2f}")
     return MODEL_IDENTIFIERS.get(selected_model, MODEL_IDENTIFIERS[DEFAULT_MODEL])
