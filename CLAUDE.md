@@ -49,8 +49,9 @@ python server.py
 # Run tests
 python -m pytest tests/
 
-# Run specific test
+# Run specific test files
 python -m pytest tests/test_batch_processing.py
+python -m pytest tests/test_model_selection.py
 
 # Run with coverage (if installed)
 python -m pytest tests/ --cov
@@ -103,9 +104,11 @@ LOG_LEVEL=INFO            # Logging level
 ```
 
 ### Configuration Files
-- **`rss_feeds.txt`**: RSS feed URLs (one per line, supports `#` comments)
-- **`.env`**: Environment variables and API keys
+- **`rss_feeds.txt`**: RSS feed URLs (one per line, supports `#` comments) - 29 AI/tech feeds pre-configured
+- **`.env`**: Environment variables and API keys (required: ANTHROPIC_API_KEY)
 - **`models/config.py`**: AI model selection logic
+- **`requirements.txt`**: Full dependencies (~73 packages)
+- **`essential_requirements.txt`**: Minimal dependencies (~23 core packages)
 
 ## Database Schema
 
@@ -119,8 +122,10 @@ LOG_LEVEL=INFO            # Logging level
 
 The system automatically selects between two Claude models based on content complexity:
 
-- **Claude Sonnet 4** (`claude-sonnet-4-20250514`): Complex technical content, complexity ≥ 0.6
-- **Claude 3.5 Haiku** (`claude-3-5-haiku-latest`): Simple content, fast processing, complexity < 0.6
+- **Claude 4.5 Sonnet** (`claude-sonnet-4-5-latest`): Complex technical content, complexity ≥ 0.6
+- **Claude 4.5 Haiku** (`claude-4-5-haiku-latest`): Simple content, fast processing, complexity < 0.6
+
+Both models use `-latest` versions to automatically receive improvements and updates.
 
 Model selection logic is in `models/config.py:select_model_by_complexity()`.
 
@@ -266,6 +271,18 @@ The content/ directory contains the refactored content processing system:
 ### Architectural Improvements
 - **Modular Design**: Clear separation between archive services and content extraction
 - **Lazy Loading**: Performance optimization with on-demand component initialization
-- **56.4% Reduction**: common/ directory reduced from 1,963 to 855 lines
+- **56.4% Code Reduction**: common/ directory reduced from 1,963 to 855 lines
 - **Enhanced Functionality**: More robust paywall detection and content extraction
 - **Backward Compatibility**: Existing code continues to work during transition
+
+## Performance Characteristics
+
+### Clustering Optimization
+- **Lightweight Dependencies**: 200MB vs previous 2GB+ (90% reduction)
+- **Hybrid Similarity**: 60% semantic + 40% keyword matching
+- **Fallback Strategy**: Keywords-only when embeddings unavailable
+
+### Batch Processing
+- **Rate Limiting**: 50 RPM default (configurable via API_RPM_LIMIT)
+- **Concurrent Workers**: 3 default (configurable via MAX_BATCH_WORKERS)
+- **Implementation**: `common/batch_processing.py`
