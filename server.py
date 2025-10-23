@@ -46,6 +46,9 @@ from services.bookmark_manager import BookmarkManager
 # Import image prompt functionality
 from services.image_prompt_generator import get_image_prompt_generator
 
+# Import for dependency injection
+from main import setup_summarization_engine
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -258,6 +261,50 @@ def set_user_cluster_data(request: Request, data: dict) -> None:
     latest_data['timestamp'] = data.get('timestamp')
     latest_data['output_file'] = data.get('output_file')
     latest_data['raw_clusters'] = data.get('raw_clusters', [])
+
+# Dependency injection for summarizers (cached instances)
+_summarizer_cache = {}
+
+def get_summarizer_engine():
+    """
+    Dependency injection for ArticleSummarizer.
+    Reuses cached instance across requests for better performance.
+    """
+    if 'engine' not in _summarizer_cache:
+        _summarizer_cache['engine'] = setup_summarization_engine()
+        logging.info("Created new ArticleSummarizer instance (cached)")
+    return _summarizer_cache['engine']
+
+def get_fast_summarizer(request: Request, max_workers: Optional[int] = None):
+    """
+    Dependency injection for FastSummarizer.
+    Creates instances with request-specific settings.
+
+    Args:
+        request: FastAPI request object for accessing session settings
+        max_workers: Optional override for max workers (uses clustering settings if None)
+
+    Returns:
+        FastSummarizer instance configured for this request
+    """
+    # Get max_workers from clustering settings if not provided
+    if max_workers is None:
+        clustering_settings = get_clustering_settings(request)
+        max_workers = clustering_settings.get('max_articles_per_batch', 3)
+
+    # Create cache key based on max_workers
+    cache_key = f'fast_summarizer_{max_workers}'
+
+    # Reuse cached instance if available with same config
+    if cache_key not in _summarizer_cache:
+        engine = get_summarizer_engine()
+        _summarizer_cache[cache_key] = create_fast_summarizer(
+            original_summarizer=engine,
+            max_batch_workers=max_workers
+        )
+        logging.info(f"Created new FastSummarizer instance with max_workers={max_workers} (cached)")
+
+    return _summarizer_cache[cache_key]
 
 # Helper functions for session management
 def get_global_settings(request: Request):
@@ -584,16 +631,9 @@ async def summarize_single_post(request: Request, url: str = Form(...), style: s
         return templates.TemplateResponse('error.html', {**common_vars, "message": "Please provide at least one valid URL."})
     
     try:
-        # It's better practice to initialize these within the function if they are not heavyweight
-        # or manage them as app state or dependencies if they are.
-        from main import setup_summarization_engine 
-        from summarization.fast_summarizer import create_fast_summarizer as create_batch_summarizer # alias
-        
+        # Use dependency injection to get cached summarizer instance
         max_workers = clustering_settings.get('max_articles_per_batch', 3)
-        summarizer_engine = setup_summarization_engine()
-        fast_summarizer_instance = create_batch_summarizer(
-            original_summarizer=summarizer_engine, max_batch_workers=max_workers
-        )
+        fast_summarizer_instance = get_fast_summarizer(request, max_workers=max_workers)
         
         http_session = create_http_session()
         os.environ['ENABLE_PAYWALL_BYPASS'] = 'true' if request.session.get('paywall_bypass_enabled', False) else 'false'
@@ -726,13 +766,9 @@ async def summarize_article(request: Request):
             
         # Ensure URL has proper scheme
         full_url = url if url.startswith(('http://', 'https://')) else 'https://' + url
-        
-        # Initialize summarization engine
-        from main import setup_summarization_engine
-        from summarization.fast_summarizer import create_fast_summarizer
-        
-        summarizer_engine = setup_summarization_engine()
-        fast_summarizer = create_fast_summarizer(original_summarizer=summarizer_engine)
+
+        # Use dependency injection to get cached summarizer instance
+        fast_summarizer = get_fast_summarizer(request)
         
         # Create HTTP session
         http_session = create_http_session()
@@ -870,21 +906,16 @@ async def summarize_articles_batch(request: Request):
         
         if not urls:
             raise HTTPException(status_code=400, detail="No URLs provided")
-        
-        # Initialize summarization engine
-        from main import setup_summarization_engine
-        from summarization.fast_summarizer import create_fast_summarizer
+
+        # Import aggregator utilities (keep these here as they're less commonly used)
         from content.extractors.aggregator import is_aggregator_link, extract_source_url
-        
+
         common_vars = get_common_template_vars(request)
         clustering_settings = common_vars['clustering_settings']
         max_workers = clustering_settings.get('max_articles_per_batch', 3)
-        
-        summarizer_engine = setup_summarization_engine()
-        fast_summarizer = create_fast_summarizer(
-            original_summarizer=summarizer_engine, 
-            max_batch_workers=max_workers
-        )
+
+        # Use dependency injection to get cached summarizer instance
+        fast_summarizer = get_fast_summarizer(request, max_workers=max_workers)
         
         # Create HTTP session
         http_session = create_http_session()
