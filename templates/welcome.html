@@ -159,28 +159,123 @@
   .strong {
     font-weight: 600;
   }
+
+  /* Comprehensive section spacing for maximum readability */
+  .card > section:first-of-type {
+    margin-top: 2rem;
+  }
+
+  .card > section {
+    margin-bottom: 3rem;
+  }
+
+  .card > section:last-of-type {
+    margin-bottom: 2rem;
+  }
+
+  .card-section {
+    margin-top: 3rem;
+    margin-bottom: 3rem;
+    padding: 2rem 0;
+  }
+
+  .card-section:first-of-type {
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+  }
+
+  .card-section + .card-section {
+    border-top: 1px solid var(--color-neutral-200);
+    padding-top: 2.5rem;
+    margin-top: 2.5rem;
+  }
+
+  /* Enhanced button spacing */
+  .button.large {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Title and description spacing */
+  .card-section h3 {
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .card-section p {
+    margin-bottom: 1.25rem;
+    line-height: 1.6;
+    color: var(--color-neutral-700);
+  }
   
-  /* Feature highlights */
+  /* Feature highlights with enhanced decorative styling */
   .feature-highlights {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    margin-top: 1rem;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    background: linear-gradient(145deg, var(--color-neutral-25), var(--color-neutral-50));
+    border: 2px solid var(--color-primary-200);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
-  
+
   .feature-item {
     display: flex;
     align-items: center;
-    padding: 0.75rem 1rem;
-    background-color: var(--color-neutral-50);
-    border-radius: 6px;
-    border: 1px solid var(--color-neutral-200);
-    transition: all 0.2s ease;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, var(--color-neutral-0), var(--color-neutral-25));
+    border-radius: 8px;
+    border: 1px solid var(--color-primary-300);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    font-weight: 500;
+    color: var(--color-neutral-800);
+    position: relative;
+    overflow: hidden;
   }
-  
+
+  .feature-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--color-primary-50), var(--color-primary-100));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 0;
+  }
+
+  .feature-item:hover::before {
+    opacity: 1;
+  }
+
   .feature-item:hover {
-    background-color: var(--color-primary-50);
-    border-color: var(--color-primary-200);
+    border-color: var(--color-primary-400);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    transform: translateY(-2px);
+  }
+
+  .feature-item svg {
+    color: var(--color-primary-600);
+    flex-shrink: 0;
+    z-index: 1;
+    position: relative;
+  }
+
+  .feature-item:hover svg {
+    color: var(--color-primary-700);
+  }
+
+  .feature-item span,
+  .feature-item text {
+    z-index: 1;
+    position: relative;
   }
   
   @media (min-width: 768px) {
@@ -365,20 +460,20 @@
     <p>Access your saved articles with AI-generated summaries. Bookmark articles from feed summaries to read later.</p>
 
     <div class="feature-highlights">
-      <div class="feature-highlight">
+      <div class="feature-item">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
         </svg>
         Save articles for later reading
       </div>
-      <div class="feature-highlight">
+      <div class="feature-item">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
           <path d="M12 6v6l4 2"></path>
         </svg>
         AI-generated summaries of all bookmarked content
       </div>
-      <div class="feature-highlight">
+      <div class="feature-item">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="9 11 12 14 22 4"></polyline>
           <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>

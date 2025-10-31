@@ -998,25 +998,60 @@ textarea.form-input {
   margin-top: var(--spacing-2xl);
 }
 
+.card-section:first-of-type {
+  margin-top: var(--spacing-xl); /* Less spacing for first section */
+}
+
+.card-section + .card-section {
+  margin-top: 4rem; /* Extra spacing between major sections */
+}
+
 .card-title.section-title {
   margin-top: var(--spacing-2xl);
 }
 
-/* Feature highlights */
+/* Feature highlights with enhanced styling */
 .feature-highlights {
-  margin-top: var(--spacing-md);
+  margin: var(--spacing-lg) 0;
+  padding: var(--spacing-lg);
+  background: var(--color-neutral-50);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--border-radius-lg);
 }
 
 .feature-highlight {
   display: flex;
   align-items: flex-start;
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-md);
+  transition: background-color 0.2s ease;
+}
+
+.feature-highlight:last-child {
+  margin-bottom: 0;
+}
+
+.feature-highlight:hover {
+  background-color: var(--color-primary-25, #f8faff);
 }
 
 .feature-highlight svg {
-  margin-right: 8px;
+  margin-right: var(--spacing-sm);
   flex-shrink: 0;
   margin-top: 2px; /* Align with text baseline */
+  color: var(--color-primary-600);
+}
+
+.feature-highlight-text {
+  color: var(--color-neutral-700);
+  font-weight: 500;
+}
+
+/* Section button spacing */
+.section-button {
+  margin-top: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
 }
 
 /* Form improvements */

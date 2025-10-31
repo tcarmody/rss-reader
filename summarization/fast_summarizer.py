@@ -329,15 +329,9 @@ class FastSummarizer:
             Article summary with original metadata
         """
         async with semaphore:
-            # Apply rate limiting using the async method if available
+            # Apply rate limiting
             try:
-                # First try the async acquire method
-                if hasattr(self.rate_limiter, 'acquire_async'):
-                    await self.rate_limiter.acquire_async()
-                else:
-                    # Fall back to running the synchronous method in a thread pool
-                    loop = asyncio.get_event_loop()
-                    await loop.run_in_executor(None, self.rate_limiter.acquire)
+                await self.rate_limiter.acquire()
             except Exception as e:
                 self.logger.warning(f"Rate limiting error (proceeding anyway): {str(e)}")
             
