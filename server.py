@@ -18,6 +18,7 @@ from common.batch_processing import BatchProcessor
 import logging
 import sys
 import asyncio
+import uuid
 from datetime import datetime, timezone
 from urllib.parse import urlparse, quote
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, Response
@@ -37,12 +38,16 @@ from common.http import create_http_session
 from content.archive.paywall import is_paywalled
 from content.archive.providers import default_provider_manager
 from common.logging import configure_logging
+from cache.tiered_cache import TieredCache
 
 # Import bookmark functionality
 from services.bookmark_manager import BookmarkManager
 
 # Import image prompt functionality
 from services.image_prompt_generator import get_image_prompt_generator
+
+# Import for dependency injection
+from main import setup_summarization_engine
 
 # Configure logging
 logging.basicConfig(
@@ -78,7 +83,15 @@ templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), 't
 # Initialize bookmark manager
 bookmark_manager = BookmarkManager()
 
-# Store the latest processed data
+# Initialize cache for cluster data storage (replaces global latest_data)
+cluster_data_cache = TieredCache(
+    memory_size=10,  # Store up to 10 users' data in memory
+    disk_path="./cluster_cache",
+    ttl_days=1  # 1 day TTL for cluster data
+)
+
+# DEPRECATED: Global latest_data kept for backward compatibility only
+# New code should use cluster_data_cache with user-specific keys
 latest_data = {
     'clusters': [],
     'timestamp': None,
@@ -188,6 +201,111 @@ DEFAULT_CLUSTERING_SETTINGS = {
     'default_summary_style': 'default'  # Added for style selection
 }
 
+# Helper functions for user session and cluster data management
+def get_or_create_user_id(request: Request) -> str:
+    """
+    Get or create a unique user ID for this session.
+    This ID is used as a cache key for user-specific cluster data.
+    """
+    if 'user_id' not in request.session:
+        request.session['user_id'] = str(uuid.uuid4())
+    return request.session['user_id']
+
+def get_user_cluster_data(request: Request) -> dict:
+    """
+    Get cluster data for the current user from cache.
+    Falls back to global latest_data if no user-specific data exists.
+    """
+    user_id = get_or_create_user_id(request)
+    cache_key = f"clusters:{user_id}"
+
+    # Try to get user-specific data from cache
+    cached_data = cluster_data_cache.get(cache_key)
+    if cached_data:
+        return cached_data
+
+    # Fall back to global latest_data (for backward compatibility)
+    # Also try the global "latest" key
+    global_cached = cluster_data_cache.get("clusters:latest")
+    if global_cached:
+        return global_cached
+
+    # Final fallback to in-memory global state
+    if latest_data['clusters']:
+        return latest_data
+
+    # Return empty data structure
+    return {
+        'clusters': [],
+        'timestamp': None,
+        'output_file': None,
+        'raw_clusters': []
+    }
+
+def set_user_cluster_data(request: Request, data: dict) -> None:
+    """
+    Store cluster data for the current user in cache.
+    Also updates the global "latest" key for backward compatibility.
+    """
+    user_id = get_or_create_user_id(request)
+    cache_key = f"clusters:{user_id}"
+
+    # Store user-specific data with 1 day TTL
+    cluster_data_cache.set(cache_key, data, ttl=86400)
+
+    # Also update global "latest" key (for status endpoint and backward compat)
+    cluster_data_cache.set("clusters:latest", data, ttl=86400)
+
+    # Update in-memory global state for maximum backward compatibility
+    latest_data['clusters'] = data.get('clusters', [])
+    latest_data['timestamp'] = data.get('timestamp')
+    latest_data['output_file'] = data.get('output_file')
+    latest_data['raw_clusters'] = data.get('raw_clusters', [])
+
+# Dependency injection for summarizers (cached instances)
+_summarizer_cache = {}
+
+def get_summarizer_engine():
+    """
+    Dependency injection for ArticleSummarizer.
+    Reuses cached instance across requests for better performance.
+    """
+    if 'engine' not in _summarizer_cache:
+        _summarizer_cache['engine'] = setup_summarization_engine()
+        logging.info("Created new ArticleSummarizer instance (cached)")
+    return _summarizer_cache['engine']
+
+def get_fast_summarizer(request: Request, max_workers: Optional[int] = None):
+    """
+    Dependency injection for FastSummarizer.
+    Creates instances with request-specific settings.
+
+    Args:
+        request: FastAPI request object for accessing session settings
+        max_workers: Optional override for max workers (uses clustering settings if None)
+
+    Returns:
+        FastSummarizer instance configured for this request
+    """
+    # Get max_workers from clustering settings if not provided
+    if max_workers is None:
+        clustering_settings = get_clustering_settings(request)
+        max_workers = clustering_settings.get('max_articles_per_batch', 3)
+
+    # Create cache key based on max_workers
+    cache_key = f'fast_summarizer_{max_workers}'
+
+    # Reuse cached instance if available with same config
+    if cache_key not in _summarizer_cache:
+        engine = get_summarizer_engine()
+        _summarizer_cache[cache_key] = create_fast_summarizer(
+            original_summarizer=engine,
+            max_batch_workers=max_workers
+        )
+        logging.info(f"Created new FastSummarizer instance with max_workers={max_workers} (cached)")
+
+    return _summarizer_cache[cache_key]
+
 # Helper functions for session management
 def get_global_settings(request: Request):
     """Get current global settings from session or use defaults."""
@@ -277,14 +395,17 @@ async def index(request: Request):
         request.session['feeds_list'] = None
     if 'use_default' not in request.session:
         request.session['use_default'] = True
-    
+
     common_vars = get_common_template_vars(request)
-    
-    if latest_data['clusters']:
-        sorted_clusters = sort_clusters(latest_data['clusters'])
-        timestamp_str = latest_data['timestamp']
+
+    # Get user-specific cluster data from cache (replaces latest_data)
+    user_data = get_user_cluster_data(request)
+
+    if user_data['clusters']:
+        sorted_clusters = sort_clusters(user_data['clusters'])
+        timestamp_str = user_data['timestamp']
         timestamp_dt = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc) if timestamp_str else common_vars["timestamp_dt"]
-        
+
         return templates.TemplateResponse(
             "feed_summary.html",  # Fixed filename
             {
@@ -307,11 +428,13 @@ async def index(request: Request):
 async def welcome(request: Request):
     """Explicitly render the welcome page regardless of data state."""
     common_vars = get_common_template_vars(request)
+    # Get user-specific cluster data to check if data exists
+    user_data = get_user_cluster_data(request)
     return templates.TemplateResponse(
         "welcome.html",
         {
             **common_vars,
-            "initial_summaries_loaded": bool(latest_data['clusters']), # Check if data exists
+            "initial_summaries_loaded": bool(user_data['clusters']), # Check if data exists
         }
     )
 
@@ -461,10 +584,15 @@ async def refresh_feeds(
         clusters = reader.last_processed_clusters
 
         if output_file and clusters:
-            latest_data['clusters'] = clusters
-            latest_data['timestamp'] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") # Store as UTC
-            latest_data['output_file'] = output_file
-            
+            # Store cluster data in user-specific cache (replaces latest_data)
+            cluster_data = {
+                'clusters': clusters,
+                'timestamp': datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+                'output_file': output_file,
+                'raw_clusters': clusters  # Store raw clusters as well
+            }
+            set_user_cluster_data(request, cluster_data)
+
             logging.info(f"Successfully refreshed feeds: {output_file}")
             return RedirectResponse(url="/", status_code=303)
         else:
@@ -503,16 +631,9 @@ async def summarize_single_post(request: Request, url: str = Form(...), style: s
         return templates.TemplateResponse('error.html', {**common_vars, "message": "Please provide at least one valid URL."})
     
     try:
-        # It's better practice to initialize these within the function if they are not heavyweight
-        # or manage them as app state or dependencies if they are.
-        from main import setup_summarization_engine 
-        from summarization.fast_summarizer import create_fast_summarizer as create_batch_summarizer # alias
-        
+        # Use dependency injection to get cached summarizer instance
         max_workers = clustering_settings.get('max_articles_per_batch', 3)
-        summarizer_engine = setup_summarization_engine()
-        fast_summarizer_instance = create_batch_summarizer(
-            original_summarizer=summarizer_engine, max_batch_workers=max_workers
-        )
+        fast_summarizer_instance = get_fast_summarizer(request, max_workers=max_workers)
         
         http_session = create_http_session()
         os.environ['ENABLE_PAYWALL_BYPASS'] = 'true' if request.session.get('paywall_bypass_enabled', False) else 'false'
@@ -615,11 +736,14 @@ async def status(request: Request):
         has_optimized_clustering = True
     except ImportError: pass
     
+    # Get user-specific cluster data for status (falls back to global if needed)
+    user_data = get_user_cluster_data(request)
+
     return JSONResponse({
-        'has_data': bool(latest_data['clusters']),
-        'last_updated': latest_data['timestamp'],
-        'article_count': sum(len(c) for c in latest_data['clusters'] if isinstance(c, list)) if latest_data['clusters'] else 0,
-        'cluster_count': len(latest_data['clusters']) if latest_data['clusters'] else 0,
+        'has_data': bool(user_data['clusters']),
+        'last_updated': user_data['timestamp'],
+        'article_count': sum(len(c) for c in user_data['clusters'] if isinstance(c, list)) if user_data['clusters'] else 0,
+        'cluster_count': len(user_data['clusters']) if user_data['clusters'] else 0,
         'paywall_bypass_enabled': common_vars['paywall_bypass_enabled'],
         'using_default_feeds': request.session.get('use_default', True),
         'custom_feed_count': len(request.session.get('feeds_list', [])) if request.session.get('feeds_list') else 0,
@@ -642,13 +766,9 @@ async def summarize_article(request: Request):
             
         # Ensure URL has proper scheme
         full_url = url if url.startswith(('http://', 'https://')) else 'https://' + url
-        
-        # Initialize summarization engine
-        from main import setup_summarization_engine
-        from summarization.fast_summarizer import create_fast_summarizer
-        
-        summarizer_engine = setup_summarization_engine()
-        fast_summarizer = create_fast_summarizer(original_summarizer=summarizer_engine)
+
+        # Use dependency injection to get cached summarizer instance
+        fast_summarizer = get_fast_summarizer(request)
         
         # Create HTTP session
         http_session = create_http_session()
@@ -786,21 +906,16 @@ async def summarize_articles_batch(request: Request):
         
         if not urls:
             raise HTTPException(status_code=400, detail="No URLs provided")
-        
-        # Initialize summarization engine
-        from main import setup_summarization_engine
-        from summarization.fast_summarizer import create_fast_summarizer
+
+        # Import aggregator utilities (keep these here as they're less commonly used)
         from content.extractors.aggregator import is_aggregator_link, extract_source_url
-        
+
         common_vars = get_common_template_vars(request)
         clustering_settings = common_vars['clustering_settings']
         max_workers = clustering_settings.get('max_articles_per_batch', 3)
-        
-        summarizer_engine = setup_summarization_engine()
-        fast_summarizer = create_fast_summarizer(
-            original_summarizer=summarizer_engine, 
-            max_batch_workers=max_workers
-        )
+
+        # Use dependency injection to get cached summarizer instance
+        fast_summarizer = get_fast_summarizer(request, max_workers=max_workers)
         
         # Create HTTP session
         http_session = create_http_session()
@@ -925,20 +1040,12 @@ async def summarize_articles_batch(request: Request):
                 article['url'] = article['link']
         
         try:
-            # Check if batch_summarize is async or not
-            if asyncio.iscoroutinefunction(fast_summarizer.batch_summarize):
-                batch_results = await fast_summarizer.batch_summarize(
-                    articles=processed_articles, 
-                    max_concurrent=max_workers, 
-                    auto_select_model=True
-                )
-            else:
-                # If it's not async, call it directly without await
-                batch_results = fast_summarizer.batch_summarize(
-                    articles=processed_articles, 
-                    max_concurrent=max_workers, 
-                    auto_select_model=True
-                )
+            # batch_summarize is always async (FastSummarizer.batch_summarize is async def)
+            batch_results = await fast_summarizer.batch_summarize(
+                articles=processed_articles,
+                max_concurrent=max_workers,
+                auto_select_model=True
+            )
             
             if not isinstance(batch_results, list):
                 logging.error(f"Unexpected batch result type: {type(batch_results)}")
