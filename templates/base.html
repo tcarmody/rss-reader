@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Data Points AI - Smart RSS Reader{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+  <!-- Electron-specific styles for Mac-native experience -->
+  <script>
+    if (window.electronAPI && window.electronAPI.isElectron) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '{{ url_for("static", path="css/electron.css") }}';
+      document.head.appendChild(link);
+    }
+  </script>
   {% block extra_head %}{% endblock %}
 </head>
 <body>
