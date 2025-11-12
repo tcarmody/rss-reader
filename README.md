@@ -2,6 +2,8 @@
 
 An advanced RSS feed reader with AI-powered summarization, lightweight semantic clustering, and source extraction capabilities.
 
+> **🎉 NEW: Native Mac Application!** This project now includes a sophisticated native macOS app built with Electron. See [MAC_APP.md](MAC_APP.md) for details or jump to [Quick Start for Mac App](#mac-app).
+
 ## Features
 
 - **Smart Clustering**: Automatically groups related articles using lightweight semantic embeddings (80MB model) with keyword fallbacks
@@ -64,6 +66,56 @@ Or use the provided script (recommended):
 ```
 
 The server will be available at http://localhost:5005 by default.
+
+## Mac App
+
+### Quick Start for Mac App
+
+Want a native macOS application? Follow these steps:
+
+```bash
+# 1. Install Node.js dependencies
+cd electron
+npm install
+
+# 2. Set up Python environment (if not done already)
+cd ..
+./run_server.sh --help
+
+# 3. Configure API key in .env file (see above)
+
+# 4. Run the Mac app
+cd electron
+npm run dev
+```
+
+### Building the Mac App
+
+```bash
+cd electron
+
+# Build universal binary (Apple Silicon + Intel)
+make build-universal
+
+# Or build for specific architecture
+make build-arm64  # Apple Silicon only
+make build-x64    # Intel only
+```
+
+The built app will be in `electron/dist/` as a `.dmg` installer.
+
+### Mac App Features
+
+- **Native macOS Integration**: Menu bar, keyboard shortcuts, dock integration
+- **Sophisticated UI**: Mac-native design with vibrancy effects
+- **Automatic Server Management**: Python backend starts/stops automatically
+- **Dark Mode**: Full support for macOS system dark mode
+- **Universal Binary**: Runs natively on both Apple Silicon and Intel
+
+For detailed documentation, see:
+- [MAC_APP.md](MAC_APP.md) - Complete Mac app documentation
+- [electron/README.md](electron/README.md) - Technical details
+- [electron/QUICKSTART.md](electron/QUICKSTART.md) - Step-by-step guide
 
 ## Configuration
 
