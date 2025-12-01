@@ -225,15 +225,32 @@ final class PythonServerManager: ObservableObject {
             // Production: bundled in Resources/app
             (bundleResourcePath as NSString).appendingPathComponent("app"),
 
-            // Development: parent directory
-            ((bundleResourcePath as NSString).deletingLastPathComponent as NSString).deletingLastPathComponent
+            // Development: Try multiple locations
+            // When running from Xcode, bundle is in DerivedData/.../Contents/Resources
+            // Project root is /Users/timcarmody/workspace/rss-reader
+            ((bundleResourcePath as NSString).deletingLastPathComponent as NSString).deletingLastPathComponent,
+
+            // Go up to macos-app/Data Points AI.app/Contents/Resources
+            // Then up 4 levels: Resources -> Contents -> Data Points AI.app -> macos-app -> rss-reader
+            URL(fileURLWithPath: bundleResourcePath)
+                .deletingLastPathComponent()  // Remove Resources
+                .deletingLastPathComponent()  // Remove Contents
+                .deletingLastPathComponent()  // Remove Data Points AI.app
+                .deletingLastPathComponent()  // Remove macos-app (or DerivedData path)
+                .path,
+
+            // Absolute fallback for development
+            "/Users/timcarmody/workspace/rss-reader"
         ]
 
         for path in paths {
             // Check if server.py exists
             let serverPath = (path as NSString).appendingPathComponent("server.py")
             if FileManager.default.fileExists(atPath: serverPath) {
+                print("✅ Found project at: \(path)")
                 return path
+            } else {
+                print("⚠️ Checked path: \(path) - server.py not found")
             }
         }
 
