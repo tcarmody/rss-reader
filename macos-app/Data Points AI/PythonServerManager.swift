@@ -69,6 +69,9 @@ final class PythonServerManager: ObservableObject {
         ]
         process.currentDirectoryURL = URL(fileURLWithPath: projectPath)
 
+        print("🚀 Running command: \(pythonPath) \(process.arguments!.joined(separator: " "))")
+        print("📂 Working directory: \(projectPath)")
+
         // Set environment
         var environment = ProcessInfo.processInfo.environment
         environment["PYTHONUNBUFFERED"] = "1"
@@ -154,42 +157,27 @@ final class PythonServerManager: ObservableObject {
     private func findPython() -> String? {
         // Try to find Python in order of preference
         let paths = [
-            // Virtual environment in project
-            "../rss_venv/bin/python",
-            "../venv/bin/python",
+            // Virtual environment in project (absolute paths)
+            "/Users/timcarmody/workspace/rss-reader/rss_venv/bin/python",
+            "/Users/timcarmody/workspace/rss-reader/venv/bin/python",
 
             // System Python locations
             "/usr/local/bin/python3",
-            "/opt/homebrew/bin/python3",
-            "/usr/bin/python3"
+            "/opt/homebrew/bin/python3"
         ]
 
-        // Get bundle resource path
-        let bundlePath = Bundle.main.resourcePath ?? ""
-
         for path in paths {
-            var fullPath: String
-
-            if path.hasPrefix("/") {
-                // Absolute path
-                fullPath = path
+            // Check if file exists
+            if FileManager.default.fileExists(atPath: path) {
+                print("✅ Found Python at: \(path)")
+                return path
             } else {
-                // Relative to bundle
-                fullPath = (bundlePath as NSString).appendingPathComponent(path)
-            }
-
-            // Resolve symlinks and check existence
-            if let resolvedPath = try? FileManager.default.destinationOfSymbolicLink(atPath: fullPath) {
-                if FileManager.default.fileExists(atPath: resolvedPath) {
-                    return resolvedPath
-                }
-            } else if FileManager.default.fileExists(atPath: fullPath) {
-                return fullPath
+                print("⚠️ Checked Python path: \(path) - not found")
             }
         }
 
-        // Fallback: search PATH
-        return findInPath("python3")
+        print("❌ No Python found in known locations")
+        return nil
     }
 
     private func findInPath(_ executable: String) -> String? {
