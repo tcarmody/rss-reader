@@ -26,11 +26,19 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["universal", "arm64", "x64"]
+          "arch": [
+            "universal",
+            "arm64",
+            "x64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["universal", "arm64", "x64"]
+          "arch": [
+            "universal",
+            "arm64",
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.icns",
@@ -91,6 +99,16 @@
         "to": "app/rss_feeds.txt"
       },
       {
+        "from": "../rss_venv",
+        "to": "app/rss_venv",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**/*",
+          "!**/*.pyc",
+          "!**/*.pyo"
+        ]
+      },
+      {
         "from": "..",
         "to": "app",
         "filter": [
@@ -134,18 +152,20 @@
     },
     "compression": "maximum",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
-    "electronLanguages": ["en"],
+    "electronLanguages": [
+      "en"
+    ],
     "asar": true,
     "afterPack": "./scripts/after-pack.js",
     "npmRebuild": false
   },
   "dependencies": {
-    "electron-store": "^8.1.0",
     "electron-log": "^5.0.1",
+    "electron-store": "^8.1.0",
     "electron-updater": "^6.1.7"
   },
   "devDependencies": {
-    "electron": "^28.1.0",
+    "electron": "^28.3.3",
     "electron-builder": "^24.9.1"
   }
 }

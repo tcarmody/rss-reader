@@ -97,17 +97,32 @@ function getAppPath() {
 function getPythonCommand() {
   const appPath = getAppPath();
 
-  if (app.isPackaged) {
-    // In production, use system Python or bundled Python
-    return 'python3';
-  } else {
-    // In development, use venv if available
-    const venvPath = path.join(appPath, 'rss_venv', 'bin', 'python');
-    if (fs.existsSync(venvPath)) {
-      return venvPath;
+  // Try multiple venv locations in order of preference
+  const venvPaths = [
+    // In development mode, venv is in project root
+    path.join(appPath, 'rss_venv', 'bin', 'python'),
+    path.join(appPath, 'venv', 'bin', 'python'),
+
+    // In packaged mode, venv might be bundled in Resources
+    path.join(process.resourcesPath, 'app', 'rss_venv', 'bin', 'python'),
+    path.join(process.resourcesPath, 'app', 'venv', 'bin', 'python'),
+
+    // Standard Python locations
+    '/usr/local/bin/python3',
+    '/opt/homebrew/bin/python3'
+  ];
+
+  // Try each path
+  for (const pythonPath of venvPaths) {
+    if (fs.existsSync(pythonPath)) {
+      log.info(`Using Python at: ${pythonPath}`);
+      return pythonPath;
     }
-    return 'python3';
   }
+
+  // Fallback to system Python
+  log.warn('No venv found, falling back to system python3');
+  return 'python3';
 }
 
 /**
