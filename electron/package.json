@@ -65,30 +65,17 @@
       "title": "Install Data Points AI RSS Reader"
     },
     "files": [
-      "**/*",
-      "!**/{.DS_Store,.git,.gitignore,.vscode,docs,test,tests,__pycache__}",
-      "!*.md",
-      "../requirements.txt",
-      "../essential_requirements.txt",
-      "../rss_feeds.txt",
-      "../server.py",
-      "../main.py",
-      "../compat.py",
-      "../*.py",
-      "../api/**/*",
-      "../cache/**/*",
-      "../clustering/**/*",
-      "../common/**/*",
-      "../content/**/*",
-      "../models/**/*",
-      "../reader/**/*",
-      "../services/**/*",
-      "../summarization/**/*",
-      "../templates/**/*",
-      "../static/**/*",
-      "!../tests/**/*",
-      "!../**/__pycache__/**/*",
-      "!../.git/**/*"
+      "main.js",
+      "preload.js",
+      "python-bridge.js",
+      "package.json",
+      "entitlements.mac.plist",
+      "assets/**/*",
+      "!**/{.DS_Store,.git,.gitignore,.vscode,docs,test,tests,__pycache__,*.pyc,*.pyo}",
+      "!*.md"
+    ],
+    "asarUnpack": [
+      "**/*.node"
     ],
     "extraResources": [
       {
@@ -117,13 +104,27 @@
           "reader/**/*",
           "services/**/*",
           "summarization/**/*",
-          "templates/**/*",
-          "static/**/*",
+          "templates/**/*.html",
+          "static/css/**/*.css",
+          "static/js/**/*.js",
+          "static/images/**/*",
+          "!templates/**/*.bak",
+          "!static/**/*.map",
+          "!static/**/*.scss",
           "!tests/**/*",
           "!**/__pycache__/**/*",
+          "!**/*.pyc",
+          "!**/*.pyo",
+          "!**/.DS_Store",
           "!.git/**/*",
-          "!*.pyc",
-          "!.env"
+          "!.env",
+          "!.vscode/**/*",
+          "!venv/**/*",
+          "!rss_venv/**/*",
+          "!node_modules/**/*",
+          "!electron/**/*",
+          "!*.md",
+          "!.gitignore"
         ]
       }
     ],
@@ -132,7 +133,11 @@
       "output": "dist"
     },
     "compression": "maximum",
-    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "electronLanguages": ["en"],
+    "asar": true,
+    "afterPack": "./scripts/after-pack.js",
+    "npmRebuild": false
   },
   "dependencies": {
     "electron-store": "^8.1.0",
