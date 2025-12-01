@@ -22,6 +22,32 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Show item in folder
   showItemInFolder: (path) => ipcRenderer.invoke('show-item-in-folder', path),
 
+  // Badge management
+  updateBadge: (count) => ipcRenderer.invoke('update-badge', count),
+
+  // Recent articles
+  addRecentArticle: (article) => ipcRenderer.invoke('add-recent-article', article),
+  getRecentArticles: () => ipcRenderer.invoke('get-recent-articles'),
+
+  // Export functionality
+  exportArticles: (format, clusters) => ipcRenderer.invoke('export-articles', format, clusters),
+
+  // Listen for export requests from main process
+  onExportRequest: (callback) => {
+    ipcRenderer.on('request-export-data', (_event, format) => callback(format));
+  },
+
+  // Find in page
+  onTriggerFind: (callback) => {
+    ipcRenderer.on('trigger-find', () => callback());
+  },
+  onFindNext: (callback) => {
+    ipcRenderer.on('find-next', () => callback());
+  },
+  onFindPrevious: (callback) => {
+    ipcRenderer.on('find-previous', () => callback());
+  },
+
   // Platform information
   platform: process.platform,
 
