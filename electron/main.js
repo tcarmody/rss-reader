@@ -11,18 +11,60 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const log = require('electron-log');
 const Store = require('electron-store');
+const PythonBridge = require('./python-bridge');
 
 // Configure logging
 log.transports.file.level = 'info';
 log.transports.console.level = 'debug';
 
-// Initialize persistent storage
+// Initialize persistent storage with comprehensive defaults
 const store = new Store({
   defaults: {
-    windowBounds: { width: 1400, height: 900 },
+    windowBounds: { width: 1400, height: 900, x: undefined, y: undefined },
+    windowMaximized: false,
+    windowFullScreen: false,
     serverPort: 5005,
     darkMode: false,
-    firstRun: true
+    firstRun: true,
+    recentArticles: [],
+    lastFeedRefresh: null,
+    cacheSize: 256,
+    autoRefreshEnabled: false,
+    autoRefreshInterval: 30, // minutes
+    notificationsEnabled: false,
+    minimizeToTray: false,
+    startMinimized: false,
+    pythonPath: null, // Custom Python path if needed
+    lastVisitedPage: '/',
+    exportDefaultFormat: 'md',
+    exportDefaultPath: null
+  },
+  // Schema validation
+  schema: {
+    windowBounds: {
+      type: 'object',
+      properties: {
+        width: { type: 'number', minimum: 800 },
+        height: { type: 'number', minimum: 600 },
+        x: { type: ['number', 'null'] },
+        y: { type: ['number', 'null'] }
+      }
+    },
+    serverPort: {
+      type: 'number',
+      minimum: 1024,
+      maximum: 65535
+    },
+    cacheSize: {
+      type: 'number',
+      minimum: 64,
+      maximum: 2048
+    },
+    autoRefreshInterval: {
+      type: 'number',
+      minimum: 5,
+      maximum: 1440
+    }
   }
 });
 
@@ -34,6 +76,7 @@ let isQuitting = false;
 let tray = null;
 let unreadCount = 0;
 let recentArticles = [];
+let pythonBridge = null;
 
 /**
  * Get the path to Python resources
@@ -192,8 +235,11 @@ function stopPythonServer() {
  */
 function createWindow() {
   const bounds = store.get('windowBounds');
+  const wasMaximized = store.get('windowMaximized');
+  const startMinimized = store.get('startMinimized');
 
-  mainWindow = new BrowserWindow({
+  // Window configuration
+  const windowOptions = {
     width: bounds.width,
     height: bounds.height,
     minWidth: 1000,
@@ -206,16 +252,33 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
       webSecurity: true,
-      allowRunningInsecureContent: false
+      allowRunningInsecureContent: false,
+      // Enable performance optimizations
+      backgroundThrottling: true,
+      enableWebSQL: false
     },
     show: false // Don't show until ready
-  });
+  };
+
+  // Restore window position if it was saved and is still valid
+  if (bounds.x !== undefined && bounds.y !== undefined) {
+    windowOptions.x = bounds.x;
+    windowOptions.y = bounds.y;
+  }
+
+  mainWindow = new BrowserWindow(windowOptions);
 
   // Set window title
   mainWindow.setTitle('Data Points AI RSS Reader');
 
-  // Load the application
-  const serverUrl = `http://127.0.0.1:${serverPort}`;
+  // Restore maximized state
+  if (wasMaximized) {
+    mainWindow.maximize();
+  }
+
+  // Load the last visited page or home
+  const lastPage = store.get('lastVisitedPage', '/');
+  const serverUrl = `http://127.0.0.1:${serverPort}${lastPage}`;
   log.info('Loading URL:', serverUrl);
   mainWindow.loadURL(serverUrl);
 
@@ -255,9 +318,69 @@ function createWindow() {
     }
   });
 
+  // Track window state changes
+  mainWindow.on('maximize', () => {
+    store.set('windowMaximized', true);
+  });
+
+  mainWindow.on('unmaximize', () => {
+    store.set('windowMaximized', false);
+  });
+
+  mainWindow.on('enter-full-screen', () => {
+    store.set('windowFullScreen', true);
+  });
+
+  mainWindow.on('leave-full-screen', () => {
+    store.set('windowFullScreen', false);
+  });
+
+  // Save window position and size on move/resize (debounced)
+  let saveStateTimeout;
+  const saveWindowState = () => {
+    clearTimeout(saveStateTimeout);
+    saveStateTimeout = setTimeout(() => {
+      if (!mainWindow) return;
+
+      const bounds = mainWindow.getBounds();
+      const isMaximized = mainWindow.isMaximized();
+      const isFullScreen = mainWindow.isFullScreen();
+
+      // Only save bounds if not maximized or fullscreen
+      if (!isMaximized && !isFullScreen) {
+        store.set('windowBounds', {
+          width: bounds.width,
+          height: bounds.height,
+          x: bounds.x,
+          y: bounds.y
+        });
+      }
+
+      store.set('windowMaximized', isMaximized);
+      store.set('windowFullScreen', isFullScreen);
+    }, 500); // Debounce by 500ms
+  };
+
+  mainWindow.on('resize', saveWindowState);
+  mainWindow.on('move', saveWindowState);
+
+  // Track navigation to save last visited page
+  mainWindow.webContents.on('did-navigate', (event, url) => {
+    try {
+      const urlObj = new URL(url);
+      if (urlObj.hostname === '127.0.0.1' && urlObj.port === serverPort.toString()) {
+        store.set('lastVisitedPage', urlObj.pathname);
+      }
+    } catch (err) {
+      // Ignore invalid URLs
+    }
+  });
+
   // Save window bounds on close
   mainWindow.on('close', (event) => {
-    if (!isQuitting) {
+    const minimizeToTray = store.get('minimizeToTray', false);
+
+    if (!isQuitting && minimizeToTray) {
       event.preventDefault();
       mainWindow.hide();
 
@@ -268,9 +391,10 @@ function createWindow() {
       return false;
     }
 
-    // Save window bounds
-    const bounds = mainWindow.getBounds();
-    store.set('windowBounds', bounds);
+    if (!isQuitting) {
+      // Save final state before closing
+      saveWindowState();
+    }
   });
 
   mainWindow.on('closed', () => {
@@ -861,6 +985,46 @@ function setupIPC() {
     await exportArticles(format, clusters);
     return true;
   });
+
+  // Python bridge optimized endpoints
+  ipcMain.handle('python-get-status', async () => {
+    if (!pythonBridge) return null;
+    return await pythonBridge.getStatus();
+  });
+
+  ipcMain.handle('python-summarize-url', async (_event, url, style) => {
+    if (!pythonBridge) throw new Error('Python bridge not initialized');
+    return await pythonBridge.summarizeUrl(url, style);
+  });
+
+  ipcMain.handle('python-get-bookmarks', async (_event, filters) => {
+    if (!pythonBridge) return null;
+    return await pythonBridge.getBookmarks(filters);
+  });
+
+  ipcMain.handle('python-add-bookmark', async (_event, bookmarkData) => {
+    if (!pythonBridge) throw new Error('Python bridge not initialized');
+    return await pythonBridge.addBookmark(bookmarkData);
+  });
+
+  // Settings management
+  ipcMain.handle('get-settings', (_event, key) => {
+    if (key) {
+      return store.get(key);
+    }
+    // Return all settings
+    return store.store;
+  });
+
+  ipcMain.handle('set-setting', (_event, key, value) => {
+    store.set(key, value);
+    return true;
+  });
+
+  ipcMain.handle('reset-settings', () => {
+    store.clear();
+    return true;
+  });
 }
 
 /**
@@ -870,6 +1034,11 @@ app.whenReady().then(async () => {
   try {
     // Start Python server
     await startPythonServer();
+
+    // Initialize Python bridge for optimized communication
+    pythonBridge = new PythonBridge(serverPort);
+    pythonBridge.startHealthCheck();
+    log.info('Python bridge initialized');
 
     // Create window and menu
     createWindow();
@@ -913,6 +1082,14 @@ app.on('before-quit', () => {
 
 app.on('will-quit', async (event) => {
   event.preventDefault();
+
+  // Cleanup Python bridge
+  if (pythonBridge) {
+    pythonBridge.destroy();
+    pythonBridge = null;
+    log.info('Python bridge cleaned up');
+  }
+
   await stopPythonServer();
   app.exit(0);
 });
