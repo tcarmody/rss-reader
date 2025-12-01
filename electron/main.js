@@ -5,7 +5,7 @@
  * Python server integration, and native Mac features.
  */
 
-const { app, BrowserWindow, Menu, shell, dialog, ipcMain, nativeTheme } = require('electron');
+const { app, BrowserWindow, Menu, shell, dialog, ipcMain, nativeTheme, Tray } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -31,6 +31,9 @@ let mainWindow = null;
 let pythonProcess = null;
 let serverPort = store.get('serverPort');
 let isQuitting = false;
+let tray = null;
+let unreadCount = 0;
+let recentArticles = [];
 
 /**
  * Get the path to Python resources
@@ -284,6 +287,38 @@ function createWindow() {
  * Create the application menu
  */
 function createMenu() {
+  // Load recent articles from store on startup
+  if (recentArticles.length === 0) {
+    recentArticles = store.get('recentArticles', []);
+  }
+
+  // Build recent items submenu
+  const recentItemsSubmenu = recentArticles.length > 0
+    ? recentArticles.map(article => ({
+        label: article.title.substring(0, 50) + (article.title.length > 50 ? '...' : ''),
+        click: () => {
+          if (mainWindow && article.link) {
+            shell.openExternal(article.link);
+          }
+        }
+      }))
+    : [{ label: 'No Recent Articles', enabled: false }];
+
+  // Add "Clear Recent Items" option
+  if (recentArticles.length > 0) {
+    recentItemsSubmenu.push(
+      { type: 'separator' },
+      {
+        label: 'Clear Recent Items',
+        click: () => {
+          recentArticles = [];
+          store.set('recentArticles', []);
+          createMenu();
+        }
+      }
+    );
+  }
+
   const template = [
     {
       label: app.name,
@@ -366,6 +401,37 @@ function createMenu() {
         },
         { type: 'separator' },
         {
+          label: 'Recent Articles',
+          submenu: recentItemsSubmenu
+        },
+        { type: 'separator' },
+        {
+          label: 'Export',
+          submenu: [
+            {
+              label: 'Export as Markdown...',
+              accelerator: 'Cmd+Shift+E',
+              click: async () => {
+                // Request clusters data from renderer
+                mainWindow.webContents.send('request-export-data', 'md');
+              }
+            },
+            {
+              label: 'Export as Plain Text...',
+              click: async () => {
+                mainWindow.webContents.send('request-export-data', 'txt');
+              }
+            },
+            {
+              label: 'Export as JSON...',
+              click: async () => {
+                mainWindow.webContents.send('request-export-data', 'json');
+              }
+            }
+          ]
+        },
+        { type: 'separator' },
+        {
           label: 'Close Window',
           accelerator: 'Cmd+W',
           role: 'close'
@@ -389,7 +455,22 @@ function createMenu() {
           label: 'Find',
           accelerator: 'Cmd+F',
           click: () => {
-            mainWindow.webContents.send('search-focus');
+            // Trigger find in page
+            mainWindow.webContents.send('trigger-find');
+          }
+        },
+        {
+          label: 'Find Next',
+          accelerator: 'Cmd+G',
+          click: () => {
+            mainWindow.webContents.send('find-next');
+          }
+        },
+        {
+          label: 'Find Previous',
+          accelerator: 'Cmd+Shift+G',
+          click: () => {
+            mainWindow.webContents.send('find-previous');
           }
         }
       ]
@@ -470,6 +551,275 @@ function createMenu() {
 }
 
 /**
+ * Update dock badge with unread count
+ */
+function updateBadge(count) {
+  unreadCount = count;
+  if (process.platform === 'darwin') {
+    if (count > 0) {
+      app.dock.setBadge(count.toString());
+    } else {
+      app.dock.setBadge('');
+    }
+  }
+}
+
+/**
+ * Add article to recent items
+ */
+function addRecentArticle(article) {
+  // Add to beginning of array
+  recentArticles.unshift(article);
+
+  // Keep only last 10 items
+  if (recentArticles.length > 10) {
+    recentArticles = recentArticles.slice(0, 10);
+  }
+
+  // Rebuild menu to show updated recent items
+  createMenu();
+
+  // Save to store for persistence
+  store.set('recentArticles', recentArticles);
+}
+
+/**
+ * Create system tray icon and menu
+ */
+function createTray() {
+  // Use a simple template icon for the tray (macOS will handle dark mode)
+  // For now, we'll use the app icon. In production, you'd want a 16x16 template icon
+  const trayIconPath = path.join(__dirname, 'assets', 'icon.icns');
+
+  // Create tray icon
+  tray = new Tray(trayIconPath);
+  tray.setToolTip('Data Points AI RSS Reader');
+
+  // Create context menu for tray
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Show App',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+          if (process.platform === 'darwin') {
+            app.dock.show();
+          }
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Process Feeds',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.loadURL(`http://127.0.0.1:${serverPort}/`);
+          mainWindow.show();
+        }
+      }
+    },
+    {
+      label: 'Summarize URL',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.loadURL(`http://127.0.0.1:${serverPort}/summarize`);
+          mainWindow.show();
+        }
+      }
+    },
+    {
+      label: 'View Bookmarks',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.loadURL(`http://127.0.0.1:${serverPort}/bookmarks`);
+          mainWindow.show();
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: `Unread: ${unreadCount}`,
+      enabled: false
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setContextMenu(contextMenu);
+
+  // Click on tray icon shows/hides window
+  tray.on('click', () => {
+    if (mainWindow) {
+      if (mainWindow.isVisible()) {
+        mainWindow.hide();
+        if (process.platform === 'darwin') {
+          app.dock.hide();
+        }
+      } else {
+        mainWindow.show();
+        if (process.platform === 'darwin') {
+          app.dock.show();
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Update tray menu with current unread count
+ */
+function updateTrayMenu() {
+  if (!tray) return;
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Show App',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+          if (process.platform === 'darwin') {
+            app.dock.show();
+          }
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Process Feeds',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.loadURL(`http://127.0.0.1:${serverPort}/`);
+          mainWindow.show();
+        }
+      }
+    },
+    {
+      label: 'Summarize URL',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.loadURL(`http://127.0.0.1:${serverPort}/summarize`);
+          mainWindow.show();
+        }
+      }
+    },
+    {
+      label: 'View Bookmarks',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.loadURL(`http://127.0.0.1:${serverPort}/bookmarks`);
+          mainWindow.show();
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: `Unread: ${unreadCount}`,
+      enabled: false
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setContextMenu(contextMenu);
+}
+
+/**
+ * Export articles to various formats
+ */
+async function exportArticles(format, clusters) {
+  const { dialog } = require('electron');
+
+  // Ask user where to save
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export Articles',
+    defaultPath: `articles-${new Date().toISOString().split('T')[0]}.${format}`,
+    filters: [
+      { name: format.toUpperCase(), extensions: [format] }
+    ]
+  });
+
+  if (result.canceled) return;
+
+  const filePath = result.filePath;
+  let content = '';
+
+  if (format === 'md') {
+    // Markdown format
+    content = '# RSS Reader Export\n\n';
+    content += `Generated: ${new Date().toLocaleString()}\n\n`;
+
+    clusters.forEach((cluster, idx) => {
+      content += `## Cluster ${idx + 1}\n\n`;
+      cluster.forEach(article => {
+        content += `### ${article.title}\n\n`;
+        content += `**Source:** ${article.feed_source}\n`;
+        content += `**Published:** ${article.published}\n`;
+        content += `**Link:** ${article.link}\n\n`;
+        if (article.summary && article.summary.summary) {
+          content += `${article.summary.summary}\n\n`;
+        }
+        content += '---\n\n';
+      });
+    });
+  } else if (format === 'txt') {
+    // Plain text format
+    content = 'RSS Reader Export\n';
+    content += `Generated: ${new Date().toLocaleString()}\n`;
+    content += '='.repeat(80) + '\n\n';
+
+    clusters.forEach((cluster, idx) => {
+      content += `CLUSTER ${idx + 1}\n`;
+      content += '-'.repeat(80) + '\n\n';
+      cluster.forEach(article => {
+        content += `${article.title}\n`;
+        content += `Source: ${article.feed_source}\n`;
+        content += `Published: ${article.published}\n`;
+        content += `Link: ${article.link}\n\n`;
+        if (article.summary && article.summary.summary) {
+          content += `${article.summary.summary}\n\n`;
+        }
+        content += '-'.repeat(80) + '\n\n';
+      });
+    });
+  } else if (format === 'json') {
+    // JSON format
+    const exportData = {
+      exported: new Date().toISOString(),
+      clusters: clusters
+    };
+    content = JSON.stringify(exportData, null, 2);
+  }
+
+  // Write file
+  fs.writeFileSync(filePath, content, 'utf8');
+
+  // Show success message
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Export Successful',
+    message: 'Articles exported successfully!',
+    detail: `Saved to: ${filePath}`,
+    buttons: ['OK', 'Show File']
+  }).then(result => {
+    if (result.response === 1) {
+      shell.showItemInFolder(filePath);
+    }
+  });
+}
+
+/**
  * IPC handlers for renderer process communication
  */
 function setupIPC() {
@@ -481,12 +831,35 @@ function setupIPC() {
     return `http://127.0.0.1:${serverPort}`;
   });
 
-  ipcMain.handle('open-external', async (event, url) => {
+  ipcMain.handle('open-external', async (_event, url) => {
     await shell.openExternal(url);
   });
 
-  ipcMain.handle('show-item-in-folder', async (event, path) => {
+  ipcMain.handle('show-item-in-folder', async (_event, path) => {
     shell.showItemInFolder(path);
+  });
+
+  // Badge management
+  ipcMain.handle('update-badge', (_event, count) => {
+    updateBadge(count);
+    updateTrayMenu();
+    return true;
+  });
+
+  // Recent articles
+  ipcMain.handle('add-recent-article', (_event, article) => {
+    addRecentArticle(article);
+    return true;
+  });
+
+  ipcMain.handle('get-recent-articles', () => {
+    return recentArticles;
+  });
+
+  // Export functionality
+  ipcMain.handle('export-articles', async (_event, format, clusters) => {
+    await exportArticles(format, clusters);
+    return true;
   });
 }
 
@@ -502,6 +875,9 @@ app.whenReady().then(async () => {
     createWindow();
     createMenu();
     setupIPC();
+
+    // Create system tray
+    createTray();
 
     // Set dark mode if enabled
     if (store.get('darkMode')) {

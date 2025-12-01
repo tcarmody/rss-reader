@@ -68,8 +68,19 @@
 
   <!-- Base JavaScript -->
   <script src="{{ url_for('static', path='js/common.js') }}" defer></script>
+
+  <!-- Electron integration (only loads if running in Electron) -->
+  <script>
+    if (window.electronAPI && window.electronAPI.isElectron) {
+      const script = document.createElement('script');
+      script.src = '{{ url_for("static", path="js/electron-integration.js") }}';
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  </script>
+
   {% block extra_scripts %}{% endblock %}
-  
+
   <!-- Additional body content (modals, etc.) -->
   {% block extra_body %}{% endblock %}
 </body>
