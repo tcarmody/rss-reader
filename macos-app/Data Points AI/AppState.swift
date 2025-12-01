@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import WebKit
 import Combine
+import UniformTypeIdentifiers
 
 final class AppState: ObservableObject {
     static let shared = AppState()

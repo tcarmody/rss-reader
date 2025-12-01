@@ -8,7 +8,7 @@
 import Foundation
 import Combine
 
-class PythonServerManager: ObservableObject {
+final class PythonServerManager: ObservableObject {
     static let shared = PythonServerManager()
 
     @Published var isRunning = false
