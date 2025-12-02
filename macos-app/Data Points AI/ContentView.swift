@@ -35,69 +35,176 @@ struct ContentView: View {
 struct NativeToolbar: View {
     @EnvironmentObject var pythonServer: PythonServerManager
     @EnvironmentObject var appState: AppState
+    @State private var canGoBack = false
+    @State private var canGoForward = false
+    @State private var pulseAnimation = false
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Navigation buttons
-            Button(action: { appState.navigateTo(path: "/") }) {
-                Label("Home", systemImage: "house.fill")
-            }
-            .help("Go to home page")
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                // Browser-style navigation
+                HStack(spacing: 4) {
+                    Button(action: { appState.webView?.goBack() }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(!canGoBack)
+                    .help("Go back (⌘[)")
 
-            Button(action: { appState.navigateTo(path: "/bookmarks") }) {
-                Label("Bookmarks", systemImage: "bookmark.fill")
+                    Button(action: { appState.webView?.goForward() }) {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(!canGoForward)
+                    .help("Go forward (⌘])")
+                }
+
+                Divider()
+                    .frame(height: 24)
+
+                // Quick navigation
+                Button(action: { appState.navigateTo(path: "/") }) {
+                    Image(systemName: "house.fill")
+                        .font(.system(size: 13))
+                }
+                .buttonStyle(.bordered)
+                .help("Home")
+
+                Button(action: { appState.navigateTo(path: "/bookmarks") }) {
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: 13))
+                }
+                .buttonStyle(.bordered)
+                .help("Bookmarks (⌘⇧B)")
+
+                Divider()
+                    .frame(height: 24)
+
+                // Page title and URL
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(pageTitle)
+                        .font(.system(size: 12, weight: .medium))
+                        .lineLimit(1)
+                        .foregroundColor(.primary)
+
+                    if let url = appState.currentURL, !url.isEmpty {
+                        Text(displayURL(url))
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                .frame(maxWidth: 300, alignment: .leading)
+
+                Spacer()
+
+                // Server status indicator with animation
+                HStack(spacing: 8) {
+                    ZStack {
+                        if pythonServer.serverStatus == .starting {
+                            Circle()
+                                .fill(serverStatusColor.opacity(0.3))
+                                .frame(width: 16, height: 16)
+                                .scaleEffect(pulseAnimation ? 1.5 : 1.0)
+                                .opacity(pulseAnimation ? 0 : 1)
+                                .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: false), value: pulseAnimation)
+                        }
+
+                        Circle()
+                            .fill(serverStatusColor)
+                            .frame(width: 8, height: 8)
+                    }
+
+                    Text(serverStatusText)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .onAppear {
+                    if pythonServer.serverStatus == .starting {
+                        pulseAnimation = true
+                    }
+                }
+
+                Divider()
+                    .frame(height: 24)
+
+                // Action buttons
+                Button(action: { appState.reloadWebView() }) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 13))
+                }
+                .buttonStyle(.bordered)
+                .help("Refresh (⌘R)")
+
+                Menu {
+                    Button("Markdown (⌘⇧E)") {
+                        appState.requestExport(format: .markdown)
+                    }
+                    Button("Plain Text") {
+                        appState.requestExport(format: .plainText)
+                    }
+                    Button("JSON") {
+                        appState.requestExport(format: .json)
+                    }
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 13))
+                }
+                .buttonStyle(.bordered)
+                .help("Export articles")
+
+                Button(action: { appState.triggerFind() }) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 13))
+                }
+                .buttonStyle(.bordered)
+                .help("Find in page (⌘F)")
             }
-            .help("View bookmarks")
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
 
             Divider()
-                .frame(height: 20)
-
-            // Refresh button
-            Button(action: { appState.reloadWebView() }) {
-                Label("Refresh", systemImage: "arrow.clockwise")
-            }
-            .help("Refresh page")
-
-            Spacer()
-
-            // Server status indicator
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(serverStatusColor)
-                    .frame(width: 8, height: 8)
-
-                Text(serverStatusText)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Divider()
-                .frame(height: 20)
-
-            // Action buttons
-            Menu {
-                Button("Markdown") {
-                    appState.requestExport(format: .markdown)
-                }
-                Button("Plain Text") {
-                    appState.requestExport(format: .plainText)
-                }
-                Button("JSON") {
-                    appState.requestExport(format: .json)
-                }
-            } label: {
-                Label("Export", systemImage: "square.and.arrow.up")
-            }
-            .help("Export articles")
-
-            Button(action: { appState.triggerFind() }) {
-                Label("Find", systemImage: "magnifyingglass")
-            }
-            .help("Find in page")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(
+            Rectangle()
+                .fill(Color(NSColor.controlBackgroundColor))
+                .shadow(color: Color.black.opacity(0.05), radius: 2, y: 1)
+        )
+        .onChange(of: appState.currentURL) { _ in
+            updateNavigationState()
+        }
+        .onAppear {
+            updateNavigationState()
+        }
+    }
+
+    private var pageTitle: String {
+        if let url = appState.currentURL {
+            if url.contains("/bookmarks") {
+                return "Bookmarks"
+            } else if url.contains("/summarize") {
+                return "Article Summary"
+            } else if url == "http://127.0.0.1:5005/" || url == "http://127.0.0.1:5005" {
+                return "RSS Feed"
+            } else {
+                return "Data Points AI"
+            }
+        }
+        return "Data Points AI"
+    }
+
+    private func displayURL(_ url: String) -> String {
+        return url
+            .replacingOccurrences(of: "http://127.0.0.1:5005", with: "")
+            .replacingOccurrences(of: "http://", with: "")
+            .replacingOccurrences(of: "https://", with: "")
+    }
+
+    private func updateNavigationState() {
+        canGoBack = appState.webView?.canGoBack ?? false
+        canGoForward = appState.webView?.canGoForward ?? false
     }
 
     private var serverStatusColor: Color {
