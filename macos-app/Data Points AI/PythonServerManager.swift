@@ -103,14 +103,18 @@ final class PythonServerManager: ObservableObject {
 
         // Handle termination
         process.terminationHandler = { [weak self] process in
+            print("⚠️ Process termination handler called - PID: \(process.processIdentifier), Status: \(process.terminationStatus)")
             DispatchQueue.main.async {
-                self?.isRunning = false
-                self?.serverStatus = .stopped
-                self?.stopHealthCheck()
+                // Don't update status if we're intentionally stopping
+                guard let self = self, self.pythonProcess != nil else { return }
+
+                self.isRunning = false
+                self.serverStatus = .stopped
+                self.stopHealthCheck()
 
                 if process.terminationStatus != 0 {
-                    self?.errorMessage = "Python server exited with code \(process.terminationStatus)"
-                    print("❌ \(self?.errorMessage ?? "")")
+                    self.errorMessage = "Python server exited with code \(process.terminationStatus)"
+                    print("❌ \(self.errorMessage ?? "")")
                 } else {
                     print("✅ Python server stopped gracefully")
                 }
