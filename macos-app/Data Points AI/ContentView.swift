@@ -14,6 +14,11 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Native toolbar
+            NativeToolbar()
+                .environmentObject(pythonServer)
+                .environmentObject(appState)
+
             // Status bar (only shown when server is not running)
             if pythonServer.serverStatus != .running {
                 ServerStatusBar(status: pythonServer.serverStatus, errorMessage: pythonServer.errorMessage)
@@ -23,6 +28,101 @@ struct ContentView: View {
             WebView()
                 .environmentObject(pythonServer)
                 .environmentObject(appState)
+        }
+    }
+}
+
+struct NativeToolbar: View {
+    @EnvironmentObject var pythonServer: PythonServerManager
+    @EnvironmentObject var appState: AppState
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Navigation buttons
+            Button(action: { appState.navigateTo(path: "/") }) {
+                Label("Home", systemImage: "house.fill")
+            }
+            .help("Go to home page")
+
+            Button(action: { appState.navigateTo(path: "/bookmarks") }) {
+                Label("Bookmarks", systemImage: "bookmark.fill")
+            }
+            .help("View bookmarks")
+
+            Divider()
+                .frame(height: 20)
+
+            // Refresh button
+            Button(action: { appState.reloadWebView() }) {
+                Label("Refresh", systemImage: "arrow.clockwise")
+            }
+            .help("Refresh page")
+
+            Spacer()
+
+            // Server status indicator
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(serverStatusColor)
+                    .frame(width: 8, height: 8)
+
+                Text(serverStatusText)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Divider()
+                .frame(height: 20)
+
+            // Action buttons
+            Menu {
+                Button("Markdown") {
+                    appState.requestExport(format: .markdown)
+                }
+                Button("Plain Text") {
+                    appState.requestExport(format: .plainText)
+                }
+                Button("JSON") {
+                    appState.requestExport(format: .json)
+                }
+            } label: {
+                Label("Export", systemImage: "square.and.arrow.up")
+            }
+            .help("Export articles")
+
+            Button(action: { appState.triggerFind() }) {
+                Label("Find", systemImage: "magnifyingglass")
+            }
+            .help("Find in page")
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    private var serverStatusColor: Color {
+        switch pythonServer.serverStatus {
+        case .running:
+            return .green
+        case .starting:
+            return .orange
+        case .stopped:
+            return .gray
+        case .error:
+            return .red
+        }
+    }
+
+    private var serverStatusText: String {
+        switch pythonServer.serverStatus {
+        case .running:
+            return "Connected"
+        case .starting:
+            return "Starting..."
+        case .stopped:
+            return "Disconnected"
+        case .error:
+            return "Error"
         }
     }
 }
