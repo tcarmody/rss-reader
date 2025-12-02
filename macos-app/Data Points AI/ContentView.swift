@@ -11,18 +11,55 @@ import WebKit
 struct ContentView: View {
     @EnvironmentObject var pythonServer: PythonServerManager
     @EnvironmentObject var appState: AppState
+    @State private var isLoading = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Status bar (only shown when server is not running)
-            if pythonServer.serverStatus != .running {
-                ServerStatusBar(status: pythonServer.serverStatus, errorMessage: pythonServer.errorMessage)
+        ZStack {
+            VStack(spacing: 0) {
+                // Status bar (only shown when server is not running)
+                if pythonServer.serverStatus != .running {
+                    ServerStatusBar(status: pythonServer.serverStatus, errorMessage: pythonServer.errorMessage)
+                }
+
+                // Main web view
+                WebView(isLoading: $isLoading)
+                    .environmentObject(pythonServer)
+                    .environmentObject(appState)
             }
 
-            // Main web view
-            WebView()
-                .environmentObject(pythonServer)
-                .environmentObject(appState)
+            // Loading overlay for long operations
+            if isLoading {
+                LoadingOverlay()
+            }
+        }
+    }
+}
+
+struct LoadingOverlay: View {
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+
+            VStack(spacing: 20) {
+                ProgressView()
+                    .scaleEffect(1.5)
+                    .progressViewStyle(.circular)
+
+                Text("Generating summary...")
+                    .font(.headline)
+                    .foregroundColor(.white)
+
+                Text("This may take 1-3 minutes for long articles")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.8))
+            }
+            .padding(40)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(NSColor.controlBackgroundColor).opacity(0.95))
+            )
+            .shadow(radius: 20)
         }
     }
 }
@@ -105,6 +142,7 @@ struct ServerStatusBar: View {
 struct WebView: NSViewRepresentable {
     @EnvironmentObject var pythonServer: PythonServerManager
     @EnvironmentObject var appState: AppState
+    @Binding var isLoading: Bool
 
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
@@ -114,9 +152,15 @@ struct WebView: NSViewRepresentable {
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         #endif
 
+        // Set longer timeout for API requests (5 minutes for long articles)
+        configuration.preferences.setValue(true, forKey: "allowsInlineMediaPlayback")
+
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
+
+        // Increase timeout for long-running requests
+        webView.configuration.processPool.setValue(300, forKey: "_maximumSuspensionTime")
 
         // Store web view reference in app state
         DispatchQueue.main.async {
@@ -158,13 +202,15 @@ struct WebView: NSViewRepresentable {
 
     private func loadURL(webView: WKWebView) {
         guard let url = URL(string: pythonServer.serverURL) else { return }
-        let request = URLRequest(url: url)
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 300 // 5 minutes timeout for long articles
         webView.load(request)
     }
 
     private func navigateTo(webView: WKWebView, path: String) {
         guard let url = URL(string: "\(pythonServer.serverURL)\(path)") else { return }
-        let request = URLRequest(url: url)
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 300 // 5 minutes timeout for long articles
         webView.load(request)
     }
 
@@ -179,8 +225,20 @@ struct WebView: NSViewRepresentable {
             self.parent = parent
         }
 
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            // Show loading indicator when navigation starts
+            DispatchQueue.main.async {
+                self.parent.isLoading = true
+            }
+        }
+
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             print("✅ Page loaded: \(webView.url?.absoluteString ?? "unknown")")
+
+            // Hide loading indicator
+            DispatchQueue.main.async {
+                self.parent.isLoading = false
+            }
 
             // Inject JavaScript bridge
             injectJavaScriptBridge(webView: webView)
@@ -193,10 +251,20 @@ struct WebView: NSViewRepresentable {
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             print("❌ Page load failed: \(error.localizedDescription)")
+
+            // Hide loading indicator
+            DispatchQueue.main.async {
+                self.parent.isLoading = false
+            }
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             print("❌ Provisional navigation failed: \(error.localizedDescription)")
+
+            // Hide loading indicator
+            DispatchQueue.main.async {
+                self.parent.isLoading = false
+            }
 
             // If server not ready, retry after a delay
             if !self.parent.pythonServer.isRunning {
