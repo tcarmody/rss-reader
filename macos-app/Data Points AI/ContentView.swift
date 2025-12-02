@@ -114,15 +114,9 @@ struct WebView: NSViewRepresentable {
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         #endif
 
-        // Set longer timeout for API requests (5 minutes for long articles)
-        configuration.preferences.setValue(true, forKey: "allowsInlineMediaPlayback")
-
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
-
-        // Increase timeout for long-running requests
-        webView.configuration.processPool.setValue(300, forKey: "_maximumSuspensionTime")
 
         // Store web view reference in app state
         DispatchQueue.main.async {
