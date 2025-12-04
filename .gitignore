@@ -1,3 +1,4 @@
+11
 # Environment variables and secrets
 .env
 *.env
@@ -93,4 +94,5 @@ test_*.json
 test_*.xml
 .DS_Store
 performance_logs.txt
+macos-app/Data Points AI/Data Points AI.xcodeproj/project.xcworkspace/xcuserdata/timcarmody.xcuserdatad/UserInterfaceState.xcuserstate
 macos-app/Data Points AI/Data Points AI.xcodeproj/project.xcworkspace/xcuserdata/timcarmody.xcuserdatad/UserInterfaceState.xcuserstate
