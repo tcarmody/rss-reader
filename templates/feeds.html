@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}Manage RSS Feeds - Data Points AI{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+  <div class="page-header">
+    <h1>Manage RSS Feeds</h1>
+    <p class="subtitle">Add, remove, and organize your RSS feed sources</p>
+  </div>
+
+  <!-- Add New Feed Form -->
+  <div class="card" style="margin-bottom: 2rem;">
+    <h2 style="margin-top: 0;">Add New Feed</h2>
+    <form action="/feeds/add" method="POST" class="feed-form">
+      <div class="form-group">
+        <label for="feed_url">RSS Feed URL</label>
+        <input
+          type="url"
+          id="feed_url"
+          name="feed_url"
+          placeholder="https://example.com/rss.xml"
+          required
+          class="input"
+          style="width: 100%; max-width: 500px;"
+        >
+      </div>
+      <button type="submit" class="button primary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Add Feed
+      </button>
+    </form>
+  </div>
+
+  <!-- Current Feeds List -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h2 style="margin: 0;">Current Feeds ({{ feeds_count }})</h2>
+      <a href="/refresh" class="button outline small">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        Refresh All Feeds
+      </a>
+    </div>
+
+    {% if feeds %}
+      <div class="feeds-list">
+        {% for feed in feeds %}
+          <div class="feed-item">
+            <div class="feed-info">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feed-icon">
+                <path d="M4 11a9 9 0 0 1 9 9"></path>
+                <path d="M4 4a16 16 0 0 1 16 16"></path>
+                <circle cx="5" cy="19" r="1"></circle>
+              </svg>
+              <div class="feed-details">
+                <a href="{{ feed }}" target="_blank" class="feed-url">{{ feed }}</a>
+              </div>
+            </div>
+            <form action="/feeds/delete" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to remove this feed?');">
+              <input type="hidden" name="feed_url" value="{{ feed }}">
+              <button type="submit" class="button danger small">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Remove
+              </button>
+            </form>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.3; margin-bottom: 1rem;">
+          <path d="M4 11a9 9 0 0 1 9 9"></path>
+          <path d="M4 4a16 16 0 0 1 16 16"></path>
+          <circle cx="5" cy="19" r="1"></circle>
+        </svg>
+        <p>No RSS feeds configured</p>
+        <p style="font-size: 0.875rem; opacity: 0.7;">Add your first feed above to get started</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Feed Tips -->
+  <div class="card" style="margin-top: 2rem; background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);">
+    <h3 style="margin-top: 0;">💡 Tips for Finding RSS Feeds</h3>
+    <ul style="margin: 0; padding-left: 1.5rem; line-height: 1.8;">
+      <li>Look for RSS icons (<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg>) on websites</li>
+      <li>Try adding <code>/feed</code> or <code>/rss</code> to blog URLs</li>
+      <li>Use services like <a href="https://rss.app" target="_blank">rss.app</a> to create feeds from websites</li>
+      <li>Many news sites list their RSS feeds in the footer</li>
+      <li>Reddit: <code>https://reddit.com/r/[subreddit]/.rss</code></li>
+    </ul>
+  </div>
+</div>
+
+<style>
+.content-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.page-header h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 1rem;
+  opacity: 0.7;
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.feed-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.input {
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.feeds-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.feed-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.feed-item:hover {
+  background: #f3f4f6;
+}
+
+.feed-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-icon {
+  flex-shrink: 0;
+  color: #6366f1;
+}
+
+.feed-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-url {
+  color: #374151;
+  text-decoration: none;
+  font-size: 0.875rem;
+  word-break: break-all;
+}
+
+.feed-url:hover {
+  color: #6366f1;
+  text-decoration: underline;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+}
+
+.button {
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+}
+
+.button.primary {
+  background: #6366f1;
+  color: white;
+}
+
+.button.primary:hover {
+  background: #4f46e5;
+}
+
+.button.danger {
+  background: #ef4444;
+  color: white;
+}
+
+.button.danger:hover {
+  background: #dc2626;
+}
+
+.button.outline {
+  background: white;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+
+.button.outline:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.button.small {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+code {
+  background: #f3f4f6;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.875em;
+}
+</style>
+{% endblock %}
