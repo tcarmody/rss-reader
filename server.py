@@ -1344,6 +1344,18 @@ async def delete_feed(request: Request, feed_url: str = Form(...)):
 
     return RedirectResponse(url="/feeds", status_code=303)
 
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    """Render the settings page with clustering settings."""
+    common_vars = get_common_template_vars(request)
+
+    return templates.TemplateResponse(
+        "settings.html",
+        {
+            **common_vars,
+        }
+    )
+
 # Image Prompt Generation API
 @app.post("/api/generate-image-prompt")
 async def generate_image_prompt(
