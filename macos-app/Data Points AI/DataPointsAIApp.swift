@@ -69,6 +69,20 @@ struct DataPointsAIApp: App {
 
             // View menu
             CommandMenu("View") {
+                Button("Back") {
+                    appState.webView?.goBack()
+                }
+                .keyboardShortcut("[", modifiers: .command)
+                .disabled(!(appState.webView?.canGoBack ?? false))
+
+                Button("Forward") {
+                    appState.webView?.goForward()
+                }
+                .keyboardShortcut("]", modifiers: .command)
+                .disabled(!(appState.webView?.canGoForward ?? false))
+
+                Divider()
+
                 Button("Reload") {
                     appState.reloadWebView()
                 }

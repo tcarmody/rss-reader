@@ -132,11 +132,18 @@ struct NativeToolbar: View {
 
                 // Action buttons
                 Button(action: { appState.reloadWebView() }) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 13))
+                    if appState.isLoading {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .frame(width: 13, height: 13)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 13))
+                    }
                 }
                 .buttonStyle(.bordered)
-                .help("Refresh (⌘R)")
+                .help(appState.isLoading ? "Loading..." : "Refresh (⌘R)")
+                .disabled(appState.isLoading)
 
                 Menu {
                     Button("Markdown (⌘⇧E)") {
@@ -388,6 +395,12 @@ struct WebView: NSViewRepresentable {
             self.parent = parent
         }
 
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            DispatchQueue.main.async {
+                self.parent.appState.isLoading = true
+            }
+        }
+
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             print("✅ Page loaded: \(webView.url?.absoluteString ?? "unknown")")
 
@@ -397,15 +410,24 @@ struct WebView: NSViewRepresentable {
             // Update app state
             DispatchQueue.main.async {
                 self.parent.appState.currentURL = webView.url?.absoluteString
+                self.parent.appState.isLoading = false
             }
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             print("❌ Page load failed: \(error.localizedDescription)")
+
+            DispatchQueue.main.async {
+                self.parent.appState.isLoading = false
+            }
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             print("❌ Provisional navigation failed: \(error.localizedDescription)")
+
+            DispatchQueue.main.async {
+                self.parent.appState.isLoading = false
+            }
 
             // If server not ready, retry after a delay
             if !self.parent.pythonServer.isRunning {
