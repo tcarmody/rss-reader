@@ -258,8 +258,6 @@
 {% endblock extra_head %}
 
 {% block content %}
-{% include 'components/breadcrumb.html' %}
-
 <div class="bookmarks-container">
   <header class="page-header">
     <h1>My Saved Articles</h1>
@@ -376,6 +374,8 @@
   <!-- Modals -->
   {% include 'components/bookmark_modals.html' %}
   {% include 'components/image_prompt_modal.html' %}
+
+  {% include 'components/breadcrumb.html' %}
 </div>
 {% endblock content %}
 

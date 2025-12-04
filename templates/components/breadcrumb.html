@@ -1,22 +1,17 @@
 <!-- Breadcrumb Navigation Component -->
-<!-- Usage: {% set breadcrumb_items = [{'label': 'Home', 'url': '/'}, {'label': 'Current Page', 'url': None}] %} -->
 {% if breadcrumb_items is defined and breadcrumb_items %}
 <nav class="breadcrumb" aria-label="Breadcrumb">
-  <ol class="breadcrumb-list">
+  <div class="breadcrumb-container">
     {% for item in breadcrumb_items %}
-      <li class="breadcrumb-item">
-        {% if item.url and not loop.last %}
-          <a href="{{ item.url }}" class="breadcrumb-link">{{ item.label }}</a>
-        {% else %}
-          <span class="breadcrumb-current" aria-current="page">{{ item.label }}</span>
-        {% endif %}
-        {% if not loop.last %}
-          <svg class="breadcrumb-separator" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="9 18 15 12 9 6"></polyline>
-          </svg>
-        {% endif %}
-      </li>
+      {% if item.url and not loop.last %}
+        <a href="{{ item.url }}" class="breadcrumb-link">{{ item.label }}</a>
+      {% else %}
+        <span class="breadcrumb-current" aria-current="page">{{ item.label }}</span>
+      {% endif %}
+      {% if not loop.last %}
+        <span class="breadcrumb-separator">&gt;</span>
+      {% endif %}
     {% endfor %}
-  </ol>
+  </div>
 </nav>
 {% endif %}
