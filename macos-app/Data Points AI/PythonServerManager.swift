@@ -103,20 +103,18 @@ final class PythonServerManager: ObservableObject {
 
         // Handle termination
         process.terminationHandler = { [weak self] process in
-            print("⚠️ Process termination handler called - PID: \(process.processIdentifier), Status: \(process.terminationStatus)")
-            DispatchQueue.main.async {
-                // Don't update status if we're intentionally stopping
-                guard let self = self, self.pythonProcess != nil else { return }
+            print("⚠️ Process terminated - PID: \(process.processIdentifier), Status: \(process.terminationStatus)")
+            // Note: uvicorn may fork and the parent process exits, so we rely on health checks
+            // for actual server status rather than process termination
 
-                self.isRunning = false
-                self.serverStatus = .stopped
-                self.stopHealthCheck()
-
-                if process.terminationStatus != 0 {
-                    self.errorMessage = "Python server exited with code \(process.terminationStatus)"
-                    print("❌ \(self.errorMessage ?? "")")
-                } else {
-                    print("✅ Python server stopped gracefully")
+            if process.terminationStatus != 0 {
+                print("⚠️ Python process exited with code \(process.terminationStatus)")
+                // Only mark as error if we haven't established connection yet
+                DispatchQueue.main.async {
+                    if self?.serverStatus == .starting {
+                        self?.errorMessage = "Failed to start server (exit code \(process.terminationStatus))"
+                        self?.serverStatus = .error
+                    }
                 }
             }
         }
@@ -252,23 +250,32 @@ final class PythonServerManager: ObservableObject {
     private func checkHealth() {
         guard let url = URL(string: "\(serverURL)/status") else { return }
 
-        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 5.0 // Short timeout for health checks
+
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
+                guard let self = self else { return }
+
                 if let httpResponse = response as? HTTPURLResponse,
                    httpResponse.statusCode == 200 {
-                    self?.isRunning = true
-                    self?.serverStatus = .running
-                    self?.errorMessage = nil
+                    // Server is healthy
+                    self.isRunning = true
+                    self.serverStatus = .running
+                    self.errorMessage = nil
                     print("✅ Python server health check: OK")
                 } else {
-                    if self?.serverStatus == .starting {
+                    // Server not responding
+                    if self.serverStatus == .starting {
                         // Still starting, keep waiting
                         print("⏳ Server still starting...")
-                    } else {
-                        self?.serverStatus = .error
-                        self?.errorMessage = "Server not responding"
-                        print("❌ Server health check failed")
+                    } else if self.serverStatus == .running {
+                        // Was running, now disconnected - don't show as error, just disconnected
+                        self.isRunning = false
+                        self.serverStatus = .stopped
+                        print("⚠️ Server disconnected")
                     }
+                    // If already stopped/error, don't change status
                 }
             }
         }.resume()
