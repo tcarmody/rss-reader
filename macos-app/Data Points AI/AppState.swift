@@ -21,6 +21,7 @@ final class AppState: ObservableObject {
     @Published var currentURL: String?
     @Published var pendingNavigation: String?
     @Published var shouldReload = false
+    @Published var isLoading = false
 
     // Find in page
     @Published var shouldTriggerFind = false
