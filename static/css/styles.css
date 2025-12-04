@@ -92,6 +92,12 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
+  /* Transitions & Animations */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.2s ease;
+  --transition-slow: 0.3s ease;
+  --transition-spring: 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
   /* Component Specific */
   --nav-height: 60px;
   --card-padding: var(--spacing-lg);
@@ -146,12 +152,16 @@ p {
 a {
   color: var(--color-primary-600);
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: color var(--transition-base);
 }
 
 a:hover {
   color: var(--color-primary-700);
   text-decoration: underline;
+}
+
+a:active {
+  color: var(--color-primary-800);
 }
 
 code, .code {
@@ -295,6 +305,11 @@ code, .code {
   padding: var(--card-padding);
   box-shadow: var(--shadow-md);
   margin-bottom: var(--main-padding);
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
 }
 
 .card-title {
@@ -318,7 +333,7 @@ code, .code {
   font-weight: 500;
   border: 1px solid transparent;
   border-radius: var(--border-radius-md);
-  transition: all 0.15s ease-in-out;
+  transition: all var(--transition-fast);
   text-align: center;
   white-space: nowrap;
   vertical-align: middle;
@@ -334,6 +349,13 @@ code, .code {
   border-color: var(--color-primary-700);
   text-decoration: none;
   color: var(--color-neutral-0);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
 }
 
 .button svg {
@@ -447,7 +469,7 @@ select.form-input {
   background-clip: padding-box;
   border: 1px solid var(--color-neutral-400);
   border-radius: var(--border-radius-md);
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .form-input:focus,
@@ -457,6 +479,13 @@ select.form-input:focus {
   border-color: var(--color-primary-600);
   outline: 0;
   box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+}
+
+.form-input:hover:not(:focus),
+.form-input-number:hover:not(:focus),
+textarea.form-input:hover:not(:focus),
+select.form-input:hover:not(:focus) {
+  border-color: var(--color-neutral-500);
 }
 
 textarea.form-input {
@@ -1700,4 +1729,233 @@ a svg {
 .button svg:only-child,
 a svg:only-child {
   margin-right: 0;
+}
+
+/* ===== ICON SYSTEM ===== */
+
+/* Standard icon sizing */
+svg {
+  display: inline-block;
+  vertical-align: middle;
+  transition: transform var(--transition-fast), color var(--transition-fast);
+}
+
+/* Icon sizing classes */
+.icon-sm {
+  width: 14px;
+  height: 14px;
+}
+
+.icon-md {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-lg {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-xl {
+  width: 24px;
+  height: 24px;
+}
+
+/* Format icons in lists */
+.format-icon {
+  vertical-align: middle;
+  margin-right: 0.5rem;
+  color: var(--color-primary-600);
+  flex-shrink: 0;
+}
+
+.supported-formats ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.supported-formats li {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+/* Interactive icon states */
+button:hover svg,
+a:hover svg {
+  transform: scale(1.05);
+}
+
+button:active svg,
+a:active svg {
+  transform: scale(0.95);
+}
+
+/* Icon-only buttons */
+.button svg:only-child {
+  margin: 0;
+}
+
+/* ===== ENHANCED TOUCH TARGETS (Mobile) ===== */
+
+/* Minimum touch target size for mobile */
+@media (max-width: 768px) {
+  .button,
+  a.button,
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Larger tap targets for small buttons */
+  .button.small {
+    padding: 0.6em 1em;
+    font-size: 0.9rem;
+  }
+  
+  /* Increase form input touch targets */
+  .form-input,
+  select.form-input,
+  textarea.form-input {
+    min-height: 44px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+  
+  /* Navigation touch targets */
+  .nav-icon-btn {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  
+  /* Checkbox and radio touch targets */
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-width: 20px;
+    min-height: 20px;
+  }
+}
+
+/* ===== RESPONSIVE IMPROVEMENTS ===== */
+
+/* Better mobile navigation */
+@media (max-width: 768px) {
+  .unified-nav {
+    padding: 0.5rem;
+  }
+  
+  .nav-label {
+    font-size: 0.75rem;
+  }
+  
+  /* Stack form elements on mobile */
+  .form-row {
+    flex-direction: column;
+  }
+  
+  .form-row > * {
+    width: 100%;
+  }
+  
+  /* Better modal sizing on mobile */
+  .modal-content {
+    width: 95%;
+    max-width: 95vw;
+    margin: 1rem;
+  }
+  
+  /* Card padding adjustment */
+  .card {
+    padding: 1rem;
+  }
+  
+  /* Adjust button groups for mobile */
+  .buttons-container,
+  .page-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .buttons-container .button,
+  .page-actions .button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .content-wrapper {
+    max-width: 100%;
+    padding: 1.5rem;
+  }
+  
+  .card {
+    padding: 1.5rem;
+  }
+}
+
+/* ===== SMOOTH SCROLL ===== */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ===== LOADING STATES ===== */
+
+/* Button loading state */
+.button.loading {
+  position: relative;
+  color: transparent;
+  pointer-events: none;
+}
+
+.button.loading::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid var(--color-neutral-0);
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spinner var(--transition-slow) linear infinite;
+}
+
+@keyframes spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== FOCUS STYLES (Accessibility) ===== */
+
+/* Visible focus indicators */
+*:focus-visible {
+  outline: 2px solid var(--color-primary-600);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+.button:focus-visible {
+  outline: 2px solid var(--color-primary-600);
+  outline-offset: 2px;
+}
+
+/* Remove default focus for mouse users */
+*:focus:not(:focus-visible) {
+  outline: none;
 }
