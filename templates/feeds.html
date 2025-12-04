@@ -9,8 +9,6 @@
 {% block title %}Manage RSS Feeds - Data Points AI{% endblock %}
 
 {% block content %}
-{% include 'components/breadcrumb.html' %}
-
 <div class="content-wrapper">
   <div class="page-header">
     <h1>Manage RSS Feeds</h1>
@@ -112,6 +110,8 @@
       <li>Reddit: <code>https://reddit.com/r/[subreddit]/.rss</code></li>
     </ul>
   </div>
+
+  {% include 'components/breadcrumb.html' %}
 </div>
 
 <style>
