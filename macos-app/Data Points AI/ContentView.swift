@@ -188,12 +188,7 @@ struct NativeToolbar: View {
                 .help("Find in page (⌘F)")
 
                 Button(action: {
-                    // Open settings window
-                    if #available(macOS 14.0, *) {
-                        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                    } else {
-                        NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-                    }
+                    appState.navigateTo(path: "/settings")
                 }) {
                     Image(systemName: "gearshape")
                         .font(.system(size: 13))
