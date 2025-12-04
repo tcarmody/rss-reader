@@ -1259,7 +1259,7 @@ async def view_bookmarks(request: Request):
     common_vars = get_common_template_vars(request)
     # Override paywall toggle for bookmarks page
     common_vars["show_paywall_toggle"] = False
-    
+
     return templates.TemplateResponse(
         "bookmarks.html",
         {
@@ -1267,6 +1267,82 @@ async def view_bookmarks(request: Request):
             "bookmarks": bookmarks,
         }
     )
+
+@app.get("/feeds", response_class=HTMLResponse)
+async def manage_feeds(request: Request):
+    """Render the feed management page."""
+    common_vars = get_common_template_vars(request)
+
+    # Read current feeds from file
+    feeds = []
+    feeds_file = "rss_feeds.txt"
+    try:
+        with open(feeds_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    feeds.append(line)
+    except FileNotFoundError:
+        pass
+
+    return templates.TemplateResponse(
+        "feeds.html",
+        {
+            **common_vars,
+            "feeds": feeds,
+            "feeds_count": len(feeds),
+        }
+    )
+
+@app.post("/feeds/add")
+async def add_feed(request: Request, feed_url: str = Form(...)):
+    """Add a new RSS feed."""
+    feed_url = feed_url.strip()
+
+    if not feed_url:
+        raise HTTPException(status_code=400, detail="Feed URL cannot be empty")
+
+    feeds_file = "rss_feeds.txt"
+
+    # Read existing feeds
+    existing_feeds = []
+    try:
+        with open(feeds_file, 'r') as f:
+            existing_feeds = [line.strip() for line in f if line.strip()]
+    except FileNotFoundError:
+        pass
+
+    # Check if feed already exists
+    if feed_url in existing_feeds:
+        raise HTTPException(status_code=400, detail="Feed already exists")
+
+    # Append new feed
+    with open(feeds_file, 'a') as f:
+        f.write(f"\n{feed_url}\n")
+
+    return RedirectResponse(url="/feeds", status_code=303)
+
+@app.post("/feeds/delete")
+async def delete_feed(request: Request, feed_url: str = Form(...)):
+    """Delete an RSS feed."""
+    feeds_file = "rss_feeds.txt"
+
+    # Read all feeds
+    feeds = []
+    try:
+        with open(feeds_file, 'r') as f:
+            feeds = f.readlines()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Feeds file not found")
+
+    # Remove the specified feed
+    new_feeds = [line for line in feeds if line.strip() != feed_url.strip()]
+
+    # Write back
+    with open(feeds_file, 'w') as f:
+        f.writelines(new_feeds)
+
+    return RedirectResponse(url="/feeds", status_code=303)
 
 # Image Prompt Generation API
 @app.post("/api/generate-image-prompt")

@@ -130,6 +130,24 @@ struct NativeToolbar: View {
                 Divider()
                     .frame(height: 24)
 
+                // Feature buttons
+                Button(action: { appState.navigateTo(path: "/summarize") }) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 13))
+                }
+                .buttonStyle(.bordered)
+                .help("Summarize URL")
+
+                Button(action: { appState.navigateTo(path: "/feeds") }) {
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                        .font(.system(size: 13))
+                }
+                .buttonStyle(.bordered)
+                .help("Manage Feeds")
+
+                Divider()
+                    .frame(height: 24)
+
                 // Action buttons
                 Button(action: { appState.reloadWebView() }) {
                     if appState.isLoading {
@@ -168,6 +186,20 @@ struct NativeToolbar: View {
                 }
                 .buttonStyle(.bordered)
                 .help("Find in page (⌘F)")
+
+                Button(action: {
+                    // Open settings window
+                    if #available(macOS 14.0, *) {
+                        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                    } else {
+                        NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+                    }
+                }) {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 13))
+                }
+                .buttonStyle(.bordered)
+                .help("Settings (⌘,)")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
