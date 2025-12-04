@@ -2,6 +2,10 @@
 {% extends "base.html" %}
 
 {% set show_paywall_toggle = false %}
+{% set breadcrumb_items = [
+  {'label': 'Home', 'url': url_for('index')},
+  {'label': 'Bookmarks', 'url': None}
+] %}
 
 {% block title %}My Bookmarks - RSS Reader{% endblock %}
 
@@ -254,6 +258,8 @@
 {% endblock extra_head %}
 
 {% block content %}
+{% include 'components/breadcrumb.html' %}
+
 <div class="bookmarks-container">
   <header class="page-header">
     <h1>My Saved Articles</h1>
@@ -356,10 +362,14 @@
       </div>
       {% endfor %}
     {% else %}
-      <div class="empty-state">
-        <p>You haven't saved any articles yet.</p>
-        <p>Browse the <a href="/">feed</a> and click "Save for later" on articles you want to read later.</p>
-      </div>
+      {% set empty_state = {
+        'icon': 'bookmark',
+        'title': "You haven't saved any articles yet",
+        'description': 'Browse the feed and click "Save for later" on articles you want to read later',
+        'action_url': url_for('index'),
+        'action_text': 'Browse Feed'
+      } %}
+      {% include 'components/empty_state.html' %}
     {% endif %}
   </div>
   

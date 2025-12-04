@@ -2,6 +2,8 @@
 {% extends "base.html" %}
 
 {% block content %}
+  {% include 'components/breadcrumb.html' %}
+
   {% if show_page_header is not defined or show_page_header %}
   <header class="page-header">
     <h1 class="page-title" id="page-title">{% block page_title %}{% endblock %}</h1>

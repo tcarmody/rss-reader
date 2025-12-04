@@ -2,6 +2,10 @@
 {% extends "form_base.html" %}
 
 {% set show_page_header = false %}
+{% set breadcrumb_items = [
+  {'label': 'Home', 'url': url_for('index')},
+  {'label': 'Summarize URL', 'url': None}
+] %}
 
 {% block title %}Data Points AI - Summarize URLs{% endblock %}
 
