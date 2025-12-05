@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Data Points AI{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+  <div class="profile-header">
+    <h1>Your Profile</h1>
+    <p class="profile-subtitle">Manage your account settings</p>
+  </div>
+
+  {% set error = request.query_params.get('error', '') %}
+  {% set success = request.query_params.get('success', '') %}
+
+  {% if error %}
+  <div class="alert alert-error">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  {% if success %}
+  <div class="alert alert-success">
+    {{ success }}
+  </div>
+  {% endif %}
+
+  <div class="profile-grid">
+    <!-- Account Info Card -->
+    <div class="profile-card">
+      <h2>Account Information</h2>
+      <div class="info-row">
+        <span class="info-label">Username</span>
+        <span class="info-value">{{ user.username }}</span>
+      </div>
+      {% if user.is_admin %}
+      <div class="info-row">
+        <span class="info-label">Role</span>
+        <span class="info-value badge badge-admin">Administrator</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Stats Card -->
+    <div class="profile-card">
+      <h2>Your Stats</h2>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <span class="stat-value">{{ feed_count }}</span>
+          <span class="stat-label">RSS Feeds</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ bookmark_count }}</span>
+          <span class="stat-label">Bookmarks</span>
+        </div>
+      </div>
+      <div class="card-actions">
+        <a href="/feeds" class="btn btn-secondary btn-sm">Manage Feeds</a>
+        <a href="/bookmarks" class="btn btn-secondary btn-sm">View Bookmarks</a>
+      </div>
+    </div>
+
+    <!-- Change Password Card -->
+    <div class="profile-card">
+      <h2>Change Password</h2>
+      <form method="POST" action="/profile/change-password" class="password-form">
+        <div class="form-group">
+          <label for="current_password">Current Password</label>
+          <input
+            type="password"
+            id="current_password"
+            name="current_password"
+            required
+            autocomplete="current-password"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="new_password">New Password</label>
+          <input
+            type="password"
+            id="new_password"
+            name="new_password"
+            required
+            autocomplete="new-password"
+            minlength="8"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="new_password_confirm">Confirm New Password</label>
+          <input
+            type="password"
+            id="new_password_confirm"
+            name="new_password_confirm"
+            required
+            autocomplete="new-password"
+          >
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+          Update Password
+        </button>
+      </form>
+    </div>
+
+    <!-- Danger Zone Card -->
+    <div class="profile-card card-danger">
+      <h2>Session</h2>
+      <p>Sign out of your account on this device.</p>
+      <a href="/logout" class="btn btn-danger">
+        Sign Out
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .profile-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .profile-header {
+    margin-bottom: 2rem;
+  }
+
+  .profile-header h1 {
+    margin: 0 0 0.5rem 0;
+    font-size: 2rem;
+  }
+
+  .profile-subtitle {
+    color: var(--text-muted, #666);
+    margin: 0;
+  }
+
+  .profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .profile-card {
+    background: var(--card-bg, #fff);
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    padding: 1.5rem;
+  }
+
+  .profile-card h2 {
+    margin: 0 0 1.25rem 0;
+    font-size: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color, #eee);
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color, #f0f0f0);
+  }
+
+  .info-row:last-child {
+    border-bottom: none;
+  }
+
+  .info-label {
+    color: var(--text-muted, #666);
+    font-size: 0.9rem;
+  }
+
+  .info-value {
+    font-weight: 500;
+  }
+
+  .badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .badge-admin {
+    background-color: #dbeafe;
+    color: #1e40af;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: var(--bg-subtle, #f8f9fa);
+    border-radius: 8px;
+  }
+
+  .stat-value {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-color, #007bff);
+  }
+
+  .stat-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted, #666);
+    margin-top: 0.25rem;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .password-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .form-group label {
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+
+  .form-group input {
+    padding: 0.625rem 0.875rem;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--primary-color, #007bff);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+  }
+
+  .btn {
+    padding: 0.625rem 1.25rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    transition: background-color 0.2s;
+  }
+
+  .btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .btn-primary {
+    background-color: var(--primary-color, #007bff);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background-color: var(--primary-hover, #0056b3);
+  }
+
+  .btn-secondary {
+    background-color: var(--bg-subtle, #e9ecef);
+    color: var(--text-color, #333);
+  }
+
+  .btn-secondary:hover {
+    background-color: #d3d7db;
+  }
+
+  .btn-danger {
+    background-color: #dc3545;
+    color: white;
+  }
+
+  .btn-danger:hover {
+    background-color: #c82333;
+  }
+
+  .card-danger {
+    border: 1px solid #fecaca;
+  }
+
+  .card-danger h2 {
+    color: #991b1b;
+  }
+
+  .card-danger p {
+    color: var(--text-muted, #666);
+    margin-bottom: 1rem;
+  }
+
+  .alert {
+    padding: 0.875rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+  }
+
+  .alert-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+  }
+
+  .alert-success {
+    background-color: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+  }
+</style>
+{% endblock %}

@@ -4,8 +4,12 @@ An advanced RSS feed reader with AI-powered summarization, lightweight semantic 
 
 > **🎉 NEW: Native Mac Application!** This project now includes a sophisticated native macOS app built with Electron. See [MAC_APP.md](MAC_APP.md) for details or jump to [Quick Start for Mac App](#mac-app).
 
+> **🔐 NEW: Multi-User Support!** The app now supports multiple users with individual accounts, personalized RSS feeds, and private bookmark collections. See [Authentication](#authentication) for details.
+
 ## Features
 
+- **Multi-User Authentication**: Secure user registration and login with bcrypt password hashing
+- **Per-User Data Isolation**: Each user has their own RSS feeds, bookmarks, and settings in separate databases
 - **Smart Clustering**: Automatically groups related articles using lightweight semantic embeddings (80MB model) with keyword fallbacks
 - **Intelligent Topic Extraction**: Extracts meaningful topics from article clusters using hybrid similarity scoring
 - **AI Summaries**: Generates concise summaries of articles using the Claude API
@@ -67,6 +71,50 @@ Or use the provided script (recommended):
 
 The server will be available at http://localhost:5005 by default.
 
+## Authentication
+
+The application supports multiple users with secure authentication.
+
+### First-Time Setup
+
+1. Start the server and navigate to http://localhost:5005
+2. You'll be redirected to the login page
+3. Click "Create Account" to register
+4. **The first user to register becomes the administrator**
+5. New users automatically get the 29 default RSS feeds imported
+
+### Migrating Existing Data
+
+If you have existing bookmarks from before the multi-user update, run the migration script:
+
+```bash
+python scripts/migrate_to_multiuser.py
+```
+
+This will:
+- Create an admin user account
+- Migrate existing bookmarks to the admin user
+- Import default feeds for the admin user
+
+### User Features
+
+- **Personal RSS Feeds**: Each user manages their own feed subscriptions
+- **Private Bookmarks**: Bookmarks are isolated per user
+- **User Profile**: Change password and view account stats at `/profile`
+- **Remember Me**: Optional 30-day persistent login
+
+### Data Storage
+
+User data is stored in isolated SQLite databases:
+
+```
+data/
+├── auth.db                    # Shared authentication database
+└── users/
+    └── {user_id}/
+        └── user_data.db       # Per-user bookmarks, feeds, settings
+```
+
 ## Mac App
 
 ### Quick Start for Mac App
@@ -121,7 +169,9 @@ For detailed documentation, see:
 
 ### RSS Feeds
 
-Add your RSS feeds to `rss_feeds.txt`, one URL per line. Comments can be added after a `#` character.
+**For multi-user setups**: Each user manages their own feeds through the web interface at `/feeds`. Default feeds are imported from `rss_feeds.txt` when a new user registers.
+
+**For single-user or initial setup**: Edit `rss_feeds.txt` directly with one URL per line. Comments can be added after a `#` character.
 
 Example:
 ```
@@ -136,12 +186,15 @@ Set these in your `.env` file or environment:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `ANTHROPIC_API_KEY` | Your Anthropic API key | Required |
+| `SECRET_KEY` | Secret key for session encryption | Auto-generated (dev only) |
 | `API_RPM_LIMIT` | Rate limit for API calls (requests per minute) | 50 |
 | `CACHE_SIZE` | Size of in-memory cache | 256 |
 | `CACHE_DIR` | Directory for cache storage | ./summary_cache |
 | `CACHE_TTL_DAYS` | Time-to-live for cache entries (days) | 30 |
 | `MAX_BATCH_WORKERS` | Maximum worker processes for batch processing | 3 |
 | `ENABLE_PAYWALL_BYPASS` | Enable paywall bypass capabilities | false |
+
+**Security Note**: For production deployments, always set a strong `SECRET_KEY` environment variable.
 
 ## System Architecture
 
@@ -162,7 +215,22 @@ The system consists of several key components:
 - **Content Processing (`content/`)**: Archive services, paywall detection, and content extraction
 - **Performance Tracking (`common/performance.py`)**: Track and log performance metrics
 
+### Authentication & User Management
+
+- **User Models (`models/user.py`)**: User, UserSession, Feed, and UserSettings models
+- **Auth Manager (`services/auth_manager.py`)**: Registration, login, password hashing, session tokens
+- **User Data Manager (`services/user_data_manager.py`)**: Per-user database management
+- **Auth Middleware (`middleware/auth.py`)**: Route protection with `@require_login` decorator
+
 ## Recent Changes and Improvements
+
+### NEW: Multi-User Authentication System
+- **User registration and login**: Secure authentication with bcrypt password hashing
+- **Per-user data isolation**: Each user has their own SQLite database for complete data separation
+- **Session management**: Cookie-based sessions with optional "remember me" persistent tokens
+- **Protected routes**: All data-modifying endpoints require authentication
+- **First user is admin**: The first registered user automatically becomes an administrator
+- **Migration support**: Script to migrate existing single-user data to multi-user system
 
 ### NEW: Lightweight Clustering System (v2.0)
 - **Replaced heavy ML clustering** (2GB+ dependencies) with lightweight semantic clustering (~200MB)
