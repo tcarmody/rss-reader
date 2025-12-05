@@ -1,13 +1,16 @@
 <!-- Empty State Component -->
 <!-- Usage:
-  {% set empty_state = {
-    'icon': 'bookmark',  (options: bookmark, rss, document, alert)
+  Icon options: bookmark, rss, document, alert
+
+  Example:
+  {percent set empty_state = {
+    'icon': 'bookmark',
     'title': 'No items found',
     'description': 'Add your first item to get started',
     'action_url': '/add',
     'action_text': 'Add Item'
-  } %}
-  {% include 'components/empty_state.html' %}
+  } percent}
+  {percent include 'components/empty_state.html' percent}
 -->
 
 {% if empty_state is defined %}
