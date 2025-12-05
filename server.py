@@ -46,6 +46,15 @@ from services.bookmark_manager import BookmarkManager
 # Import image prompt functionality
 from services.image_prompt_generator import get_image_prompt_generator
 
+# Import authentication functionality
+from services.auth_manager import get_auth_manager
+from services.user_data_manager import get_user_data_manager
+from middleware.auth import (
+    get_current_user, set_user_session, clear_user_session,
+    require_login, require_admin, get_user_data,
+    SESSION_USER_ID, COOKIE_REMEMBER_TOKEN
+)
+
 # Import for dependency injection
 from main import setup_summarization_engine
 
@@ -334,8 +343,11 @@ def get_clustering_settings(request: Request):
 def get_common_template_vars(request: Request):
     """Helper to get common variables for template context."""
     now = datetime.now(timezone.utc)
+    user = get_current_user(request)
     return {
         "request": request,
+        "user": user,  # None if not logged in, dict with id/username/is_admin if logged in
+        "is_authenticated": user is not None,
         "paywall_bypass_enabled": request.session.get('paywall_bypass_enabled', False),
         "clustering_settings": get_clustering_settings(request),
         "global_settings": get_global_settings(request),
@@ -389,25 +401,26 @@ def sort_clusters(clusters):
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Render the main page with the latest summaries or a welcome page if none exist."""
+    # Redirect to login if not authenticated
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url='/login', status_code=303)
+
     if 'paywall_bypass_enabled' not in request.session:
         request.session['paywall_bypass_enabled'] = False
-    if 'feeds_list' not in request.session:
-        request.session['feeds_list'] = None
-    if 'use_default' not in request.session:
-        request.session['use_default'] = True
 
     common_vars = get_common_template_vars(request)
 
-    # Get user-specific cluster data from cache (replaces latest_data)
+    # Get user-specific cluster data from cache
     user_data = get_user_cluster_data(request)
 
     if user_data['clusters']:
         sorted_clusters = sort_clusters(user_data['clusters'])
         timestamp_str = user_data['timestamp']
-        timestamp_dt = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc) if timestamp_str else common_vars["timestamp_dt"]
+        timestamp_dt = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc) if timestamp_str else common_vars.get("timestamp_dt", datetime.now(timezone.utc))
 
         return templates.TemplateResponse(
-            "feed_summary.html",  # Fixed filename
+            "feed_summary.html",
             {
                 **common_vars,
                 "clusters": sorted_clusters,
@@ -420,7 +433,7 @@ async def index(request: Request):
             "welcome.html",
             {
                 **common_vars,
-                "initial_summaries_loaded": False, # Explicitly set for welcome page
+                "initial_summaries_loaded": False,
             }
         )
 
@@ -500,6 +513,7 @@ async def reset_clustering_settings(request: Request):
 
 
 @app.post("/refresh")
+@require_login()
 async def refresh_feeds(
     request: Request,
     feeds: Optional[str] = Form(None),
@@ -509,9 +523,9 @@ async def refresh_feeds(
     per_feed_limit: Optional[int] = Form(None)
 ):
     """Process RSS feeds and update the latest data."""
-    common_vars = get_common_template_vars(request) # For error responses
+    common_vars = get_common_template_vars(request)  # For error responses
     global_settings = common_vars['global_settings']
-    
+
     # Update global settings from form values if provided
     if batch_size is not None:
         global_settings['batch_size'] = batch_size
@@ -519,33 +533,41 @@ async def refresh_feeds(
         global_settings['batch_delay'] = batch_delay
     if per_feed_limit is not None:
         global_settings['per_feed_limit'] = per_feed_limit
-    
+
     # Save updated settings to session
     request.session['global_settings'] = global_settings
-    
+
     # Get values to use for processing
     batch_size = global_settings['batch_size']
     batch_delay = global_settings['batch_delay']
     per_feed_limit = global_settings['per_feed_limit']
 
     try:
+        # Get user's feeds from their database
+        user = get_current_user(request)
+        user_feeds = get_user_feeds(request)
+
+        # Check if form provides custom feeds
         feeds_from_form = feeds.strip() if feeds else ''
         use_default_from_form = use_default == 'true'
 
-        request.session['use_default'] = use_default_from_form
         if not use_default_from_form and feeds_from_form:
-            feeds_list_session = [url.strip() for url in feeds_from_form.split('\n') if url.strip()]
-            request.session['feeds_list'] = feeds_list_session
-            logging.info(f"Storing {len(feeds_list_session)} custom feeds in session")
+            # Use feeds from form (custom one-time feeds)
+            feeds_list = [url.strip() for url in feeds_from_form.split('\n') if url.strip()]
+            logging.info(f"Using {len(feeds_list)} custom feeds from form")
+        elif user_feeds:
+            # Use user's saved feeds from database
+            feeds_list = user_feeds
+            logging.info(f"Using {len(feeds_list)} feeds from user's database")
         else:
-            request.session['feeds_list'] = None # Use default from file
-            logging.info("Using default feeds from rss_feeds.txt")
-        
-        current_use_default = request.session.get('use_default', True)
-        current_feeds_list = request.session.get('feeds_list')
-        
+            # No feeds available
+            return templates.TemplateResponse('error.html', {
+                **common_vars,
+                "message": "No feeds configured. Please add some feeds first."
+            })
+
         clustering_settings = get_clustering_settings(request)
-        
+
         if clustering_settings.get('time_range_enabled', False):
             time_value = clustering_settings.get('time_range_value', 168)
             time_unit = clustering_settings.get('time_range_unit', 'hours')
@@ -556,49 +578,45 @@ async def refresh_feeds(
         else:
             os.environ['TIME_RANGE_HOURS'] = '0'
             logging.info("Time range filter disabled")
-        
+
         os.environ['ENABLE_MULTI_ARTICLE_CLUSTERING'] = 'true' if clustering_settings['enable_multi_article'] else 'false'
         os.environ['MIN_SIMILARITY_THRESHOLD'] = str(clustering_settings['similarity_threshold'])
         os.environ['MAX_ARTICLES_PER_BATCH'] = str(clustering_settings['max_articles_per_batch'])
         os.environ['USE_SIMPLE_CLUSTERING'] = 'true' if clustering_settings.get('use_simple_clustering', True) else 'false'
         os.environ['USE_ENHANCED_CLUSTERING'] = 'true' if clustering_settings['use_enhanced_clustering'] else 'false'
         os.environ['ENABLE_PAYWALL_BYPASS'] = 'true' if request.session.get('paywall_bypass_enabled', False) else 'false'
-        
-        max_workers = clustering_settings.get('max_articles_per_batch', 3)
-        
-        # Ensure main is not run if this script is imported elsewhere
-        # For this to work, EnhancedRSSReader should be importable without running main.py's __main__ block
-        from reader.enhanced_reader import EnhancedRSSReader as MainEnhancedRSSReader # Avoid name clash
 
-        feeds_to_pass = None if current_use_default else current_feeds_list
-        per_feed_limit = global_settings.get('per_feed_limit', 25)
+        max_workers = clustering_settings.get('max_articles_per_batch', 3)
+
+        from reader.enhanced_reader import EnhancedRSSReader as MainEnhancedRSSReader
+
         reader = MainEnhancedRSSReader(
-            feeds=feeds_to_pass, # Pass None to use default file, or the list
+            feeds=feeds_list,  # Pass the user's feed list
             batch_size=batch_size,
             batch_delay=batch_delay,
             max_workers=max_workers,
             per_feed_limit=per_feed_limit
         )
-        
+
         output_file = await reader.process_feeds()
         clusters = reader.last_processed_clusters
 
         if output_file and clusters:
-            # Store cluster data in user-specific cache (replaces latest_data)
+            # Store cluster data in user-specific cache
             cluster_data = {
                 'clusters': clusters,
                 'timestamp': datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
                 'output_file': output_file,
-                'raw_clusters': clusters  # Store raw clusters as well
+                'raw_clusters': clusters
             }
             set_user_cluster_data(request, cluster_data)
 
-            logging.info(f"Successfully refreshed feeds: {output_file}")
+            logging.info(f"Successfully refreshed feeds for user {user['username']}: {output_file}")
             return RedirectResponse(url="/", status_code=303)
         else:
             logging.warning("No articles found or processed")
             return templates.TemplateResponse('error.html', {**common_vars, "message": "No articles found or processed. Check logs."})
-    
+
     except Exception as e:
         logging.error(f"Error refreshing feeds: {str(e)}", exc_info=True)
         return templates.TemplateResponse('error.html', {**common_vars, "message": f"Error: {str(e)}"})
@@ -1106,7 +1124,17 @@ async def summarize_articles_batch(request: Request):
         raise HTTPException(status_code=500, detail=f"Error summarizing articles batch: {str(e)}")
 
 # Bookmark API endpoints
+def get_user_bookmark_manager(request: Request):
+    """Get the bookmark manager for the current user."""
+    user = get_current_user(request)
+    if not user:
+        return None
+    user_data = get_user_data_manager(user['id'])
+    return user_data.get_bookmark_manager()
+
+
 @app.post("/api/bookmarks")
+@require_login(redirect_to_login=False)
 async def create_bookmark(
     request: Request,
     title: str = Form(...),
@@ -1116,8 +1144,9 @@ async def create_bookmark(
     tags: Optional[str] = Form(None)
 ):
     """Add a new bookmark."""
+    user_bookmark_manager = get_user_bookmark_manager(request)
     tag_list = tags.split(',') if tags else []
-    bookmark_id = bookmark_manager.add_bookmark(
+    bookmark_id = user_bookmark_manager.add_bookmark(
         title=title,
         url=url,
         summary=summary,
@@ -1126,7 +1155,9 @@ async def create_bookmark(
     )
     return {"id": bookmark_id, "status": "success"}
 
+
 @app.get("/api/bookmarks")
+@require_login(redirect_to_login=False)
 async def get_bookmarks(
     request: Request,
     read: Optional[bool] = None,
@@ -1135,8 +1166,9 @@ async def get_bookmarks(
     offset: int = 0
 ):
     """Get all bookmarks with optional filtering."""
+    user_bookmark_manager = get_user_bookmark_manager(request)
     tag_list = tags.split(',') if tags else None
-    bookmarks = bookmark_manager.get_bookmarks(
+    bookmarks = user_bookmark_manager.get_bookmarks(
         filter_read=read,
         tags=tag_list,
         limit=limit,
@@ -1144,18 +1176,23 @@ async def get_bookmarks(
     )
     return {"bookmarks": bookmarks}
 
+
 @app.get("/api/bookmarks/{bookmark_id}")
+@require_login(redirect_to_login=False)
 async def get_bookmark(
     request: Request,
     bookmark_id: int
 ):
     """Get a single bookmark by ID."""
-    bookmark = bookmark_manager.get_bookmark(bookmark_id)
+    user_bookmark_manager = get_user_bookmark_manager(request)
+    bookmark = user_bookmark_manager.get_bookmark(bookmark_id)
     if not bookmark:
         raise HTTPException(status_code=404, detail="Bookmark not found")
     return bookmark
 
+
 @app.put("/api/bookmarks/{bookmark_id}")
+@require_login(redirect_to_login=False)
 async def update_bookmark(
     request: Request,
     bookmark_id: int,
@@ -1167,6 +1204,7 @@ async def update_bookmark(
     read_status: Optional[bool] = Form(None)
 ):
     """Update a bookmark."""
+    user_bookmark_manager = get_user_bookmark_manager(request)
     update_data = {}
     if title is not None:
         update_data['title'] = title
@@ -1180,36 +1218,43 @@ async def update_bookmark(
         update_data['tags'] = tags.split(',') if tags else []
     if read_status is not None:
         update_data['read_status'] = read_status
-        
-    success = bookmark_manager.update_bookmark(bookmark_id, **update_data)
+
+    success = user_bookmark_manager.update_bookmark(bookmark_id, **update_data)
     if not success:
         raise HTTPException(status_code=404, detail="Bookmark not found")
     return {"status": "success"}
 
+
 @app.put("/api/bookmarks/{bookmark_id}/read")
+@require_login(redirect_to_login=False)
 async def update_read_status(
     request: Request,
     bookmark_id: int,
     status: bool = True
 ):
     """Mark a bookmark as read/unread."""
-    success = bookmark_manager.mark_as_read(bookmark_id, status)
+    user_bookmark_manager = get_user_bookmark_manager(request)
+    success = user_bookmark_manager.mark_as_read(bookmark_id, status)
     if not success:
         raise HTTPException(status_code=404, detail="Bookmark not found")
     return {"status": "success"}
 
+
 @app.delete("/api/bookmarks/{bookmark_id}")
+@require_login(redirect_to_login=False)
 async def delete_bookmark(
     request: Request,
     bookmark_id: int
 ):
     """Delete a bookmark."""
-    success = bookmark_manager.delete_bookmark(bookmark_id)
+    user_bookmark_manager = get_user_bookmark_manager(request)
+    success = user_bookmark_manager.delete_bookmark(bookmark_id)
     if not success:
         raise HTTPException(status_code=404, detail="Bookmark not found")
     return {"status": "success"}
 
 @app.get("/api/bookmarks/export/{format_type}")
+@require_login(redirect_to_login=False)
 async def export_bookmarks(
     request: Request,
     format_type: str,
@@ -1219,19 +1264,20 @@ async def export_bookmarks(
     """Export bookmarks to JSON or CSV format."""
     if format_type.lower() not in ['json', 'csv']:
         raise HTTPException(status_code=400, detail="Format must be 'json' or 'csv'")
-        
+
+    user_bookmark_manager = get_user_bookmark_manager(request)
     tag_list = tags.split(',') if tags else None
     try:
-        data = bookmark_manager.export_bookmarks(
+        data = user_bookmark_manager.export_bookmarks(
             format_type=format_type.lower(),
             filter_read=read,
             tags=tag_list
         )
-        
+
         # Set appropriate content type and filename
         content_type = "application/json" if format_type.lower() == 'json' else "text/csv"
         filename = f"bookmarks_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{format_type.lower()}"
-        
+
         response = Response(content=data)
         response.headers["Content-Type"] = content_type
         response.headers["Content-Disposition"] = f"attachment; filename={filename}"
@@ -1239,23 +1285,29 @@ async def export_bookmarks(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/bookmarks/import")
+@require_login(redirect_to_login=False)
 async def import_bookmarks(
     request: Request,
     json_data: str = Form(...)
 ):
     """Import bookmarks from JSON data."""
+    user_bookmark_manager = get_user_bookmark_manager(request)
     try:
-        count = bookmark_manager.import_from_json(json_data)
+        count = user_bookmark_manager.import_from_json(json_data)
         return {"status": "success", "imported": count}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 # Bookmark UI routes
 @app.get("/bookmarks", response_class=HTMLResponse)
+@require_login()
 async def view_bookmarks(request: Request):
     """Render the bookmarks page."""
-    bookmarks = bookmark_manager.get_bookmarks()
+    user_bookmark_manager = get_user_bookmark_manager(request)
+    bookmarks = user_bookmark_manager.get_bookmarks()
     common_vars = get_common_template_vars(request)
     # Override paywall toggle for bookmarks page
     common_vars["show_paywall_toggle"] = False
@@ -1268,22 +1320,25 @@ async def view_bookmarks(request: Request):
         }
     )
 
+
+# Helper to get user's feeds
+def get_user_feeds(request: Request) -> list:
+    """Get the feed list for the current user."""
+    user = get_current_user(request)
+    if not user:
+        return []
+    user_data = get_user_data_manager(user['id'])
+    return user_data.get_feed_urls()
+
+
 @app.get("/feeds", response_class=HTMLResponse)
+@require_login()
 async def manage_feeds(request: Request):
     """Render the feed management page."""
     common_vars = get_common_template_vars(request)
 
-    # Read current feeds from file
-    feeds = []
-    feeds_file = "rss_feeds.txt"
-    try:
-        with open(feeds_file, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#'):
-                    feeds.append(line)
-    except FileNotFoundError:
-        pass
+    # Get feeds from user's database
+    feeds = get_user_feeds(request)
 
     return templates.TemplateResponse(
         "feeds.html",
@@ -1294,7 +1349,9 @@ async def manage_feeds(request: Request):
         }
     )
 
+
 @app.post("/feeds/add")
+@require_login()
 async def add_feed(request: Request, feed_url: str = Form(...)):
     """Add a new RSS feed."""
     feed_url = feed_url.strip()
@@ -1302,45 +1359,28 @@ async def add_feed(request: Request, feed_url: str = Form(...)):
     if not feed_url:
         raise HTTPException(status_code=400, detail="Feed URL cannot be empty")
 
-    feeds_file = "rss_feeds.txt"
+    user = get_current_user(request)
+    user_data = get_user_data_manager(user['id'])
 
-    # Read existing feeds
-    existing_feeds = []
-    try:
-        with open(feeds_file, 'r') as f:
-            existing_feeds = [line.strip() for line in f if line.strip()]
-    except FileNotFoundError:
-        pass
-
-    # Check if feed already exists
-    if feed_url in existing_feeds:
+    # Try to add the feed
+    feed = user_data.add_feed(feed_url)
+    if not feed:
         raise HTTPException(status_code=400, detail="Feed already exists")
-
-    # Append new feed
-    with open(feeds_file, 'a') as f:
-        f.write(f"\n{feed_url}\n")
 
     return RedirectResponse(url="/feeds", status_code=303)
 
+
 @app.post("/feeds/delete")
+@require_login()
 async def delete_feed(request: Request, feed_url: str = Form(...)):
     """Delete an RSS feed."""
-    feeds_file = "rss_feeds.txt"
+    user = get_current_user(request)
+    user_data = get_user_data_manager(user['id'])
 
-    # Read all feeds
-    feeds = []
-    try:
-        with open(feeds_file, 'r') as f:
-            feeds = f.readlines()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Feeds file not found")
+    success = user_data.remove_feed(feed_url.strip())
 
-    # Remove the specified feed
-    new_feeds = [line for line in feeds if line.strip() != feed_url.strip()]
-
-    # Write back
-    with open(feeds_file, 'w') as f:
-        f.writelines(new_feeds)
+    if not success:
+        raise HTTPException(status_code=404, detail="Feed not found")
 
     return RedirectResponse(url="/feeds", status_code=303)
 
@@ -1427,6 +1467,226 @@ async def get_image_prompt_styles():
             status_code=500,
             detail=f"Failed to get image prompt styles: {str(e)}"
         )
+
+# =============================================================================
+# Authentication Routes
+# =============================================================================
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """Render the login page."""
+    # If already logged in, redirect to home
+    if get_current_user(request):
+        return RedirectResponse(url='/', status_code=303)
+
+    common_vars = get_common_template_vars(request)
+    error = request.query_params.get('error', '')
+    success = request.query_params.get('success', '')
+
+    return templates.TemplateResponse(
+        "auth/login.html",
+        {
+            **common_vars,
+            "error": error,
+            "success": success,
+            "next_url": request.session.get('next_url', '/'),
+        }
+    )
+
+
+@app.post("/login")
+async def login_submit(
+    request: Request,
+    response: Response,
+    username: str = Form(...),
+    password: str = Form(...),
+    remember_me: Optional[str] = Form(None)
+):
+    """Process login form submission."""
+    auth_manager = get_auth_manager()
+    user, error = auth_manager.authenticate_user(username, password)
+
+    if not user:
+        return RedirectResponse(
+            url=f'/login?error={quote(error)}',
+            status_code=303
+        )
+
+    # Set session
+    set_user_session(request, user)
+
+    # Handle "remember me" - create persistent token
+    redirect_response = RedirectResponse(
+        url=request.session.pop('next_url', '/'),
+        status_code=303
+    )
+
+    if remember_me == 'on':
+        token = auth_manager.create_session_token(user.id, expires_days=30)
+        if token:
+            redirect_response.set_cookie(
+                key=COOKIE_REMEMBER_TOKEN,
+                value=token,
+                max_age=30 * 24 * 60 * 60,  # 30 days
+                httponly=True,
+                samesite='lax'
+            )
+
+    logging.info(f"User logged in: {user.username}")
+    return redirect_response
+
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    """Render the registration page."""
+    # If already logged in, redirect to home
+    if get_current_user(request):
+        return RedirectResponse(url='/', status_code=303)
+
+    common_vars = get_common_template_vars(request)
+    error = request.query_params.get('error', '')
+
+    return templates.TemplateResponse(
+        "auth/register.html",
+        {
+            **common_vars,
+            "error": error,
+        }
+    )
+
+
+@app.post("/register")
+async def register_submit(
+    request: Request,
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    password_confirm: str = Form(...)
+):
+    """Process registration form submission."""
+    # Validate password confirmation
+    if password != password_confirm:
+        return RedirectResponse(
+            url='/register?error=Passwords+do+not+match',
+            status_code=303
+        )
+
+    auth_manager = get_auth_manager()
+    user, error = auth_manager.register_user(username, email, password)
+
+    if not user:
+        return RedirectResponse(
+            url=f'/register?error={quote(error)}',
+            status_code=303
+        )
+
+    # Initialize user's data directory and import default feeds
+    user_data = get_user_data_manager(user.id)
+    feeds_imported = user_data.import_default_feeds()
+    logging.info(f"New user {user.username} registered, imported {feeds_imported} default feeds")
+
+    # Log the user in automatically
+    set_user_session(request, user)
+
+    return RedirectResponse(url='/', status_code=303)
+
+
+@app.get("/logout")
+async def logout(request: Request, response: Response):
+    """Log out the current user."""
+    user = get_current_user(request)
+
+    # Invalidate remember token if present
+    remember_token = request.cookies.get(COOKIE_REMEMBER_TOKEN)
+    if remember_token:
+        auth_manager = get_auth_manager()
+        auth_manager.invalidate_session_token(remember_token)
+
+    # Clear session
+    clear_user_session(request)
+
+    if user:
+        logging.info(f"User logged out: {user['username']}")
+
+    # Create redirect response and clear cookie
+    redirect_response = RedirectResponse(url='/login', status_code=303)
+    redirect_response.delete_cookie(key=COOKIE_REMEMBER_TOKEN)
+
+    return redirect_response
+
+
+@app.get("/profile", response_class=HTMLResponse)
+@require_login()
+async def profile_page(request: Request):
+    """Render the user profile page."""
+    common_vars = get_common_template_vars(request)
+    user = get_current_user(request)
+
+    # Get user's data manager for stats
+    user_data = get_user_data_manager(user['id'])
+    bookmark_manager = user_data.get_bookmark_manager()
+
+    # Get stats
+    feeds = user_data.get_feeds()
+    bookmarks = bookmark_manager.get_all_bookmarks()
+
+    return templates.TemplateResponse(
+        "auth/profile.html",
+        {
+            **common_vars,
+            "feed_count": len(feeds),
+            "bookmark_count": len(bookmarks),
+        }
+    )
+
+
+@app.post("/profile/change-password")
+@require_login()
+async def change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    new_password_confirm: str = Form(...)
+):
+    """Change the user's password."""
+    if new_password != new_password_confirm:
+        return RedirectResponse(
+            url='/profile?error=New+passwords+do+not+match',
+            status_code=303
+        )
+
+    user = get_current_user(request)
+    auth_manager = get_auth_manager()
+
+    # Verify current password
+    db_user, _ = auth_manager.authenticate_user(user['username'], current_password)
+    if not db_user:
+        return RedirectResponse(
+            url='/profile?error=Current+password+is+incorrect',
+            status_code=303
+        )
+
+    # Update password (need to get fresh user object and update)
+    session = auth_manager._get_session()
+    try:
+        from models.user import User
+        user_obj = session.query(User).filter(User.id == user['id']).first()
+        if user_obj:
+            user_obj.set_password(new_password)
+            session.commit()
+            logging.info(f"Password changed for user: {user['username']}")
+    finally:
+        session.close()
+
+    return RedirectResponse(
+        url='/profile?success=Password+changed+successfully',
+        status_code=303
+    )
+
+
+# =============================================================================
+# Main Entry Point
+# =============================================================================
 
 if __name__ == '__main__':
     import uvicorn
