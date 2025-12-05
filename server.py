@@ -1628,7 +1628,7 @@ async def profile_page(request: Request):
 
     # Get stats
     feeds = user_data.get_feeds()
-    bookmarks = bookmark_manager.get_all_bookmarks()
+    bookmarks = bookmark_manager.get_bookmarks()
 
     return templates.TemplateResponse(
         "auth/profile.html",
