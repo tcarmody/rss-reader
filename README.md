@@ -2,6 +2,10 @@
 
 An advanced RSS feed reader with AI-powered summarization, intelligent article clustering, bookmark management, and editorial image prompt generation. Built with FastAPI and Claude AI.
 
+> **🎉 NEW: Native Mac Application!** This project now includes a sophisticated native macOS app built with Electron. See [MAC_APP.md](MAC_APP.md) for details or jump to [Quick Start for Mac App](#mac-app).
+
+> **🔐 NEW: Multi-User Support!** The app now supports multiple users with individual accounts, personalized RSS feeds, and private bookmark collections. See [Authentication](#authentication) for details.
+
 ## Features
 
 ### Core Capabilities
@@ -89,11 +93,107 @@ python -m spacy download en_core_web_sm
 uvicorn server:app --host 127.0.0.1 --port 5005 --reload
 ```
 
+## Authentication
+
+The application supports multiple users with secure authentication.
+
+### First-Time Setup
+
+1. Start the server and navigate to http://localhost:5005
+2. You'll be redirected to the login page
+3. Click "Create Account" to register
+4. **The first user to register becomes the administrator**
+5. New users automatically get the 29 default RSS feeds imported
+
+### Migrating Existing Data
+
+If you have existing bookmarks from before the multi-user update, run the migration script:
+
+```bash
+python scripts/migrate_to_multiuser.py
+```
+
+This will:
+- Create an admin user account
+- Migrate existing bookmarks to the admin user
+- Import default feeds for the admin user
+
+### User Features
+
+- **Personal RSS Feeds**: Each user manages their own feed subscriptions
+- **Private Bookmarks**: Bookmarks are isolated per user
+- **User Profile**: Change password and view account stats at `/profile`
+- **Remember Me**: Optional 30-day persistent login
+
+### Data Storage
+
+User data is stored in isolated SQLite databases:
+
+```
+data/
+├── auth.db                    # Shared authentication database
+└── users/
+    └── {user_id}/
+        └── user_data.db       # Per-user bookmarks, feeds, settings
+```
+
+## Mac App
+
+### Quick Start for Mac App
+
+Want a native macOS application? Follow these steps:
+
+```bash
+# 1. Install Node.js dependencies
+cd electron
+npm install
+
+# 2. Set up Python environment (if not done already)
+cd ..
+./run_server.sh --help
+
+# 3. Configure API key in .env file (see above)
+
+# 4. Run the Mac app
+cd electron
+npm run dev
+```
+
+### Building the Mac App
+
+```bash
+cd electron
+
+# Build universal binary (Apple Silicon + Intel)
+make build-universal
+
+# Or build for specific architecture
+make build-arm64  # Apple Silicon only
+make build-x64    # Intel only
+```
+
+The built app will be in `electron/dist/` as a `.dmg` installer.
+
+### Mac App Features
+
+- **Native macOS Integration**: Menu bar, keyboard shortcuts, dock integration
+- **Sophisticated UI**: Mac-native design with vibrancy effects
+- **Automatic Server Management**: Python backend starts/stops automatically
+- **Dark Mode**: Full support for macOS system dark mode
+- **Universal Binary**: Runs natively on both Apple Silicon and Intel
+
+For detailed documentation, see:
+- [MAC_APP.md](MAC_APP.md) - Complete Mac app documentation
+- [electron/README.md](electron/README.md) - Technical details
+- [electron/QUICKSTART.md](electron/QUICKSTART.md) - Step-by-step guide
+
 ## Configuration
 
 ### RSS Feeds
 
-Configure your feeds in [rss_feeds.txt](rss_feeds.txt), one URL per line. Comments start with `#`.
+**For multi-user setups**: Each user manages their own feeds through the web interface at `/feeds`. Default feeds are imported from `rss_feeds.txt` when a new user registers.
+
+**For single-user or initial setup**: Edit `rss_feeds.txt` directly with one URL per line. Comments can be added after a `#` character.
 
 **Example**:
 ```
@@ -137,6 +237,18 @@ Examples:
   ./run_server.sh --public --workers 4        # Production mode
   ./run_server.sh --port 8080                 # Custom port
 ```
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANTHROPIC_API_KEY` | Your Anthropic API key | Required |
+| `SECRET_KEY` | Secret key for session encryption | Auto-generated (dev only) |
+| `API_RPM_LIMIT` | Rate limit for API calls (requests per minute) | 50 |
+| `CACHE_SIZE` | Size of in-memory cache | 256 |
+| `CACHE_DIR` | Directory for cache storage | ./summary_cache |
+| `CACHE_TTL_DAYS` | Time-to-live for cache entries (days) | 30 |
+| `MAX_BATCH_WORKERS` | Maximum worker processes for batch processing | 3 |
+| `ENABLE_PAYWALL_BYPASS` | Enable paywall bypass capabilities | false |
+
+**Security Note**: For production deployments, always set a strong `SECRET_KEY` environment variable.
 
 ## System Architecture
 

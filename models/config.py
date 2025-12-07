@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 
 # Complete model identifiers for API calls
 MODEL_IDENTIFIERS = {
-    "claude-sonnet-4.5": "claude-sonnet-4-5-latest",  # Claude 4.5 Sonnet
-    "claude-haiku-4.5": "claude-4-5-haiku-latest"     # Claude 4.5 Haiku
+    "claude-sonnet-4.5": "claude-sonnet-4-5",  # Claude 4.5 Sonnet
+    "claude-haiku-4.5": "claude-haiku-4-5"     # Claude 4.5 Haiku
 }
 
 # Model properties and characteristics
