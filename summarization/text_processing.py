@@ -180,17 +180,28 @@ def create_summary_prompt(text: str, url: str, source_name: str, style: str = "d
         style_instructions = (
             "Summarize the article below following these guidelines:\n\n"
             "Structure:\n"
-            "1. First line: Create a headline in sentence case\n"
+            "1. First line: Create a headline in sentence case that:\n"
+            "   - Captures the core news or development\n"
+            "   - Uses strong, specific verbs\n"
+            "   - Avoids repeating exact phrases from the summary\n"
             "2. Then a blank line\n"
-            "3. Then a summary of three to five sentences that:\n"
-            "   - Presents key information directly and factually\n"
-            "   - Includes technical details relevant to AI developers\n"
-            "   - Covers implications for the AI industry or technology landscape\n"
-            "   - Mentions price and availability details for new models/tools (if applicable)\n"
+            "3. Then a focused summary of three to five sentences:\n"
+            "   - First sentence: State the core announcement, finding, or development\n"
+            "   - Following sentences: Include 2-3 of these elements as relevant:\n"
+            "     • Technical specifications (model sizes, performance metrics, capabilities)\n"
+            "     • Pricing, availability, and access details\n"
+            "     • Key limitations or constraints\n"
+            "     • Industry implications or competitive context\n"
+            "     • Concrete use cases or applications\n"
+            "   - Prioritize information that answers: What changed? What can it do? What does it cost? When is it available?\n"
             "4. Then a blank line\n"
             "5. Then add 'Source: [publication name]' followed by the URL\n\n"
             f"{common_instructions}\n"
-            "- Ensure the headline doesn't repeat too many words from the summary\n\n"
+            "Additional guidelines:\n"
+            "- For product launches: Always include pricing and availability if mentioned\n"
+            "- For research papers: Include key metrics, dataset sizes, or performance improvements\n"
+            "- For company news: Focus on concrete actions, not just announcements or intentions\n"
+            "- Omit background information readers likely already know (e.g., 'OpenAI is an AI company')\n\n"
         )
     
     # Axios-style bullet points
@@ -256,18 +267,29 @@ def create_summary_prompt(text: str, url: str, source_name: str, style: str = "d
 def get_system_prompt() -> str:
     """
     Get the system prompt for Claude.
-    
+
     Returns:
         System prompt string
     """
     return (
-        "You are an expert at creating summaries of articles. Your summaries should be "
-        "factual, informative, concise, and written in a direct journalistic style. "
-        "Avoid meta-language or self-explanatory phrases like 'This article explains...', "
-        "'This is important for AI developers because...', or 'The author discusses...'. "
-        "Instead, present information directly and factually. Write in a clear, "
-        "straightforward manner without exaggeration, hype, or marketing speak. "
-        "Focus on conveying the key points and implications without explicitly stating that you're doing so."
+        "You are an expert technical journalist specializing in AI and technology news. "
+        "Your summaries are written for AI developers, researchers, and technology professionals "
+        "who value precision, technical depth, and direct communication.\n\n"
+
+        "Core principles:\n"
+        "- Present information directly and factually in active voice\n"
+        "- Avoid meta-language like 'This article explains...', 'This is important because...', "
+        "or 'The author discusses...'\n"
+        "- Include technical details, specifications, and industry implications\n"
+        "- Use clear, straightforward language without hype, exaggeration, or marketing speak\n"
+        "- Focus on what matters to technical practitioners: capabilities, limitations, pricing, availability\n\n"
+
+        "Style conventions:\n"
+        "- Use active voice and non-compound verbs (e.g., 'banned' not 'has banned')\n"
+        "- Spell out numbers and 'percent' (e.g., '8 billion', not '8B' or '%')\n"
+        "- Use smart quotes, not straight quotes\n"
+        "- Use 'U.S.' and 'U.K.' with periods; use 'AI' without periods\n"
+        "- Avoid the words 'content' and 'creator' when possible"
     )
 
 def parse_summary_response(summary_text: str, title: str, url: str, source_name: str, style: str = "default") -> Dict[str, str]:
