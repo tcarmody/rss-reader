@@ -2,15 +2,14 @@
 {% extends "base.html" %}
 
 {% set show_paywall_toggle = false %}
+{% set breadcrumb_items = [
+  {'label': 'Home', 'url': url_for('index')},
+  {'label': 'Bookmarks', 'url': None}
+] %}
 
 {% block title %}My Bookmarks - RSS Reader{% endblock %}
 
 {% block main_class %}wide{% endblock %}
-
-{% block nav_actions %}
-  <a href="{{ url_for('welcome') }}" class="button outline">Home / Settings</a>
-  <a href="{{ url_for('index') }}" class="button outline">Back to Feed</a>
-{% endblock nav_actions %}
 
 {% block extra_head %}
 <style>
@@ -361,16 +360,22 @@
       </div>
       {% endfor %}
     {% else %}
-      <div class="empty-state">
-        <p>You haven't saved any articles yet.</p>
-        <p>Browse the <a href="/">feed</a> and click "Save for later" on articles you want to read later.</p>
-      </div>
+      {% set empty_state = {
+        'icon': 'bookmark',
+        'title': "You haven't saved any articles yet",
+        'description': 'Browse the feed and click "Save for later" on articles you want to read later',
+        'action_url': url_for('index'),
+        'action_text': 'Browse Feed'
+      } %}
+      {% include 'components/empty_state.html' %}
     {% endif %}
   </div>
   
   <!-- Modals -->
   {% include 'components/bookmark_modals.html' %}
   {% include 'components/image_prompt_modal.html' %}
+
+  {% include 'components/breadcrumb.html' %}
 </div>
 {% endblock content %}
 

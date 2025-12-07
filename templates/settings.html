@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% set show_paywall_toggle = false %}
+{% set breadcrumb_items = [
+  {'label': 'Home', 'url': url_for('index')},
+  {'label': 'Settings', 'url': None}
+] %}
+
+{% block title %}Settings - Data Points AI{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+  <div class="page-header">
+    <h1>Settings</h1>
+    <p class="subtitle">Configure article clustering and processing options</p>
+  </div>
+
+  <!-- Clustering Settings -->
+  <div class="card">
+    <div class="clustering-settings-header">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="18" cy="5" r="3"></circle>
+        <circle cx="6" cy="12" r="3"></circle>
+        <circle cx="18" cy="19" r="3"></circle>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+      </svg>
+      <h2>Article Clustering Settings</h2>
+    </div>
+
+    <form action="/update_clustering_settings" method="post" id="clusteringSettingsForm">
+      {% set id_prefix = 'settings-' %}
+      {% set show_fast_summarization = true %}
+      {% include 'components/clustering_settings_form.html' %}
+
+      <!-- Default Summary Style -->
+      <div class="setting-row">
+        <div>
+          <label for="default_summary_style" class="setting-name">Default Summary Style</label>
+          <div class="setting-description">Choose how article summaries are formatted</div>
+        </div>
+        <select id="default_summary_style" name="default_summary_style" class="form-input" style="max-width: 200px;">
+          <option value="default" {% if clustering_settings is defined and clustering_settings.default_summary_style == 'default' or clustering_settings.default_summary_style is not defined %}selected{% endif %}>Standard Summary</option>
+          <option value="bullet" {% if clustering_settings is defined and clustering_settings.default_summary_style == 'bullet' %}selected{% endif %}>Axios-Style Bullets</option>
+          <option value="newswire" {% if clustering_settings is defined and clustering_settings.default_summary_style == 'newswire' %}selected{% endif %}>Newswire Style</option>
+        </select>
+      </div>
+
+      <div class="buttons-container">
+        <button type="submit" class="button primary">Save Settings</button>
+        <button type="submit" class="button outline" formaction="/reset_clustering_settings">Reset to Defaults</button>
+      </div>
+    </form>
+  </div>
+
+  {% include 'components/breadcrumb.html' %}
+</div>
+
+<style>
+/* Settings page specific styles */
+.clustering-settings-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.clustering-settings-header svg {
+  margin-right: 0.75rem;
+  color: #6366f1;
+  flex-shrink: 0;
+}
+
+.clustering-settings-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+</style>
+
+<script>
+// Handle toggle visibility for time range options
+document.addEventListener('DOMContentLoaded', function() {
+  const toggles = document.querySelectorAll('[data-toggle-target]');
+
+  toggles.forEach(toggle => {
+    const targetId = toggle.getAttribute('data-toggle-target');
+    const target = document.getElementById(targetId);
+
+    if (target) {
+      toggle.addEventListener('change', function() {
+        if (this.checked) {
+          target.style.display = 'flex';
+        } else {
+          target.style.display = 'none';
+        }
+      });
+    }
+  });
+});
+</script>
+{% endblock %}
