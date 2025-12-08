@@ -35,14 +35,31 @@ class SimpleClustering:
     def __init__(self, cache_dir: str = None):
         self.cache_dir = cache_dir or os.path.join(os.getcwd(), 'simple_cluster_cache')
         os.makedirs(self.cache_dir, exist_ok=True)
-        
+
         # Configuration with environment variable support
         self.similarity_threshold = float(os.environ.get('MIN_SIMILARITY_THRESHOLD', 0.3))
         self.keyword_weight = 0.4  # 40% keyword overlap, 60% semantic similarity
         self.semantic_weight = 0.6
         self.min_cluster_size = int(os.environ.get('MIN_CLUSTER_SIZE', 2))
         self.max_days_old = int(os.environ.get('MAX_CLUSTERING_DAYS', 7))
-        
+
+        # Common entities to filter (same as base.py for consistency)
+        self.common_entities = {
+            # AI/ML terms
+            'ai', 'artificial intelligence', 'chatgpt', 'gpt', 'gpt-4', 'gpt-5',
+            'openai', 'anthropic', 'claude', 'gemini', 'llm', 'genai', 'agi',
+            'machine learning', 'deep learning', 'data science', 'model',
+            'neural network', 'chatbot', 'large language model',
+            # Companies
+            'google', 'microsoft', 'meta', 'amazon', 'apple', 'nvidia', 'tesla',
+            'deepmind', 'hugging face', 'mistral', 'cohere', 'facebook',
+            # Generic tech/news terms
+            'tech', 'technology', 'startup', 'funding', 'billion', 'million',
+            'ceo', 'launch', 'announce', 'update', 'release', 'new', 'report',
+            'news', 'today', 'says', 'could', 'will', 'according', 'platform',
+            'service', 'product', 'company', 'business', 'industry'
+        }
+
         # Initialize model if available
         self.model = None
         if EMBEDDINGS_AVAILABLE:
@@ -55,10 +72,10 @@ class SimpleClustering:
                 self.model = None
     
     def extract_keywords(self, text: str, max_keywords: int = 5) -> List[str]:
-        """Extract meaningful keywords from text."""
+        """Extract meaningful keywords from text, filtering common entities."""
         if not text:
             return []
-        
+
         # Simple but effective keyword extraction
         # Remove common stop words and short words
         stop_words = {
@@ -69,11 +86,14 @@ class SimpleClustering:
             'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must',
             'shall', 'can', 'a', 'an', 'this', 'that', 'these', 'those'
         }
-        
+
         # Clean and tokenize
         text = re.sub(r'[^\w\s]', ' ', text.lower())
-        words = [w for w in text.split() if len(w) > 3 and w not in stop_words]
-        
+        words = [
+            w for w in text.split()
+            if len(w) > 3 and w not in stop_words and w not in self.common_entities
+        ]
+
         # Count frequency and return top keywords
         word_counts = Counter(words)
         return [word for word, count in word_counts.most_common(max_keywords)]

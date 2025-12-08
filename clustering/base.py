@@ -66,10 +66,23 @@ class ClusteringConfig:
         ])
         
         # Common entities that might cause false clustering
+        # Expanded list to reduce false positives from common tech/AI terms
         self.common_entities = set([
-            'AI', 'Artificial Intelligence', 'ChatGPT', 'Machine Learning', 'Deep Learning', 
-            'Data Science', 'LLM', 'Large Language Model', 'GPT', 'Model', 'Neural Network',
-            'ChatBot', 'Tech', 'Technology', 'Report', 'News', 'Today'
+            # AI/ML terms
+            'AI', 'Artificial Intelligence', 'ChatGPT', 'GPT', 'GPT-4', 'GPT-5',
+            'OpenAI', 'Anthropic', 'Claude', 'Gemini', 'LLM', 'GenAI', 'AGI',
+            'Machine Learning', 'Deep Learning', 'Data Science', 'Model',
+            'Neural Network', 'ChatBot', 'Large Language Model',
+
+            # Companies
+            'Google', 'Microsoft', 'Meta', 'Amazon', 'Apple', 'NVIDIA', 'Tesla',
+            'DeepMind', 'Hugging Face', 'Mistral', 'Cohere', 'Facebook',
+
+            # Generic tech/news terms
+            'Tech', 'Technology', 'Startup', 'Funding', 'Billion', 'Million',
+            'CEO', 'Launch', 'Announce', 'Update', 'Release', 'New', 'Report',
+            'News', 'Today', 'Says', 'Could', 'Will', 'According', 'Platform',
+            'Service', 'Product', 'Company', 'Business', 'Industry'
         ])
 
 # Create global configuration
@@ -256,9 +269,10 @@ class ArticleClusterer:
             # Get significant content entities (up to 10)
             significant_entities = ' '.join(filtered_content_entities[:10])
             
-            # Build combined text with content-focused weighting
-            # Content appears in full, title appears once, significant entities are included
-            combined_text = f"{content} {content} {title} {significant_entities}".strip()
+            # Build combined text with heavy content weighting
+            # Content appears 4x for emphasis, title appears once (reduced from previous)
+            # This reduces false clustering from headline-only matches
+            combined_text = f"{content} {content} {content} {content} {title} {significant_entities}".strip()
             
             # Ensure minimum text length
             if len(combined_text) < CONFIG.min_text_length and title:

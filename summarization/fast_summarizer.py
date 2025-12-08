@@ -291,21 +291,48 @@ class FastSummarizer:
             )
             tasks.append(task)
         
-        # Wait for all tasks to complete with optional timeout
+        # Wait for all tasks to complete with optional timeout and error handling
         if timeout:
             try:
-                return await asyncio.wait_for(asyncio.gather(*tasks), timeout=timeout)
+                # Use return_exceptions=True to get partial results even if some fail
+                results = await asyncio.wait_for(
+                    asyncio.gather(*tasks, return_exceptions=True),
+                    timeout=timeout
+                )
             except asyncio.TimeoutError:
                 self.logger.warning(f"Batch processing timed out after {timeout} seconds")
                 # Return any completed results
                 completed_results = []
                 for task in tasks:
-                    if task.done() and not task.exception():
-                        completed_results.append(task.result())
+                    if task.done():
+                        try:
+                            result = task.result()
+                            if not isinstance(result, Exception):
+                                completed_results.append(result)
+                        except Exception:
+                            pass  # Skip failed tasks
                 return completed_results
         else:
-            # No timeout
-            return await asyncio.gather(*tasks)
+            # No timeout - use return_exceptions to get partial results
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Filter out exceptions and log errors
+        successful_results = []
+        failed_count = 0
+        for idx, result in enumerate(results):
+            if isinstance(result, Exception):
+                failed_count += 1
+                self.logger.error(f"Task {idx} failed with exception: {str(result)}")
+            else:
+                successful_results.append(result)
+
+        if failed_count > 0:
+            self.logger.warning(
+                f"Batch completed with {failed_count} failures, "
+                f"{len(successful_results)} successes"
+            )
+
+        return successful_results
     
     async def _process_single_article(
         self,
@@ -361,13 +388,16 @@ class FastSummarizer:
                 }
                 
             except Exception as e:
-                self.logger.error(f"Error processing article: {str(e)}")
+                self.logger.error(f"Error processing article {article.get('url', 'unknown')}: {str(e)}")
+                # Return error summary instead of raising
+                source_name = extract_source_from_url(article.get('url', '#'))
                 return {
                     'original': article,
                     'summary': {
                         'headline': article.get('title', 'Error'),
-                        'summary': f"Error generating summary: {str(e)}",
-                        'style': style  # Add style to error summary
+                        'summary': f"Error generating summary: {str(e)}\n\nSource: {source_name}\n{article.get('url', '#')}",
+                        'style': style,
+                        'error': True  # Mark as error for filtering if needed
                     }
                 }
     
@@ -652,30 +682,21 @@ class FastSummarizer:
             
         # Split into chunks
         chunks = chunk_text(text)
-        
-        # Summarize each chunk
-        chunk_summaries = []
+
+        # Summarize each chunk in parallel
         model_id = get_model_identifier(model)
-        
-        for i, chunk in enumerate(chunks):
-            self.logger.info(f"Summarizing chunk {i+1}/{len(chunks)} for {url}")
-            
-            # Create a chunk-specific prompt
-            chunk_prompt = (
-                f"Summarize this section (section {i+1} of {len(chunks)}) of an article in 2-3 sentences, "
-                "capturing the key points and facts:\n\n"
-                f"{chunk}"
-            )
-            
-            # Get summary for this chunk
-            chunk_summary = self._call_api(
-                model_id=model_id,
-                prompt=chunk_prompt,
-                temperature=temperature,
-                max_tokens=150
-            )
-            
-            chunk_summaries.append(chunk_summary)
+
+        # Create an event loop for parallel processing
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        # Use async to parallelize chunk summarization
+        chunk_summaries = loop.run_until_complete(
+            self._summarize_chunks_parallel(chunks, model_id, temperature, url)
+        )
             
         # Create a meta-summary from the chunk summaries
         combined_chunks = "\n\n".join([
@@ -748,6 +769,64 @@ class FastSummarizer:
         )
         
         return result
+
+    async def _summarize_chunks_parallel(
+        self,
+        chunks: List[str],
+        model_id: str,
+        temperature: float,
+        url: str
+    ) -> List[str]:
+        """
+        Summarize multiple chunks in parallel with concurrency control.
+
+        Args:
+            chunks: List of text chunks to summarize
+            model_id: Claude model identifier
+            temperature: Temperature setting
+            url: Article URL for logging
+
+        Returns:
+            List of chunk summaries
+        """
+        # Limit concurrent API calls to 3
+        semaphore = asyncio.Semaphore(3)
+
+        async def summarize_chunk(i: int, chunk: str) -> tuple:
+            """Summarize a single chunk."""
+            async with semaphore:
+                self.logger.info(f"Summarizing chunk {i+1}/{len(chunks)} for {url}")
+
+                # Create chunk-specific prompt
+                chunk_prompt = (
+                    f"Summarize this section (section {i+1} of {len(chunks)}) of an article in 2-3 sentences, "
+                    "capturing the key points and facts:\n\n"
+                    f"{chunk}"
+                )
+
+                # Run API call in thread executor to avoid blocking
+                loop = asyncio.get_event_loop()
+                chunk_summary = await loop.run_in_executor(
+                    None,
+                    lambda: self._call_api(
+                        model_id=model_id,
+                        prompt=chunk_prompt,
+                        temperature=temperature,
+                        max_tokens=150
+                    )
+                )
+
+                return (i, chunk_summary)
+
+        # Create tasks for all chunks
+        tasks = [summarize_chunk(i, chunk) for i, chunk in enumerate(chunks)]
+
+        # Run all tasks concurrently
+        results = await asyncio.gather(*tasks)
+
+        # Sort by index and extract summaries
+        results.sort(key=lambda x: x[0])
+        return [summary for _, summary in results]
 
     @retry_with_backoff(max_retries=3, initial_backoff=2)
     def _call_api(self, model_id: str, prompt: str, temperature: float, max_tokens: int) -> str:
