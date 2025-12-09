@@ -2,6 +2,53 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚨 IMPORTANT: Documenting Design Decisions
+
+**Before making significant design or architectural changes, consider updating [DOCTRINE.md](DOCTRINE.md).**
+
+### When to Update DOCTRINE.md
+
+Update DOCTRINE.md when making:
+- **Major Architecture Changes**: New patterns, refactors affecting multiple modules
+- **Technology Decisions**: Switching frameworks, databases, AI models, or libraries
+- **Performance Trade-offs**: Changes that trade one metric for another
+- **Breaking Changes**: Deprecating features or patterns
+- **New Design Patterns**: Introducing new architectural approaches
+
+### How to Update DOCTRINE.md
+
+1. **Document the WHY**: Explain rationale, not just the change itself
+2. **Document TRADE-OFFS**: List pros and cons explicitly
+3. **Specify "When to Reconsider"**: Future conditions that might invalidate this decision
+4. **Provide Context**: Help future maintainers understand the situation at decision time
+
+### Example Entry
+
+```markdown
+## Feature Name
+
+### Decision: Brief description of what was decided
+
+**Rationale**:
+1. Why this approach was chosen
+2. What problem it solves
+3. What alternatives were considered
+
+**Implementation**: Link to relevant code
+
+**Trade-offs**:
+- **Pro**: Benefit 1
+- **Pro**: Benefit 2
+- **Con**: Drawback 1
+- **Mitigation**: How drawbacks are addressed
+
+**When to Reconsider**:
+- Condition that might change the decision
+- Metrics to monitor
+```
+
+DOCTRINE.md serves as institutional memory - it helps future maintainers (human or agentic) understand why decisions were made and evaluate them against new requirements.
+
 ## Development Commands
 
 ### Environment Setup
