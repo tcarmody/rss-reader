@@ -46,6 +46,8 @@ This document records the reasoning behind major design and architecture decisio
 
 ### Decision: Dual-Model Architecture (Sonnet vs Haiku)
 
+**Implementation**: Commit `2448af4` (Tier 1 improvements)
+
 **Current Models**:
 - **Claude 4.5 Sonnet** (`claude-sonnet-4-5`): Complex content (complexity ≥ 0.6)
 - **Claude 4.5 Haiku** (`claude-haiku-4-5`): Simple content (complexity < 0.6)
@@ -81,6 +83,8 @@ This document records the reasoning behind major design and architecture decisio
 ## Clustering Architecture
 
 ### Decision: Lightweight Hybrid Clustering (v2.0)
+
+**Implementation**: Commit `4831887` (switched to lightweight by default)
 
 **Architecture**:
 - **Primary**: Simple clustering with 60% semantic + 40% keyword matching
@@ -157,7 +161,7 @@ content/
 
 ### Decision: PDF Document Support
 
-**Implementation**: `content/extractors/pdf.py` with PyPDF2
+**Implementation**: `content/extractors/pdf.py` with PyPDF2 | Commit `4c04e48`
 
 **Rationale**:
 1. **User Need**: Research papers and technical reports are common in AI/tech RSS feeds
@@ -200,7 +204,7 @@ content/
 
 ### Decision: AI-Powered Image Prompt Generation
 
-**Implementation**: `services/image_prompt_generator.py`
+**Implementation**: `services/image_prompt_generator.py` | Commit `708fa84` (initial), `b054edb` (redesign)
 
 **Rationale**:
 1. **Editorial Value**: News articles benefit from compelling visual accompaniment
@@ -292,6 +296,8 @@ content/
 ## Multi-User Architecture
 
 ### Decision: Session-Based User Isolation
+
+**Implementation**: Commit `c54a985` (authentication), `d684b50` (per-user cache)
 
 **Architecture**:
 - **Shared Auth Database**: `data/auth.db` for all users
@@ -441,6 +447,11 @@ content/
 
 ## Performance Trade-offs
 
+**Major Performance Work**: Tier 1-3 improvements (commits `2448af4`, `dd409a9`, `41082df`)
+- Tier 1: Model selection, batch processing optimizations
+- Tier 2: Medium-term summarization enhancements
+- Tier 3: Semantic cache, WebSocket streaming, progressive clustering, relationship mapping
+
 ### Batch Processing Limits
 
 **Configuration**:
@@ -486,6 +497,8 @@ content/
 ## Mac Application Design
 
 ### Decision: Electron Wrapper for Native App
+
+**Implementation**: Commit `71e7d0d` (Electron 39.2.6), `645ec3e` (security upgrade)
 
 **Architecture**:
 - **Electron Main Process**: Manages window, Python server lifecycle
@@ -821,15 +834,275 @@ from clustering.progressive import create_progressive_clusterer
 
 **Current State**: Tests for critical paths (batch processing, model selection, Tier 3 features)
 
+**Framework**: pytest with async support
+
+**Test Files**:
+- `tests/test_batch_processing.py`: Parallel article processing
+- `tests/test_model_selection.py`: AI model selection logic
+- `tests/test_tier3_improvements.py`: Advanced features (semantic cache, streaming, etc.)
+
 **Rationale**:
 1. **Critical Paths**: Test features users rely on most
 2. **Integration Tests**: Test component interaction, not just units
 3. **Pragmatic Coverage**: Not pursuing 100% coverage, focus on valuable tests
+4. **Performance Validation**: Tests verify performance assumptions (cache hit rates, clustering speed)
+
+---
+
+### What We Test
+
+#### Priority 1: Critical User Paths
+**Always test features that:**
+- Users interact with daily (summarization, clustering, bookmarks)
+- Involve external services (Claude API, archive services)
+- Handle user data (authentication, bookmark CRUD)
+- Cost money (API calls, resource usage)
+
+**Example**: Model selection must route articles correctly to avoid unnecessary costs.
+
+#### Priority 2: Complex Business Logic
+**Test features with:**
+- Multiple code paths (error handling, fallbacks)
+- Non-obvious behavior (semantic similarity, clustering algorithms)
+- Configuration-dependent behavior (cache TTL, rate limits)
+
+**Example**: Semantic cache similarity threshold affects hit rates and quality.
+
+#### Priority 3: Integration Points
+**Test how components work together:**
+- Cache → Summarizer → Model Selection
+- RSS Reader → Content Extractor → Paywall Detector
+- WebSocket → Streaming Summarizer → Progress Updates
+
+**Example**: Progressive clustering should trigger callbacks with correct data structure.
+
+---
+
+### What We Don't Test
+
+**Avoid testing:**
+1. **Third-Party Libraries**: Don't test FastAPI, SQLAlchemy, Anthropic SDK—they have their own tests
+2. **Simple Getters/Setters**: No value in testing trivial property access
+3. **Static Configuration**: Don't test that `DEFAULT_MODEL = "claude-sonnet-4.5"`
+4. **UI Rendering**: Templates are visual, better tested manually
+5. **Obvious Code**: `return a + b` doesn't need a test
+
+**Why**: Focus testing effort where bugs are most likely and most costly.
+
+---
+
+### Testing Patterns
+
+#### Async Test Pattern
+```python
+import pytest
+
+@pytest.mark.asyncio
+async def test_semantic_cache_hit():
+    """Test that similar articles share cached summaries."""
+    cache = SemanticCache()
+
+    article1 = {"url": "http://example.com/ai-news", "content": "AI breakthrough..."}
+    article2 = {"url": "http://example.com/ai-update", "content": "AI advancement..."}
+
+    # Store first article's summary
+    await cache.store_summary(article1, "Summary of AI news")
+
+    # Similar article should hit cache
+    cached = await cache.get_cached_summary(article2, similarity_threshold=0.92)
+    assert cached is not None
+    assert cached["cache_type"] == "semantic"
+```
+
+#### Mock External Services
+```python
+from unittest.mock import AsyncMock, patch
+
+@pytest.mark.asyncio
+async def test_api_rate_limit_retry():
+    """Test that rate limit errors trigger exponential backoff."""
+    with patch('anthropic.Anthropic') as mock_anthropic:
+        # Simulate rate limit then success
+        mock_anthropic.return_value.messages.create.side_effect = [
+            RateLimitError("Rate limit exceeded"),
+            {"content": "Summary text"}
+        ]
+
+        summarizer = FastSummarizer()
+        result = await summarizer.summarize("http://example.com")
+
+        assert result is not None
+        assert mock_anthropic.return_value.messages.create.call_count == 2
+```
+
+#### Integration Test Pattern
+```python
+@pytest.mark.asyncio
+async def test_full_summarization_pipeline():
+    """Test complete flow: fetch → extract → summarize → cache."""
+    url = "http://example.com/article"
+
+    # Full pipeline
+    reader = EnhancedRSSReader()
+    article = await reader.fetch_article(url)
+
+    summarizer = FastSummarizer()
+    summary = await summarizer.summarize_article(article)
+
+    # Verify end-to-end behavior
+    assert summary is not None
+    assert len(summary) > 0
+    assert "cache_hit" in summary  # Should be cached for future calls
+```
+
+---
+
+### Performance Testing
+
+**Validate architectural assumptions:**
+
+```python
+import time
+
+def test_clustering_performance():
+    """Verify Stage 1 clustering completes in <2 seconds."""
+    clusterer = create_progressive_clusterer()
+    articles = create_test_articles(count=50)
+
+    start_time = time.time()
+    result = clusterer.cluster_fast(articles)
+    duration = time.time() - start_time
+
+    assert duration < 2.0, f"Fast clustering took {duration:.2f}s (target: <2s)"
+    assert len(result.clusters) > 0
+```
+
+---
+
+### Test Data Management
+
+**Fixtures for reusable test data:**
+```python
+@pytest.fixture
+def sample_articles():
+    """Provide sample articles for tests."""
+    return [
+        {"url": "http://example.com/1", "title": "AI News", "content": "..."},
+        {"url": "http://example.com/2", "title": "Tech Update", "content": "..."},
+    ]
+
+@pytest.fixture
+def mock_anthropic_client():
+    """Provide mock Claude API client."""
+    with patch('anthropic.Anthropic') as mock:
+        yield mock
+```
+
+**Never commit:**
+- Real API keys
+- Personal data
+- Production database dumps
+
+---
+
+### When to Add Tests
+
+**Before implementation**: Test-Driven Development (TDD) for complex features
+```
+1. Write failing test
+2. Implement feature
+3. Test passes
+4. Refactor
+```
+
+**During implementation**: Add tests as you build
+```
+1. Write feature code
+2. Write tests immediately
+3. Verify tests pass
+```
+
+**After bugs found**: Regression tests prevent re-occurrence
+```
+1. User reports bug
+2. Write test that reproduces bug
+3. Fix bug
+4. Test now passes, prevents regression
+```
+
+---
+
+### Test Maintenance
+
+**Keep tests valuable:**
+1. **Delete obsolete tests**: Remove tests for removed features
+2. **Update tests with code**: When behavior changes, update tests
+3. **Review flaky tests**: Investigate intermittent failures
+4. **Refactor test code**: DRY principle applies to tests too
+
+**Red flags:**
+- Tests that pass even when they should fail
+- Tests that require manual setup (database state, external services)
+- Tests that take >1 minute to run (except clearly marked slow tests)
+- Tests that fail randomly (network issues, timing issues)
+
+---
+
+### Coverage Goals
+
+**Target coverage by module:**
+- **Critical**: 80-90% (models/config.py, cache/tiered_cache.py)
+- **Important**: 60-80% (summarization/, clustering/)
+- **Standard**: 40-60% (reader/, services/)
+- **Low Priority**: 20-40% (templates/, static/)
+
+**Not a goal**: 100% coverage
+**Why**: Diminishing returns, maintenance burden, false confidence
+
+**Check coverage:**
+```bash
+python -m pytest tests/ --cov --cov-report=html
+open htmlcov/index.html
+```
+
+---
+
+### Continuous Integration (Future)
+
+**When CI/CD is set up:**
+1. **Run tests on every PR**: Block merges if tests fail
+2. **Nightly performance tests**: Validate performance assumptions
+3. **Coverage reports**: Track coverage trends over time
+4. **Security scans**: Dependency vulnerability checks
+
+**Recommended tools:**
+- **GitHub Actions**: Free for open source, easy setup
+- **pytest**: Already using
+- **coverage.py**: Code coverage measurement
+
+---
+
+### Testing Philosophy Summary
+
+**Good tests are:**
+- **Fast**: Run in seconds, not minutes
+- **Isolated**: No dependencies on external services or state
+- **Repeatable**: Same result every time
+- **Focused**: Test one thing clearly
+- **Maintainable**: Easy to understand and update
+
+**Testing is:**
+- **Insurance**: Catch bugs before users do
+- **Documentation**: Tests show how code should be used
+- **Confidence**: Refactor safely knowing tests will catch issues
+- **Not Perfect**: Some bugs will always slip through
 
 **When to Increase Testing**:
 - Before refactoring complex modules
 - When bugs appear in untested areas
 - For features with complex business logic
+- When users report issues in a particular area
+- Before major releases
 
 ---
 
@@ -923,19 +1196,30 @@ from clustering.progressive import create_progressive_clusterer
 
 ## Version History
 
-- **2025-12-09**: Initial DOCTRINE.md creation (Priority 1-2 Updates)
-  - Documented core philosophy, AI model strategy, clustering architecture
-  - Added content processing, caching strategy, multi-user architecture
-  - Documented technology choices, performance trade-offs
-  - Added Mac application design, testing philosophy, future considerations
-  - **Feature Decisions**: Added PDF support rationale (PyPDF2 choice, alternatives)
-  - **Feature Decisions**: Added AI-powered image prompt generation decision
-  - **Technology Choices**: Added Jinja2 templates vs SPA framework rationale
-  - **Mac App**: Expanded with Python bundling strategy and distribution approach
-  - **Metrics and Monitoring**: Added comprehensive monitoring framework with target metrics
-    - Cache performance, model selection accuracy, clustering quality
-    - API costs tracking, WebSocket reliability, progressive clustering performance
-    - Mac app performance metrics, monitoring best practices
+- **2025-12-09**: Initial DOCTRINE.md creation (Priority 1-2 Updates + Priority 3-4 Additions)
+  - **Initial Creation (Priority 1-2)**:
+    - Documented core philosophy, AI model strategy, clustering architecture
+    - Added content processing, caching strategy, multi-user architecture
+    - Documented technology choices, performance trade-offs
+    - Added Mac application design, testing philosophy, future considerations
+    - **Feature Decisions**: Added PDF support rationale (PyPDF2 choice, alternatives)
+    - **Feature Decisions**: Added AI-powered image prompt generation decision
+    - **Technology Choices**: Added Jinja2 templates vs SPA framework rationale
+    - **Mac App**: Expanded with Python bundling strategy and distribution approach
+    - **Metrics and Monitoring**: Added comprehensive monitoring framework with target metrics
+      - Cache performance, model selection accuracy, clustering quality
+      - API costs tracking, WebSocket reliability, progressive clustering performance
+      - Mac app performance metrics, monitoring best practices
+
+  - **Priority 3-4 Additions**:
+    - **Commit References**: Added git commit hashes to major decisions for historical context
+    - **Testing Philosophy**: Expanded from brief section to comprehensive guide
+      - What we test (Priority 1-3), what we don't test, testing patterns
+      - Async patterns, mocking external services, integration tests
+      - Performance testing, test data management, when to add tests
+      - Coverage goals by module, CI/CD recommendations
+      - Testing philosophy summary with best practices
+    - **CONTRIBUTING.md**: Created comprehensive contributor guide (separate file)
 
 ---
 
