@@ -6,6 +6,18 @@ An advanced RSS feed reader with AI-powered summarization, intelligent article c
 
 > **🔐 NEW: Multi-User Support!** The app now supports multiple users with individual accounts, personalized RSS feeds, and private bookmark collections. See [Authentication](#authentication) for details.
 
+## 📚 Documentation
+
+**Essential Reading:**
+- **[README.md](README.md)** (this file) - Project overview, installation, and features
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute (workflow, testing, PR process)
+- **[CLAUDE.md](CLAUDE.md)** - Development commands and architecture guide
+- **[DOCTRINE.md](DOCTRINE.md)** - Design decisions and architectural rationale
+
+**Specialized Guides:**
+- [MAC_APP.md](MAC_APP.md) - Native macOS application details
+- [TIER3_IMPLEMENTATION_SUMMARY.md](TIER3_IMPLEMENTATION_SUMMARY.md) - Advanced features documentation
+
 ## Features
 
 ### Core Capabilities
@@ -673,33 +685,36 @@ The following modules have been refactored but maintain backward compatibility:
 
 ## Contributing
 
-Contributions are welcome! Please follow these guidelines:
+**Contributions are welcome!** We appreciate bug fixes, feature additions, documentation improvements, and more.
 
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Write tests**: Add tests for new functionality
-4. **Follow code style**: Use type hints, docstrings, and consistent formatting
-5. **Run tests**: Ensure all tests pass before submitting
-6. **Commit changes**: `git commit -m 'Add amazing feature'`
-7. **Push to branch**: `git push origin feature/amazing-feature`
-8. **Open Pull Request**: Describe your changes clearly
+### Quick Start for Contributors
 
-### Development Setup
+Please read [**CONTRIBUTING.md**](CONTRIBUTING.md) for detailed guidelines on:
+- Development workflow and setup
+- Code style and testing requirements
+- Pull request process
+- Architecture guidelines
+
+**Key resources for contributors:**
+- [**CONTRIBUTING.md**](CONTRIBUTING.md) - Complete contributor guide
+- [**CLAUDE.md**](CLAUDE.md) - Development commands and architecture overview
+- [**DOCTRINE.md**](DOCTRINE.md) - Design decisions and architectural rationale
+
+### Quick Setup
 
 ```bash
-# Clone your fork
+# Fork and clone
 git clone https://github.com/yourusername/rss-reader.git
 cd rss-reader
 
-# Set up development environment
+# Setup and run
 ./run_server.sh --reload
 
 # Run tests
 python -m pytest tests/
-
-# Check code quality
-pylint reader/ summarization/ services/
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the complete guide.
 
 ## License
 
@@ -733,8 +748,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 For issues, questions, or feature requests:
 
 1. Check the [Troubleshooting](#troubleshooting) section
-2. Review [CLAUDE.md](CLAUDE.md) for detailed development guidance
-3. Open an issue on GitHub with detailed information
+2. Review [CLAUDE.md](CLAUDE.md) for development guidance
+3. Review [DOCTRINE.md](DOCTRINE.md) for design decisions and architectural rationale
+4. Check [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines
+5. Open an issue on GitHub with detailed information
 
 ---
 
