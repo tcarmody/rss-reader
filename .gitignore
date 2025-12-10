@@ -87,6 +87,7 @@ diagnostics.py
 simple_batch_fix.py
 benchmark.py
 examples.py
+bfg.jar
 
 # Language model files
 *.ckpt
