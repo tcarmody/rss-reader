@@ -20,26 +20,38 @@ source rss_venv/bin/activate && python -c "import some_module; print('test')"
 
 ### Why This Matters
 
-- The project uses **Python 3.11** with specific package versions
+- The project **requires Python 3.11 specifically** (not system Python, not Python 3.12+)
+- The virtual environment (`rss_venv/`) is configured for Python 3.11
 - Without activation, you'll get `ModuleNotFoundError` for numpy, playwright, etc.
-- The virtual environment is located at `rss_venv/` in the project root
 - ALL dependencies (numpy, BeautifulSoup, playwright, etc.) are installed in this venv
+- System Python may be a different version and will NOT have the required packages
 
 ### Testing and Verification
 
 When testing or verifying implementations:
 1. **ALWAYS** prefix with `source rss_venv/bin/activate &&`
-2. Never use bare `python` or `python3` commands
-3. This applies to: pytest, python -c, python -m, python scripts, etc.
+2. **NEVER** use bare `python`, `python3`, or `python3.11` commands without activation
+3. The venv activation ensures Python 3.11 is used with all dependencies
+4. This applies to: pytest, python -c, python -m, python scripts, etc.
 
-### Common Mistake to Avoid
+### Common Mistakes to Avoid
 
 ```bash
-# ❌ WRONG - will fail with ModuleNotFoundError
+# ❌ WRONG - uses system Python (may be wrong version, no packages)
 python -c "from clustering.simple import SimpleClustering"
+python3 -c "from clustering.simple import SimpleClustering"
+python3.11 -c "from clustering.simple import SimpleClustering"
 
-# ✅ CORRECT - activates venv first
+# ✅ CORRECT - activates Python 3.11 venv with all dependencies
 source rss_venv/bin/activate && python -c "from clustering.simple import SimpleClustering"
+```
+
+### Python Version Verification
+
+After activating the venv, you can verify the correct Python version:
+```bash
+source rss_venv/bin/activate && python --version
+# Should output: Python 3.11.x
 ```
 
 ## 🚨 IMPORTANT: Documenting Design Decisions
@@ -281,8 +293,9 @@ The RSS Reader includes AI-powered image prompt generation that creates detailed
 ## Critical Dependencies
 
 ### Python Version
-- **Required**: Python 3.11+ (recommended 3.11 specifically)
+- **Required**: Python 3.11 specifically (NOT 3.12+, NOT system Python)
 - **Virtual Environment**: `rss_venv/` (auto-created by run_server.sh)
+- **CRITICAL**: Always activate venv before running Python commands (see section above)
 
 ### Key Libraries
 - **FastAPI**: Web framework (not Flask)
@@ -294,8 +307,9 @@ The RSS Reader includes AI-powered image prompt generation that creates detailed
 
 ### Post-Install Requirements
 ```bash
-python -m spacy download en_core_web_sm
-python -m playwright install chromium
+# Remember to activate venv first!
+source rss_venv/bin/activate && python -m spacy download en_core_web_sm
+source rss_venv/bin/activate && python -m playwright install chromium
 ```
 
 ## Common Patterns
