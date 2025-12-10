@@ -483,16 +483,16 @@ class RSSReader:
     def _parse_date(self, date_str):
         """
         Parse date string with multiple formats.
-        
+
         Args:
             date_str: Date string to parse
-            
+
         Returns:
             datetime object
         """
         if not date_str:
             return datetime.now()
-        
+
         try:
             # First, try feedparser's date parsing
             parsed_date = feedparser._parse_date(date_str)
@@ -500,25 +500,35 @@ class RSSReader:
                 return datetime(*parsed_date[:6])
         except:
             pass
-        
+
+        # Handle ISO 8601 dates with colons in timezone (e.g., -07:00 -> -0700)
+        # This is needed because strptime %z doesn't handle colons before Python 3.11
+        date_str_normalized = date_str
+        if date_str and len(date_str) > 6:
+            # Check for timezone with colon pattern: +HH:MM or -HH:MM at the end
+            import re
+            date_str_normalized = re.sub(r'([+-]\d{2}):(\d{2})$', r'\1\2', date_str)
+
         # Try common date formats
         date_formats = [
             '%a, %d %b %Y %H:%M:%S %z',  # RFC 822
             '%a, %d %b %Y %H:%M:%S %Z',  # RFC 822 with timezone name
-            '%Y-%m-%dT%H:%M:%S%z',       # ISO 8601
+            '%Y-%m-%dT%H:%M:%S.%f%z',    # ISO 8601 with milliseconds and timezone
+            '%Y-%m-%dT%H:%M:%S%z',       # ISO 8601 with timezone
+            '%Y-%m-%dT%H:%M:%S.%fZ',     # ISO 8601 with milliseconds and Z
             '%Y-%m-%dT%H:%M:%SZ',        # ISO 8601 with Z
             '%Y-%m-%d %H:%M:%S',         # Common format
             '%Y-%m-%d',                  # Date only
             '%d %b %Y %H:%M:%S %z',      # Another common format
             '%d %b %Y %H:%M:%S %Z',      # Another common format
         ]
-        
+
         for fmt in date_formats:
             try:
-                return datetime.strptime(date_str, fmt)
+                return datetime.strptime(date_str_normalized, fmt)
             except ValueError:
                 continue
-        
+
         # If all parsing attempts fail, return current time
         logging.warning(f"Could not parse date: {date_str}")
         return datetime.now()
@@ -526,40 +536,52 @@ class RSSReader:
     def _filter_articles_by_date(self, articles, hours):
         """
         Filter articles to include only those from the specified time range.
-        
+
         Args:
             articles: List of articles to filter (each should be a dict)
             hours: Number of hours in the past to include
-            
+
         Returns:
             List of filtered articles
         """
         if not articles or not isinstance(articles, list) or hours <= 0:
             return articles
-            
-        cutoff_date = datetime.now() - timedelta(hours=hours)
+
+        # Get current time as timezone-aware (UTC)
+        from datetime import timezone
+        cutoff_date = datetime.now(timezone.utc) - timedelta(hours=hours)
         filtered_articles = []
-        
+
         for article in articles:
             # Skip if article is not a dictionary
             if not isinstance(article, dict):
                 logging.debug(f"Skipping non-dict article: {article}")
                 continue
-                
+
             try:
                 # Safely get published date with fallback to empty string
                 published_date = article.get('published', '') if hasattr(article, 'get') else ''
                 article_date = self._parse_date(published_date)
-                
-                # Remove timezone for comparison
-                if article_date.replace(tzinfo=None) >= cutoff_date:
+
+                # Convert to UTC for comparison if timezone-aware
+                if article_date.tzinfo is not None:
+                    article_date_utc = article_date.astimezone(timezone.utc)
+                else:
+                    # If naive, assume UTC
+                    article_date_utc = article_date.replace(tzinfo=timezone.utc)
+
+                if article_date_utc >= cutoff_date:
                     filtered_articles.append(article)
+                else:
+                    # Log filtered out articles for debugging
+                    title = article.get('title', 'Untitled')
+                    logging.debug(f"Filtered out old article '{title}' (published: {article_date_utc.isoformat()}, cutoff: {cutoff_date.isoformat()})")
             except Exception as e:
                 # Log the error and include the article anyway
                 title = article.get('title', 'Untitled')
                 logging.debug(f"Could not parse date for article '{title}': {str(e)}. Including it anyway.")
                 filtered_articles.append(article)
-        
+
         return filtered_articles
 
     def _parse_entry(self, entry, feed_title):
