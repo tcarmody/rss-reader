@@ -2,6 +2,46 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚡ CRITICAL: Virtual Environment Requirement
+
+**ALWAYS activate the virtual environment before running ANY Python code or commands.**
+
+### Virtual Environment Activation
+
+```bash
+# ALWAYS start commands with this prefix
+source rss_venv/bin/activate && python <your_command>
+
+# Examples:
+source rss_venv/bin/activate && python -m pytest tests/
+source rss_venv/bin/activate && python main.py --input articles.json
+source rss_venv/bin/activate && python -c "import some_module; print('test')"
+```
+
+### Why This Matters
+
+- The project uses **Python 3.11** with specific package versions
+- Without activation, you'll get `ModuleNotFoundError` for numpy, playwright, etc.
+- The virtual environment is located at `rss_venv/` in the project root
+- ALL dependencies (numpy, BeautifulSoup, playwright, etc.) are installed in this venv
+
+### Testing and Verification
+
+When testing or verifying implementations:
+1. **ALWAYS** prefix with `source rss_venv/bin/activate &&`
+2. Never use bare `python` or `python3` commands
+3. This applies to: pytest, python -c, python -m, python scripts, etc.
+
+### Common Mistake to Avoid
+
+```bash
+# ❌ WRONG - will fail with ModuleNotFoundError
+python -c "from clustering.simple import SimpleClustering"
+
+# ✅ CORRECT - activates venv first
+source rss_venv/bin/activate && python -c "from clustering.simple import SimpleClustering"
+```
+
 ## 🚨 IMPORTANT: Documenting Design Decisions
 
 **Before making significant design or architectural changes, consider updating [DOCTRINE.md](DOCTRINE.md).**
@@ -57,13 +97,13 @@ DOCTRINE.md serves as institutional memory - it helps future maintainers (human 
 ./run_server.sh --reload --port 5005
 
 # Setup with minimal dependencies (if full install fails)
-pip install -r essential_requirements.txt
+source rss_venv/bin/activate && pip install -r essential_requirements.txt
 
 # Install spaCy model (required for clustering)
-python -m spacy download en_core_web_sm
+source rss_venv/bin/activate && python -m spacy download en_core_web_sm
 
-# Install Playwright browser (for paywall bypass)
-python -m playwright install chromium
+# Install Playwright browser (for JavaScript-rendered content extraction)
+source rss_venv/bin/activate && python -m playwright install chromium
 ```
 
 ### Server Commands
@@ -84,24 +124,24 @@ uvicorn server:app --host 127.0.0.1 --port 5005 --reload
 ### CLI Processing
 ```bash
 # Batch process articles
-python main.py --input articles.json --output summaries.json
+source rss_venv/bin/activate && python main.py --input articles.json --output summaries.json
 
 # Debug mode
 export LOG_LEVEL=DEBUG
-python server.py
+source rss_venv/bin/activate && python server.py
 ```
 
 ### Testing
 ```bash
-# Run tests
-python -m pytest tests/
+# Run tests (ALWAYS activate venv first)
+source rss_venv/bin/activate && python -m pytest tests/
 
 # Run specific test files
-python -m pytest tests/test_batch_processing.py
-python -m pytest tests/test_model_selection.py
+source rss_venv/bin/activate && python -m pytest tests/test_batch_processing.py
+source rss_venv/bin/activate && python -m pytest tests/test_model_selection.py
 
 # Run with coverage (if installed)
-python -m pytest tests/ --cov
+source rss_venv/bin/activate && python -m pytest tests/ --cov
 ```
 
 ## System Architecture
