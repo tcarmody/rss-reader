@@ -52,28 +52,46 @@ except ImportError:
 def fetch_article_content(url, session=None):
     """
     Fetch article content using the new archive system.
-    
+
     Args:
         url: The article URL to fetch
         session: Optional requests session
-        
+
     Returns:
         str: Article content or empty string if failed
     """
+    # Sites known to require JavaScript rendering
+    js_rendering_sites = [
+        'openai.com/blog',
+        'openai.com/index',
+        'openai.com/news',
+        'notion.so',
+        'medium.com/@',  # Some Medium posts
+    ]
+
     try:
         # Check if it's paywalled
         if is_paywalled(url):
             logging.info(f"Detected paywall for {url}, trying archive services")
-            
+
             # Try archive services
             result = default_provider_manager.get_archived_content(url)
-            if result.success and result.content:
+            if result.success and result.content and len(result.content) > 200:
                 return result.content
-        
+
+        # Check if site needs JavaScript rendering
+        needs_js_rendering = any(js_site in url for js_site in js_rendering_sites)
+
+        if needs_js_rendering:
+            logging.info(f"Site requires JavaScript rendering: {url}")
+            content = fetch_js_rendered_content(url)
+            if content and len(content) > 200:
+                return content
+
         # If not paywalled or archive failed, try direct access
         if not session:
             session = create_http_session()
-        
+
         response = session.get(url, timeout=15)
         if response.status_code == 200:
             if BS4_AVAILABLE:
@@ -82,30 +100,96 @@ def fetch_article_content(url, session=None):
                 content_type = response.headers.get('content-type', '').lower()
                 parser = 'xml' if 'xml' in content_type or url.endswith('.xml') else 'html.parser'
                 soup = BeautifulSoup(response.text, parser)
-                
+
                 # Remove unwanted elements
                 for unwanted in soup.select('script, style, nav, header, footer, .ads, .comments'):
                     unwanted.decompose()
-                
+
                 # Try to find main content
                 for selector in ['article', '.article', '.content', '.post-content', 'main']:
                     elements = soup.select(selector)
                     if elements:
                         paragraphs = elements[0].find_all('p')
                         content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
-                        if content:
+                        if content and len(content) > 200:
                             return content
-                
-                # Fallback to body text
+
+                # If direct fetch failed to get good content, try JS rendering as fallback
                 if soup.body:
-                    return soup.body.get_text()
+                    body_text = soup.body.get_text()
+                    # If body text is too short, might be JS-rendered - try Playwright
+                    if len(body_text.strip()) < 500:
+                        logging.info(f"Insufficient content from direct fetch, trying JS rendering for {url}")
+                        js_content = fetch_js_rendered_content(url)
+                        if js_content and len(js_content) > 200:
+                            return js_content
+                    return body_text
             else:
                 # Basic text extraction without BeautifulSoup
                 return response.text
-    
+
     except Exception as e:
         logging.warning(f"Error fetching article content: {e}")
-    
+
+    return ""
+
+def fetch_js_rendered_content(url):
+    """
+    Fetch content from JavaScript-rendered pages using Playwright.
+
+    Args:
+        url: The URL to fetch
+
+    Returns:
+        str: Rendered content or empty string if failed
+    """
+    try:
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+
+            # Navigate and wait for network to be idle
+            page.goto(url, wait_until='networkidle', timeout=30000)
+
+            # Wait a bit for any dynamic content
+            page.wait_for_timeout(2000)
+
+            # Get the rendered HTML
+            html = page.content()
+            browser.close()
+
+            # Parse the rendered HTML
+            if BS4_AVAILABLE:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(html, 'html.parser')
+
+                # Remove unwanted elements
+                for unwanted in soup.select('script, style, nav, header, footer, .ads, .comments, .sidebar'):
+                    unwanted.decompose()
+
+                # Try to find main content
+                for selector in ['article', '.article', '.content', '.post-content', '.entry-content', 'main']:
+                    elements = soup.select(selector)
+                    if elements:
+                        paragraphs = elements[0].find_all('p')
+                        content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
+                        if content and len(content) > 200:
+                            return content
+
+                # Fallback to body text
+                if soup.body:
+                    paragraphs = soup.body.find_all('p')
+                    content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
+                    if content:
+                        return content
+
+    except ImportError:
+        logging.warning("Playwright not available - install with: pip install playwright && playwright install chromium")
+    except Exception as e:
+        logging.warning(f"Error fetching JS-rendered content: {e}")
+
     return ""
 
 # Helper function for source URL extraction

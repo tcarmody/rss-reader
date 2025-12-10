@@ -288,12 +288,13 @@ class ArchiveProviderManager:
             if archived_url:
                 result.url = archived_url
                 result.success = True
-                
+
                 # Try to fetch content from archived URL
                 try:
                     response = requests.get(archived_url, timeout=30)
                     if response.status_code == 200:
-                        result.content = response.text
+                        # Parse HTML to extract clean text content
+                        result.content = self._extract_content_from_html(response.text)
                 except Exception as e:
                     logger.warning(f"Failed to fetch content from {archived_url}: {e}")
                     # Still consider it successful if we have the URL
@@ -305,6 +306,56 @@ class ArchiveProviderManager:
             logger.error(f"Archive provider error: {e}")
         
         return result
+
+    def _extract_content_from_html(self, html: str) -> str:
+        """
+        Extract clean text content from HTML.
+
+        Args:
+            html: Raw HTML content
+
+        Returns:
+            Cleaned text content
+        """
+        try:
+            from bs4 import BeautifulSoup
+
+            soup = BeautifulSoup(html, 'html.parser')
+
+            # Remove unwanted elements
+            for unwanted in soup.select('script, style, nav, header, footer, .ads, .comments, .sidebar, .menu'):
+                unwanted.decompose()
+
+            # Try to find main content with various selectors
+            for selector in ['article', '.article', '.content', '.post-content', '.entry-content', 'main', '.main']:
+                elements = soup.select(selector)
+                if elements:
+                    paragraphs = elements[0].find_all('p')
+                    content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
+                    if content and len(content) > 200:
+                        return content
+
+            # Fallback: extract all paragraphs from body
+            if soup.body:
+                paragraphs = soup.body.find_all('p')
+                content = '\n\n'.join(p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 40)
+                if content and len(content) > 200:
+                    return content
+
+            # Last resort: body text
+            if soup.body:
+                text = soup.body.get_text()
+                # Clean up whitespace
+                lines = (line.strip() for line in text.splitlines())
+                text = '\n'.join(line for line in lines if line)
+                if len(text) > 200:
+                    return text
+
+        except Exception as e:
+            logger.warning(f"Failed to parse HTML content: {e}")
+
+        # Return empty string if extraction failed
+        return ""
 
 
 # Default global instance
