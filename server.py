@@ -69,7 +69,12 @@ app = FastAPI(title="Data Points AI - RSS Reader")
 
 # Add session middleware with secure configuration
 SECRET_KEY = os.environ.get('SECRET_KEY')
+IS_PRODUCTION = os.environ.get('ENVIRONMENT', '').lower() == 'production'
+
 if not SECRET_KEY:
+    if IS_PRODUCTION:
+        logging.error("SECRET_KEY environment variable is required in production!")
+        raise RuntimeError("SECRET_KEY must be set in production. Generate one with: python -c 'import secrets; print(secrets.token_hex(32))'")
     # Generate a consistent secret key if none provided (for development only)
     import hashlib
     SECRET_KEY = hashlib.sha256(b'rss-reader-dev-key').hexdigest()
@@ -88,6 +93,42 @@ app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__
 
 # Configure templates
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), 'templates'))
+
+# Security helper: Validate redirect URLs to prevent open redirect attacks
+def is_safe_redirect_url(url: str) -> bool:
+    """
+    Check if a URL is safe for redirecting.
+    Only allows relative URLs or same-origin URLs to prevent open redirects.
+    """
+    if not url:
+        return False
+
+    # Allow relative URLs
+    if url.startswith('/'):
+        # But not protocol-relative URLs (//example.com)
+        if url.startswith('//'):
+            return False
+        return True
+
+    # Parse the URL to check if it's same-origin
+    try:
+        parsed = urlparse(url)
+        # If there's no netloc (network location/domain), it's a relative URL
+        if not parsed.netloc:
+            return True
+        # Reject absolute URLs to other domains
+        return False
+    except Exception:
+        return False
+
+def get_safe_redirect_url(request_url: str, default: str = '/') -> str:
+    """
+    Get a safe redirect URL from an untrusted source.
+    Returns the URL if safe, otherwise returns the default.
+    """
+    if is_safe_redirect_url(request_url):
+        return request_url
+    return default
 
 # Initialize bookmark manager
 bookmark_manager = BookmarkManager()
@@ -458,9 +499,10 @@ async def toggle_paywall_bypass(request: Request):
     request.session['paywall_bypass_enabled'] = not current_status
     
     logging.info(f"Paywall bypass {'enabled' if request.session['paywall_bypass_enabled'] else 'disabled'} by user")
-    
+
     referer = request.headers.get('referer', '/')
-    return RedirectResponse(url=referer, status_code=303)
+    safe_url = get_safe_redirect_url(referer, default='/')
+    return RedirectResponse(url=safe_url, status_code=303)
 
 @app.post("/update_clustering_settings")
 async def update_clustering_settings(
@@ -500,16 +542,18 @@ async def update_clustering_settings(
     
     request.session['clustering_settings'] = clustering_settings
     logging.info(f"Updated clustering settings: {clustering_settings}")
-    
+
     referer = request.headers.get('referer', '/')
-    return RedirectResponse(url=referer, status_code=303)
+    safe_url = get_safe_redirect_url(referer, default='/')
+    return RedirectResponse(url=safe_url, status_code=303)
 
 @app.post("/reset_clustering_settings") # Added for welcome.html button
 async def reset_clustering_settings(request: Request):
     request.session['clustering_settings'] = DEFAULT_CLUSTERING_SETTINGS.copy()
     logging.info("Clustering settings reset to defaults.")
     referer = request.headers.get('referer', '/')
-    return RedirectResponse(url=referer, status_code=303)
+    safe_url = get_safe_redirect_url(referer, default='/')
+    return RedirectResponse(url=safe_url, status_code=303)
 
 
 @app.post("/refresh")
