@@ -35,14 +35,56 @@ class SimpleClustering:
     def __init__(self, cache_dir: str = None):
         self.cache_dir = cache_dir or os.path.join(os.getcwd(), 'simple_cluster_cache')
         os.makedirs(self.cache_dir, exist_ok=True)
-        
+
         # Configuration with environment variable support
-        self.similarity_threshold = float(os.environ.get('MIN_SIMILARITY_THRESHOLD', 0.3))
-        self.keyword_weight = 0.4  # 40% keyword overlap, 60% semantic similarity
-        self.semantic_weight = 0.6
+        self.similarity_threshold = float(os.environ.get('MIN_SIMILARITY_THRESHOLD', 0.4))
+        self.keyword_weight = 0.25  # 25% keyword overlap, 75% semantic similarity (increased semantic weight)
+        self.semantic_weight = 0.75
         self.min_cluster_size = int(os.environ.get('MIN_CLUSTER_SIZE', 2))
+        self.max_cluster_size = int(os.environ.get('MAX_CLUSTER_SIZE', 25))
         self.max_days_old = int(os.environ.get('MAX_CLUSTERING_DAYS', 7))
-        
+
+        # Common entities to filter (expanded to reduce false positives)
+        self.common_entities = {
+            # AI/ML terms
+            'ai', 'artificial intelligence', 'chatgpt', 'gpt', 'gpt-4', 'gpt-5',
+            'openai', 'anthropic', 'claude', 'gemini', 'llm', 'genai', 'agi',
+            'machine learning', 'deep learning', 'data science', 'model',
+            'neural network', 'chatbot', 'large language model',
+            # Companies (tech)
+            'google', 'microsoft', 'meta', 'amazon', 'apple', 'nvidia', 'tesla',
+            'deepmind', 'hugging face', 'mistral', 'cohere', 'facebook',
+            'intel', 'amd', 'qualcomm', 'ibm', 'oracle', 'salesforce',
+            'adobe', 'photoshop', 'acrobat', 'slack', 'instacart', 'rivian',
+            'mcdonald', 'mcdonalds', 'virgin', 'bitcoin',
+            # AI startups
+            'deepseek', 'perplexity', 'inflection', 'character', 'replika', 'cursor',
+            # Geographic/Political
+            'trump', 'china', 'chinese', 'india', 'indian', 'europe', 'european',
+            'america', 'american', 'government', 'federal', 'state', 'national',
+            # Generic tech/news terms
+            'tech', 'technology', 'startup', 'funding', 'billion', 'million',
+            'ceo', 'launch', 'launches', 'announce', 'update', 'release', 'new', 'report',
+            'news', 'today', 'says', 'could', 'will', 'according', 'platform',
+            'service', 'product', 'company', 'business', 'industry',
+            'brings', 'teaming', 'pivoting', 'opens', 'investigation', 'probe',
+            # News aggregators
+            'google news', 'techmeme',
+            # Financial/business terms
+            'invest', 'investment', 'investor', 'deal', 'agreement', 'partnership',
+            'revenue', 'profit', 'stock', 'market', 'share', 'percent', 'growth',
+            # Generic actions
+            'make', 'makes', 'making', 'develop', 'developing', 'build', 'building',
+            'create', 'creating', 'work', 'working', 'help', 'helping', 'use', 'using',
+            'hire', 'hiring', 'appoints', 'join', 'joins', 'partner', 'strike',
+            # Hardware terms
+            'chip', 'chips', 'processor', 'semiconductor', 'hardware', 'device',
+            # Infrastructure terms
+            'data center', 'datacenter', 'power', 'energy',
+            # Time/quantity
+            'year', 'month', 'week', 'first', 'latest', 'next'
+        }
+
         # Initialize model if available
         self.model = None
         if EMBEDDINGS_AVAILABLE:
@@ -55,10 +97,10 @@ class SimpleClustering:
                 self.model = None
     
     def extract_keywords(self, text: str, max_keywords: int = 5) -> List[str]:
-        """Extract meaningful keywords from text."""
+        """Extract meaningful keywords from text, filtering common entities."""
         if not text:
             return []
-        
+
         # Simple but effective keyword extraction
         # Remove common stop words and short words
         stop_words = {
@@ -69,11 +111,14 @@ class SimpleClustering:
             'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must',
             'shall', 'can', 'a', 'an', 'this', 'that', 'these', 'those'
         }
-        
+
         # Clean and tokenize
         text = re.sub(r'[^\w\s]', ' ', text.lower())
-        words = [w for w in text.split() if len(w) > 3 and w not in stop_words]
-        
+        words = [
+            w for w in text.split()
+            if len(w) > 3 and w not in stop_words and w not in self.common_entities
+        ]
+
         # Count frequency and return top keywords
         word_counts = Counter(words)
         return [word for word, count in word_counts.most_common(max_keywords)]
@@ -248,8 +293,100 @@ class SimpleClustering:
                 clusters.extend([[article] for article in cluster])
         
         logger.info(f"Created {len(clusters)} clusters")
+
+        # Re-cluster any oversized clusters
+        clusters = self._break_up_large_clusters(clusters)
+
         return clusters
-    
+
+    def _break_up_large_clusters(self, clusters: List[List[Dict]]) -> List[List[Dict]]:
+        """Break up clusters that exceed max_cluster_size using hierarchical clustering."""
+        result = []
+
+        for cluster in clusters:
+            if len(cluster) <= self.max_cluster_size:
+                # Cluster is fine as-is
+                result.append(cluster)
+            else:
+                # Cluster is too large, re-cluster it
+                logger.info(f"Re-clustering oversized cluster with {len(cluster)} articles (max={self.max_cluster_size})")
+                sub_clusters = self._hierarchical_recluster(cluster)
+                result.extend(sub_clusters)
+                logger.info(f"Split into {len(sub_clusters)} sub-clusters: {[len(sc) for sc in sub_clusters]}")
+
+        return result
+
+    def _hierarchical_recluster(self, articles: List[Dict]) -> List[List[Dict]]:
+        """Re-cluster a large cluster using hierarchical clustering with higher threshold."""
+        if len(articles) <= self.max_cluster_size:
+            return [articles]
+
+        # Calculate similarity matrix for this cluster
+        n = len(articles)
+        similarity_matrix = np.zeros((n, n))
+
+        for i in range(n):
+            for j in range(i + 1, n):
+                sim = self.calculate_similarity(articles[i], articles[j])
+                similarity_matrix[i][j] = sim
+                similarity_matrix[j][i] = sim
+
+        # Convert to distance matrix
+        distance_matrix = 1 - similarity_matrix
+
+        # Use hierarchical clustering with a higher threshold
+        # Start with number of clusters needed to keep sizes under max
+        min_clusters = (len(articles) + self.max_cluster_size - 1) // self.max_cluster_size
+
+        try:
+            # Try hierarchical clustering
+            clustering = AgglomerativeClustering(
+                n_clusters=min_clusters,
+                metric='precomputed',
+                linkage='average'
+            )
+            labels = clustering.fit_predict(distance_matrix)
+
+            # Group articles by cluster label
+            sub_clusters_dict = defaultdict(list)
+            for idx, label in enumerate(labels):
+                sub_clusters_dict[label].append(articles[idx])
+
+            sub_clusters = list(sub_clusters_dict.values())
+
+            # Check if any sub-cluster is still too large and recursively split
+            final_clusters = []
+            for sub_cluster in sub_clusters:
+                if len(sub_cluster) > self.max_cluster_size:
+                    # Recursively re-cluster
+                    final_clusters.extend(self._hierarchical_recluster(sub_cluster))
+                else:
+                    final_clusters.append(sub_cluster)
+
+            return final_clusters
+
+        except Exception as e:
+            logger.warning(f"Hierarchical re-clustering failed: {e}, falling back to size-based splitting")
+            # Fallback: split by similarity order
+            return self._split_by_similarity(articles, similarity_matrix)
+
+    def _split_by_similarity(self, articles: List[Dict], similarity_matrix: np.ndarray) -> List[List[Dict]]:
+        """Fallback method: split cluster by finding most dissimilar articles first."""
+        # Find articles with lowest average similarity to others
+        avg_similarities = similarity_matrix.mean(axis=1)
+
+        # Sort by average similarity (descending) - keep similar articles together
+        sorted_indices = np.argsort(-avg_similarities)
+
+        # Split into chunks of max_cluster_size
+        sub_clusters = []
+        for i in range(0, len(articles), self.max_cluster_size):
+            chunk_indices = sorted_indices[i:i + self.max_cluster_size]
+            chunk = [articles[idx] for idx in chunk_indices]
+            sub_clusters.append(chunk)
+
+        return sub_clusters
+
     def extract_cluster_topic(self, cluster: List[Dict]) -> str:
         """Extract a simple topic name for a cluster."""
         if not cluster:

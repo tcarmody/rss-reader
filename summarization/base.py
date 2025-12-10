@@ -11,9 +11,10 @@ from common.errors import retry_with_backoff, APIError, RateLimitError, Authenti
 from common.logging import StructuredLogger
 from models.selection import get_model_identifier
 from summarization.text_processing import (
-    clean_text, extract_source_from_url, create_summary_prompt, 
+    clean_text, extract_source_from_url, create_summary_prompt,
     get_system_prompt, parse_summary_response
 )
+from cache.semantic_keys import get_all_cache_keys, create_cache_key_for_storage
 
 class BaseSummarizer:
     """
@@ -93,11 +94,14 @@ class BaseSummarizer:
         try:
             # Check cache first if not forcing refresh
             if not force_refresh and self.cache:
-                cache_key = f"{text}:{model or 'default'}:{temperature}:{style}"  # Update cache key
-                cached_result = self.cache.get(cache_key)
-                if cached_result:
-                    self.logger.info("Retrieved summary from cache")
-                    return cached_result
+                # Try multiple cache keys (exact first, then semantic)
+                cache_keys = get_all_cache_keys(text, model or 'default', temperature, style)
+                for idx, cache_key in enumerate(cache_keys):
+                    cached_result = self.cache.get(cache_key)
+                    if cached_result:
+                        cache_type = "exact" if idx == 0 else "semantic"
+                        self.logger.info(f"Retrieved summary from cache ({cache_type} match)")
+                        return cached_result
             
             # Clean the text first
             text = clean_text(text)
@@ -121,11 +125,16 @@ class BaseSummarizer:
             
             # Parse the response
             result = parse_summary_response(summary_text, title, url, source_name, style)
-            
-            # Cache the result
+
+            # Cache the result with both exact and semantic keys
             if self.cache:
-                cache_key = f"{text}:{model_id}:{temperature}:{style}"
-                self.cache.set(cache_key, result)
+                # Store with exact key
+                exact_key = create_cache_key_for_storage(text, model_id, temperature, style, use_semantic=False)
+                self.cache.set(exact_key, result)
+
+                # Also store with semantic key for fuzzy matching
+                semantic_key = create_cache_key_for_storage(text, model_id, temperature, style, use_semantic=True)
+                self.cache.set(semantic_key, result)
             
             self.logger.info(
                 f"Summary generated successfully - Style: {style}, Headline length: {len(result['headline'])}, "

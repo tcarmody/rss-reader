@@ -43,6 +43,14 @@ htmlcov/
 *_cache/
 summary_cache/
 
+# Database files (contain sensitive user data)
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+data/*.sqlite
+
+
 # Generated output
 output/
 outputs/
@@ -80,6 +88,7 @@ diagnostics.py
 simple_batch_fix.py
 benchmark.py
 examples.py
+bfg.jar
 
 # Language model files
 *.ckpt
@@ -97,3 +106,5 @@ performance_logs.txt
 macos-app/Data Points AI/Data Points AI.xcodeproj/project.xcworkspace/xcuserdata/timcarmody.xcuserdatad/UserInterfaceState.xcuserstate
 macos-app/Data Points AI/Data Points AI.xcodeproj/project.xcworkspace/xcuserdata/timcarmody.xcuserdatad/UserInterfaceState.xcuserstate
 macos-app/Data Points AI/Data Points AI.xcodeproj/project.xcworkspace/xcuserdata/timcarmody.xcuserdatad/UserInterfaceState.xcuserstate
+macos-app/Data Points AI/Data Points AI.xcodeproj/project.xcworkspace/xcuserdata/tim.xcuserdatad/UserInterfaceState.xcuserstate
+macos-app/Data Points AI/Data Points AI.xcodeproj/xcuserdata/tim.xcuserdatad/xcschemes/xcschememanagement.plist

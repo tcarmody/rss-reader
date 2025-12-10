@@ -2,6 +2,106 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚡ CRITICAL: Virtual Environment Requirement
+
+**ALWAYS activate the virtual environment before running ANY Python code or commands.**
+
+### Virtual Environment Activation
+
+```bash
+# ALWAYS start commands with this prefix
+source rss_venv/bin/activate && python <your_command>
+
+# Examples:
+source rss_venv/bin/activate && python -m pytest tests/
+source rss_venv/bin/activate && python main.py --input articles.json
+source rss_venv/bin/activate && python -c "import some_module; print('test')"
+```
+
+### Why This Matters
+
+- The project **requires Python 3.11 specifically** (not system Python, not Python 3.12+)
+- The virtual environment (`rss_venv/`) is configured for Python 3.11
+- Without activation, you'll get `ModuleNotFoundError` for numpy, playwright, etc.
+- ALL dependencies (numpy, BeautifulSoup, playwright, etc.) are installed in this venv
+- System Python may be a different version and will NOT have the required packages
+
+### Testing and Verification
+
+When testing or verifying implementations:
+1. **ALWAYS** prefix with `source rss_venv/bin/activate &&`
+2. **NEVER** use bare `python`, `python3`, or `python3.11` commands without activation
+3. The venv activation ensures Python 3.11 is used with all dependencies
+4. This applies to: pytest, python -c, python -m, python scripts, etc.
+
+### Common Mistakes to Avoid
+
+```bash
+# ❌ WRONG - uses system Python (may be wrong version, no packages)
+python -c "from clustering.simple import SimpleClustering"
+python3 -c "from clustering.simple import SimpleClustering"
+python3.11 -c "from clustering.simple import SimpleClustering"
+
+# ✅ CORRECT - activates Python 3.11 venv with all dependencies
+source rss_venv/bin/activate && python -c "from clustering.simple import SimpleClustering"
+```
+
+### Python Version Verification
+
+After activating the venv, you can verify the correct Python version:
+```bash
+source rss_venv/bin/activate && python --version
+# Should output: Python 3.11.x
+```
+
+## 🚨 IMPORTANT: Documenting Design Decisions
+
+**Before making significant design or architectural changes, consider updating [DOCTRINE.md](DOCTRINE.md).**
+
+### When to Update DOCTRINE.md
+
+Update DOCTRINE.md when making:
+- **Major Architecture Changes**: New patterns, refactors affecting multiple modules
+- **Technology Decisions**: Switching frameworks, databases, AI models, or libraries
+- **Performance Trade-offs**: Changes that trade one metric for another
+- **Breaking Changes**: Deprecating features or patterns
+- **New Design Patterns**: Introducing new architectural approaches
+
+### How to Update DOCTRINE.md
+
+1. **Document the WHY**: Explain rationale, not just the change itself
+2. **Document TRADE-OFFS**: List pros and cons explicitly
+3. **Specify "When to Reconsider"**: Future conditions that might invalidate this decision
+4. **Provide Context**: Help future maintainers understand the situation at decision time
+
+### Example Entry
+
+```markdown
+## Feature Name
+
+### Decision: Brief description of what was decided
+
+**Rationale**:
+1. Why this approach was chosen
+2. What problem it solves
+3. What alternatives were considered
+
+**Implementation**: Link to relevant code
+
+**Trade-offs**:
+- **Pro**: Benefit 1
+- **Pro**: Benefit 2
+- **Con**: Drawback 1
+- **Mitigation**: How drawbacks are addressed
+
+**When to Reconsider**:
+- Condition that might change the decision
+- Metrics to monitor
+```
+
+DOCTRINE.md serves as institutional memory - it helps future maintainers (human or agentic) understand why decisions were made and evaluate them against new requirements.
+
+
 ## Development Commands
 
 ### Environment Setup
@@ -10,13 +110,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./run_server.sh --reload --port 5005
 
 # Setup with minimal dependencies (if full install fails)
-pip install -r essential_requirements.txt
+source rss_venv/bin/activate && pip install -r essential_requirements.txt
 
 # Install spaCy model (required for clustering)
-python -m spacy download en_core_web_sm
+source rss_venv/bin/activate && python -m spacy download en_core_web_sm
 
-# Install Playwright browser (for paywall bypass)
-python -m playwright install chromium
+# Install Playwright browser (for JavaScript-rendered content extraction)
+source rss_venv/bin/activate && python -m playwright install chromium
 ```
 
 ### Server Commands
@@ -37,24 +137,24 @@ uvicorn server:app --host 127.0.0.1 --port 5005 --reload
 ### CLI Processing
 ```bash
 # Batch process articles
-python main.py --input articles.json --output summaries.json
+source rss_venv/bin/activate && python main.py --input articles.json --output summaries.json
 
 # Debug mode
 export LOG_LEVEL=DEBUG
-python server.py
+source rss_venv/bin/activate && python server.py
 ```
 
 ### Testing
 ```bash
-# Run tests
-python -m pytest tests/
+# Run tests (ALWAYS activate venv first)
+source rss_venv/bin/activate && python -m pytest tests/
 
 # Run specific test files
-python -m pytest tests/test_batch_processing.py
-python -m pytest tests/test_model_selection.py
+source rss_venv/bin/activate && python -m pytest tests/test_batch_processing.py
+source rss_venv/bin/activate && python -m pytest tests/test_model_selection.py
 
 # Run with coverage (if installed)
-python -m pytest tests/ --cov
+source rss_venv/bin/activate && python -m pytest tests/ --cov
 ```
 
 ## System Architecture
@@ -194,8 +294,9 @@ The RSS Reader includes AI-powered image prompt generation that creates detailed
 ## Critical Dependencies
 
 ### Python Version
-- **Required**: Python 3.11+ (recommended 3.11 specifically)
+- **Required**: Python 3.11 specifically (NOT 3.12+, NOT system Python)
 - **Virtual Environment**: `rss_venv/` (auto-created by run_server.sh)
+- **CRITICAL**: Always activate venv before running Python commands (see section above)
 
 ### Key Libraries
 - **FastAPI**: Web framework (not Flask)
@@ -207,8 +308,9 @@ The RSS Reader includes AI-powered image prompt generation that creates detailed
 
 ### Post-Install Requirements
 ```bash
-python -m spacy download en_core_web_sm
-python -m playwright install chromium
+# Remember to activate venv first!
+source rss_venv/bin/activate && python -m spacy download en_core_web_sm
+source rss_venv/bin/activate && python -m playwright install chromium
 ```
 
 ## Common Patterns
