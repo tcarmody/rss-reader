@@ -64,6 +64,8 @@ class SimpleClustering:
             'ceo', 'launch', 'announce', 'update', 'release', 'new', 'report',
             'news', 'today', 'says', 'could', 'will', 'according', 'platform',
             'service', 'product', 'company', 'business', 'industry',
+            # News aggregators
+            'google news', 'techmeme',
             # Financial/business terms
             'invest', 'investment', 'investor', 'deal', 'agreement', 'partnership',
             'revenue', 'profit', 'stock', 'market', 'share', 'percent', 'growth',
