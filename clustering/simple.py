@@ -37,7 +37,7 @@ class SimpleClustering:
         os.makedirs(self.cache_dir, exist_ok=True)
 
         # Configuration with environment variable support
-        self.similarity_threshold = float(os.environ.get('MIN_SIMILARITY_THRESHOLD', 0.3))
+        self.similarity_threshold = float(os.environ.get('MIN_SIMILARITY_THRESHOLD', 0.4))
         self.keyword_weight = 0.25  # 25% keyword overlap, 75% semantic similarity (increased semantic weight)
         self.semantic_weight = 0.75
         self.min_cluster_size = int(os.environ.get('MIN_CLUSTER_SIZE', 2))
@@ -54,16 +54,19 @@ class SimpleClustering:
             'google', 'microsoft', 'meta', 'amazon', 'apple', 'nvidia', 'tesla',
             'deepmind', 'hugging face', 'mistral', 'cohere', 'facebook',
             'intel', 'amd', 'qualcomm', 'ibm', 'oracle', 'salesforce',
+            'adobe', 'photoshop', 'acrobat', 'slack', 'instacart', 'rivian',
+            'mcdonald', 'mcdonalds', 'virgin', 'bitcoin',
             # AI startups
-            'deepseek', 'perplexity', 'inflection', 'character', 'replika',
+            'deepseek', 'perplexity', 'inflection', 'character', 'replika', 'cursor',
             # Geographic/Political
             'trump', 'china', 'chinese', 'india', 'indian', 'europe', 'european',
             'america', 'american', 'government', 'federal', 'state', 'national',
             # Generic tech/news terms
             'tech', 'technology', 'startup', 'funding', 'billion', 'million',
-            'ceo', 'launch', 'announce', 'update', 'release', 'new', 'report',
+            'ceo', 'launch', 'launches', 'announce', 'update', 'release', 'new', 'report',
             'news', 'today', 'says', 'could', 'will', 'according', 'platform',
             'service', 'product', 'company', 'business', 'industry',
+            'brings', 'teaming', 'pivoting', 'opens', 'investigation', 'probe',
             # News aggregators
             'google news', 'techmeme',
             # Financial/business terms
@@ -72,8 +75,11 @@ class SimpleClustering:
             # Generic actions
             'make', 'makes', 'making', 'develop', 'developing', 'build', 'building',
             'create', 'creating', 'work', 'working', 'help', 'helping', 'use', 'using',
+            'hire', 'hiring', 'appoints', 'join', 'joins', 'partner', 'strike',
             # Hardware terms
             'chip', 'chips', 'processor', 'semiconductor', 'hardware', 'device',
+            # Infrastructure terms
+            'data center', 'datacenter', 'power', 'energy',
             # Time/quantity
             'year', 'month', 'week', 'first', 'latest', 'next'
         }
