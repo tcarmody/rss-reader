@@ -38,26 +38,42 @@ class SimpleClustering:
 
         # Configuration with environment variable support
         self.similarity_threshold = float(os.environ.get('MIN_SIMILARITY_THRESHOLD', 0.3))
-        self.keyword_weight = 0.4  # 40% keyword overlap, 60% semantic similarity
-        self.semantic_weight = 0.6
+        self.keyword_weight = 0.25  # 25% keyword overlap, 75% semantic similarity (increased semantic weight)
+        self.semantic_weight = 0.75
         self.min_cluster_size = int(os.environ.get('MIN_CLUSTER_SIZE', 2))
         self.max_days_old = int(os.environ.get('MAX_CLUSTERING_DAYS', 7))
 
-        # Common entities to filter (same as base.py for consistency)
+        # Common entities to filter (expanded to reduce false positives)
         self.common_entities = {
             # AI/ML terms
             'ai', 'artificial intelligence', 'chatgpt', 'gpt', 'gpt-4', 'gpt-5',
             'openai', 'anthropic', 'claude', 'gemini', 'llm', 'genai', 'agi',
             'machine learning', 'deep learning', 'data science', 'model',
             'neural network', 'chatbot', 'large language model',
-            # Companies
+            # Companies (tech)
             'google', 'microsoft', 'meta', 'amazon', 'apple', 'nvidia', 'tesla',
             'deepmind', 'hugging face', 'mistral', 'cohere', 'facebook',
+            'intel', 'amd', 'qualcomm', 'ibm', 'oracle', 'salesforce',
+            # AI startups
+            'deepseek', 'perplexity', 'inflection', 'character', 'replika',
+            # Geographic/Political
+            'trump', 'china', 'chinese', 'india', 'indian', 'europe', 'european',
+            'america', 'american', 'government', 'federal', 'state', 'national',
             # Generic tech/news terms
             'tech', 'technology', 'startup', 'funding', 'billion', 'million',
             'ceo', 'launch', 'announce', 'update', 'release', 'new', 'report',
             'news', 'today', 'says', 'could', 'will', 'according', 'platform',
-            'service', 'product', 'company', 'business', 'industry'
+            'service', 'product', 'company', 'business', 'industry',
+            # Financial/business terms
+            'invest', 'investment', 'investor', 'deal', 'agreement', 'partnership',
+            'revenue', 'profit', 'stock', 'market', 'share', 'percent', 'growth',
+            # Generic actions
+            'make', 'makes', 'making', 'develop', 'developing', 'build', 'building',
+            'create', 'creating', 'work', 'working', 'help', 'helping', 'use', 'using',
+            # Hardware terms
+            'chip', 'chips', 'processor', 'semiconductor', 'hardware', 'device',
+            # Time/quantity
+            'year', 'month', 'week', 'first', 'latest', 'next'
         }
 
         # Initialize model if available
