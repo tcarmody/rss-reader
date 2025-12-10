@@ -43,6 +43,13 @@ htmlcov/
 *_cache/
 summary_cache/
 
+# Database files (contain sensitive user data)
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+data/*.sqlite
+
 # Generated output
 output/
 outputs/
