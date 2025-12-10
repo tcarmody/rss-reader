@@ -90,6 +90,10 @@ benchmark.py
 examples.py
 bfg.jar
 
+# Node modules
+node_modules/
+electron/node_modules/
+
 # Language model files
 *.ckpt
 *.pt
