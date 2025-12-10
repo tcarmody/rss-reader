@@ -52,7 +52,12 @@ class TieredCache(CacheInterface):
         self.ttl_seconds = ttl_days * 86400
         self.last_flush_time = time.time()
         self.disk_flush_interval = disk_flush_interval
-        
+
+        # Performance tracking (for monitoring)
+        self.disk_hits = 0
+        self.disk_misses = 0
+        self.api_calls = 0  # Track when caller has to make API call (full cache miss)
+
         logger.info(
             f"Initialized TieredCache with memory_size={memory_size}, "
             f"disk_path={disk_path}, ttl_days={ttl_days}"
@@ -69,8 +74,9 @@ class TieredCache(CacheInterface):
         # Try memory cache first
         value = self.memory_cache.get(key)
         if value is not None:
+            # Memory hit (already tracked by memory_cache)
             return value
-        
+
         # Try disk cache
         try:
             disk_path = self._get_disk_path(key)
@@ -80,19 +86,27 @@ class TieredCache(CacheInterface):
                 if time.time() - file_mtime > self.ttl_seconds:
                     # Remove expired file
                     os.remove(disk_path)
+                    self.disk_misses += 1
                     return None
-                
+
                 # Load from disk
                 with open(disk_path, 'rb') as f:
                     value = pickle.load(f)
-                
+
+                # Disk hit!
+                self.disk_hits += 1
+
                 # Store in memory for faster access next time
                 self.memory_cache.set(key, value)
-                
+
                 return value
+            else:
+                self.disk_misses += 1
         except Exception as e:
             logger.error(f"Error reading from disk cache: {str(e)}")
-        
+            self.disk_misses += 1
+
+        # Complete cache miss - caller will need to make API call
         return None
     
     def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
@@ -151,13 +165,18 @@ class TieredCache(CacheInterface):
             return False
     
     def get_stats(self) -> Dict[str, Any]:
-        """Get cache statistics."""
+        """
+        Get comprehensive cache statistics.
+
+        Returns:
+            Dict with memory stats, disk stats, and combined metrics
+        """
         memory_stats = self.memory_cache.get_stats()
-        
+
         # Count disk entries
         disk_count = 0
         disk_size = 0
-        
+
         try:
             for filename in os.listdir(self.disk_path):
                 file_path = os.path.join(self.disk_path, filename)
@@ -166,12 +185,66 @@ class TieredCache(CacheInterface):
                     disk_size += os.path.getsize(file_path)
         except Exception as e:
             logger.error(f"Error getting disk cache stats: {str(e)}")
-        
+
+        # Calculate combined metrics
+        total_hits = memory_stats['hits'] + self.disk_hits
+        total_misses = self.disk_misses  # Memory misses are already counted as disk attempts
+        total_requests = total_hits + total_misses
+
+        # Combined hit rate (memory + disk)
+        combined_hit_rate = total_hits / total_requests if total_requests > 0 else 0
+
+        # Disk-only hit rate (when memory misses)
+        disk_attempts = self.disk_hits + self.disk_misses
+        disk_hit_rate = self.disk_hits / disk_attempts if disk_attempts > 0 else 0
+
         return {
+            # Memory layer stats
             'memory': memory_stats,
+
+            # Disk layer stats
             'disk_entries': disk_count,
-            'disk_size_bytes': disk_size
+            'disk_size_bytes': disk_size,
+            'disk_size_mb': round(disk_size / (1024 * 1024), 2),
+            'disk_hits': self.disk_hits,
+            'disk_misses': self.disk_misses,
+            'disk_hit_rate': round(disk_hit_rate, 3),
+
+            # Combined metrics
+            'total_hits': total_hits,
+            'total_misses': total_misses,
+            'total_requests': total_requests,
+            'combined_hit_rate': round(combined_hit_rate, 3),
+
+            # API call tracking
+            'api_calls_needed': self.api_calls,
+
+            # Performance indicators
+            'memory_serving_percentage': round(memory_stats['hits'] / total_requests * 100, 1) if total_requests > 0 else 0,
+            'disk_serving_percentage': round(self.disk_hits / total_requests * 100, 1) if total_requests > 0 else 0,
+            'api_serving_percentage': round(total_misses / total_requests * 100, 1) if total_requests > 0 else 0
         }
+
+    def record_api_call(self) -> None:
+        """
+        Record that an API call was made due to cache miss.
+        Call this from the summarizer when making an actual API request.
+        """
+        self.api_calls += 1
+
+    def log_stats(self) -> None:
+        """Log current cache statistics at INFO level."""
+        stats = self.get_stats()
+        logger.info(
+            f"Cache Stats: "
+            f"Hit Rate={stats['combined_hit_rate']:.1%} "
+            f"(Memory: {stats['memory_serving_percentage']:.1%}, "
+            f"Disk: {stats['disk_serving_percentage']:.1%}, "
+            f"API: {stats['api_serving_percentage']:.1%}), "
+            f"Total Requests={stats['total_requests']}, "
+            f"Disk Size={stats['disk_size_mb']}MB, "
+            f"API Calls={stats['api_calls_needed']}"
+        )
     
     def _flush_to_disk(self) -> None:
         """Flush memory cache to disk."""
