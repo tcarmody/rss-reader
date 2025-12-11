@@ -101,6 +101,7 @@ Update DOCTRINE.md when making:
 
 DOCTRINE.md serves as institutional memory - it helps future maintainers (human or agentic) understand why decisions were made and evaluate them against new requirements.
 
+
 ## Development Commands
 
 ### Environment Setup

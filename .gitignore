@@ -50,6 +50,7 @@ summary_cache/
 data/*.db
 data/*.sqlite
 
+
 # Generated output
 output/
 outputs/
@@ -88,6 +89,10 @@ simple_batch_fix.py
 benchmark.py
 examples.py
 bfg.jar
+
+# Node modules
+node_modules/
+electron/node_modules/
 
 # Language model files
 *.ckpt
