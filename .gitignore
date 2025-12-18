@@ -1,4 +1,3 @@
-11
 # Environment variables and secrets
 .env
 *.env
@@ -50,7 +49,6 @@ summary_cache/
 data/*.db
 data/*.sqlite
 
-
 # Generated output
 output/
 outputs/
@@ -92,7 +90,6 @@ bfg.jar
 
 # Node modules
 node_modules/
-electron/node_modules/
 
 # Language model files
 *.ckpt
@@ -105,10 +102,8 @@ electron/node_modules/
 test_*.csv
 test_*.json
 test_*.xml
-.DS_Store
-performance_logs.txt
-macos-app/Data Points AI/Data Points AI.xcodeproj/project.xcworkspace/xcuserdata/timcarmody.xcuserdatad/UserInterfaceState.xcuserstate
-macos-app/Data Points AI/Data Points AI.xcodeproj/project.xcworkspace/xcuserdata/timcarmody.xcuserdatad/UserInterfaceState.xcuserstate
-macos-app/Data Points AI/Data Points AI.xcodeproj/project.xcworkspace/xcuserdata/timcarmody.xcuserdatad/UserInterfaceState.xcuserstate
-macos-app/Data Points AI/Data Points AI.xcodeproj/project.xcworkspace/xcuserdata/tim.xcuserdatad/UserInterfaceState.xcuserstate
-macos-app/Data Points AI/Data Points AI.xcodeproj/xcuserdata/tim.xcuserdatad/xcschemes/xcschememanagement.plist
+
+# Xcode user data
+xcuserdata/
+*.xcuserstate
+xcschememanagement.plist
